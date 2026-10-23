@@ -1,0 +1,428 @@
+{
+  "schema_version": "v2.2",
+  "generateur": "CORA 3D (PMD2, ECAM), modèle synthétique",
+  "os": "tibia",
+  "cote": "droit",
+  "unites": "mm",
+  "fichier_maillage": "tibia_deforme.stl",
+  "repere": "X latéral, Y proximal, Z caudal (repère du maillage)",
+  "deformite": {
+    "theta_deg": 30.7697,
+    "frontal_deg": 28.0182,
+    "sagittal_deg": -15.038,
+    "phi_deg": 26.7888,
+    "torsion_mesuree_deg": 0,
+    "ecart_axes_mm": 0.0008,
+    "cora": [
+      -0.0521,
+      71.6489,
+      0.8382
+    ]
+  },
+  "reference": {
+    "type": "os sain du modèle (membre controlatéral)"
+  },
+  "strategie": {
+    "type_coin": "fermeture",
+    "regle_paley": 1,
+    "torsion": "non corrigée",
+    "decalage_coupe_mm": 0,
+    "decalage_coupe_signe_mm": 0,
+    "translation_osteotomie_mm": 0,
+    "abord": null,
+    "face_du_coin": [
+      0.8603,
+      -0.2682,
+      0.4335
+    ],
+    "abord_non_usuel": true,
+    "faisable_abord_usuel": false,
+    "ecart_face_coin_deg": 0,
+    "charniere_profondeur_mm": 2,
+    "coin_mixte": false,
+    "configuration_broches": "2+2",
+    "recommandation": {
+      "type_coin": "ouverture",
+      "critere_decisif": "abord"
+    },
+    "osteotomie_complete": true
+  },
+  "charniere": {
+    "point": [
+      -3.5711,
+      72.9855,
+      -2.7903
+    ],
+    "direction": [
+      0.451,
+      0.004,
+      -0.8925
+    ],
+    "d_mm": -4.9589,
+    "marge_mm": 2,
+    "axe_correction_point": [
+      -3.5711,
+      72.9855,
+      -2.7903
+    ]
+  },
+  "plans_coupe": [
+    {
+      "point": [
+        -3.5711,
+        72.9855,
+        -2.7903
+      ],
+      "normale": [
+        -0.0009,
+        -1,
+        -0.0049
+      ],
+      "profondeur": "complete"
+    },
+    {
+      "point": [
+        -3.5711,
+        72.9855,
+        -2.7903
+      ],
+      "normale": [
+        -0.4574,
+        -0.8577,
+        -0.235
+      ],
+      "profondeur": "complete"
+    }
+  ],
+  "coin": {
+    "angle_deg": 30.7697,
+    "largeur_base_mm": 6.3322,
+    "profondeur_coupe_mm": 11.5064,
+    "delta_L_mm": -2.424,
+    "r_convexe_mm": 6.5475,
+    "r_concave_mm": 6.9589,
+    "angle_entre_coupes_deg": 30.7697,
+    "orientation_charniere_deg": 26.809
+  },
+  "correction": {
+    "axe": [
+      -0.451,
+      -0.004,
+      0.8925
+    ],
+    "angle_deg": 30.7697,
+    "point": [
+      -3.5711,
+      72.9855,
+      -2.7903
+    ],
+    "derotation_deg": 0,
+    "axe_derotation": {
+      "point": [
+        -0.0523,
+        71.6489,
+        0.8386
+      ],
+      "direction": [
+        0.4574,
+        0.8577,
+        0.235
+      ]
+    },
+    "T_4x4": [
+      [
+        0.887865,
+        -0.456343,
+        -0.058706,
+        32.742192
+      ],
+      [
+        0.45685,
+        0.859233,
+        0.230232,
+        12.547813
+      ],
+      [
+        -0.054623,
+        -0.231235,
+        0.971363,
+        16.601826
+      ],
+      [
+        0,
+        0,
+        0,
+        1
+      ]
+    ],
+    "T_angulaire_4x4": [
+      [
+        0.887865,
+        -0.456343,
+        -0.058706,
+        32.742192
+      ],
+      [
+        0.45685,
+        0.859233,
+        0.230232,
+        12.547813
+      ],
+      [
+        -0.054623,
+        -0.231235,
+        0.971363,
+        16.601826
+      ],
+      [
+        0,
+        0,
+        0,
+        1
+      ]
+    ]
+  },
+  "broches": [
+    {
+      "fragment": "proximal",
+      "point_axe": [
+        -0.9412,
+        86.164,
+        2.6942
+      ],
+      "direction": [
+        -0.8603,
+        0.2682,
+        -0.4335
+      ],
+      "diametre_mm": 1.6
+    },
+    {
+      "fragment": "distal",
+      "point_axe": [
+        -8.9688,
+        56.6115,
+        -1.4936
+      ],
+      "direction": [
+        -0.6176,
+        0.7233,
+        -0.3089
+      ],
+      "diametre_mm": 1.6
+    }
+  ],
+  "angle_entre_broches_deg": 30.7697,
+  "broches_reduction": [
+    {
+      "fragment": "proximal",
+      "point_axe": [
+        -0.9412,
+        86.164,
+        2.6942
+      ],
+      "direction": [
+        -0.8603,
+        0.2682,
+        -0.4335
+      ],
+      "diametre_mm": 1.6,
+      "hauteur_manchon_mm": 15
+    },
+    {
+      "fragment": "proximal",
+      "point_axe": [
+        -0.9324,
+        96.1639,
+        2.7434
+      ],
+      "direction": [
+        -0.8603,
+        0.2682,
+        -0.4335
+      ],
+      "diametre_mm": 1.6,
+      "hauteur_manchon_mm": 15
+    },
+    {
+      "fragment": "distal",
+      "point_axe": [
+        -8.9688,
+        56.6115,
+        -1.4936
+      ],
+      "direction": [
+        -0.6176,
+        0.7233,
+        -0.3089
+      ],
+      "diametre_mm": 1.6,
+      "hauteur_manchon_mm": 15
+    },
+    {
+      "fragment": "distal",
+      "point_axe": [
+        -13.5423,
+        48.0347,
+        -3.8431
+      ],
+      "direction": [
+        -0.6176,
+        0.7233,
+        -0.3089
+      ],
+      "diametre_mm": 1.6,
+      "hauteur_manchon_mm": 15
+    }
+  ],
+  "placement_broches": {
+    "rotation_deg": 0,
+    "inclinaison_deg": 0,
+    "distance_coupe_mm": [
+      13.2,
+      16.2
+    ],
+    "disposition": [
+      "axiale",
+      "axiale"
+    ],
+    "ecart_mm": [
+      10,
+      10
+    ],
+    "contraintes_respectees": true
+  },
+  "guide_reduction": {
+    "broches_apres_correction": [
+      {
+        "fragment": "proximal",
+        "point_axe": [
+          -0.9412,
+          86.164,
+          2.6942
+        ],
+        "direction": [
+          -0.8603,
+          0.2682,
+          -0.4335
+        ]
+      },
+      {
+        "fragment": "proximal",
+        "point_axe": [
+          -0.9324,
+          96.1639,
+          2.7434
+        ],
+        "direction": [
+          -0.8603,
+          0.2682,
+          -0.4335
+        ]
+      },
+      {
+        "fragment": "distal",
+        "point_axe": [
+          -0.9675,
+          56.7491,
+          2.5503
+        ],
+        "direction": [
+          -0.8603,
+          0.2682,
+          -0.4335
+        ]
+      },
+      {
+        "fragment": "distal",
+        "point_axe": [
+          -0.9763,
+          46.7492,
+          2.5012
+        ],
+        "direction": [
+          -0.8603,
+          0.2682,
+          -0.4335
+        ]
+      }
+    ]
+  },
+  "torsion": {
+    "definition": "CORA 3D (modèle synthétique)",
+    "avant_deg": -1.97,
+    "apres_correction_angulaire_deg": -0.57,
+    "cible_deg": -0.69,
+    "apres_deg": -0.57,
+    "derotation_deg": 0,
+    "normale": {
+      "moyenne_deg": -4,
+      "seuils_deg": [
+        -10,
+        2
+      ],
+      "source": "Brühschwein et al. 2023 (3D-CT) ; seuils de Longo et al. 2022 (Méthodes)"
+    },
+    "convention": "− = interne, + = externe (Longo 2022)"
+  },
+  "guide": {
+    "face_appui": [
+      0.8603,
+      -0.2682,
+      0.4335
+    ],
+    "axe_os": [
+      -0.0009,
+      -1,
+      -0.0049
+    ],
+    "axe_distal": [
+      -0.4574,
+      -0.8577,
+      -0.235
+    ],
+    "centre_section": [
+      0.695,
+      71.6555,
+      -0.6404
+    ]
+  },
+  "contraintes_coupe": [
+    {
+      "niveau": "ok",
+      "id": "cartilage",
+      "texte": "cartilage articulaire à 66,5 mm du trait (≥ 5 mm)"
+    },
+    {
+      "niveau": "info",
+      "id": "consolidation",
+      "texte": "diaphyse : os cortical, consolidation plus lente (contact osseux et stabilité de la fixation importants)"
+    },
+    {
+      "niveau": "attention",
+      "id": "abord",
+      "texte": "abord non usuel pour ce type de coin : dissection plus large, structures du côté opposé à protéger"
+    }
+  ],
+  "prevision": {
+    "angle_residuel_deg": 0,
+    "translation_residuelle_mm": 0.000828
+  },
+  "alertes": [
+    "broches du fragment proximal décalées de 2 mm de la ligne centrale de l'os (cartilage ou os voisin évités)",
+    "broches du fragment distal décalées de 2 mm de la ligne centrale de l'os (cartilage ou os voisin évités)",
+    "coin non réalisable par un abord usuel : la lame doit entrer par la face caudo-latérale (la fibula est sur le trajet de la lame) ; guide posé sur cette face (abord non usuel, os voisin à écarter ou à ostéotomiser) ; l'abord médial n'y entre qu'à 93° de la face du coin, du côté de la charnière"
+  ],
+  "verite_terrain": {
+    "synthetique": true,
+    "apex": [
+      0.2954,
+      71.7537,
+      -0.6876
+    ],
+    "theta_deg": 30.7699,
+    "torsion_deg": 0,
+    "frontal_deg": 28,
+    "sagittal_deg": -15
+  }
+}

@@ -1,0 +1,448 @@
+{
+ "date": "2026-10-13 09:59:19",
+ "duree_s": 25.8,
+ "serie": {
+  "description": "PELVIS",
+  "etude": "",
+  "date": "20130220",
+  "modalite": "CT",
+  "patient": "greyhoundHL3",
+  "id_patient": "2002131",
+  "position_patient": "FFS",
+  "numero_serie": "2",
+  "fabricant": "GE MEDICAL SYSTEMS LightSpeed Ultra",
+  "noyau": "BONEPLUS",
+  "kv": "120",
+  "ma": "100",
+  "epaisseur_mm": 0.625,
+  "pixel_mm": [
+   0.267578,
+   0.267578
+  ],
+  "taille_image": [
+   512,
+   512
+  ],
+  "nb_fichiers": 442,
+  "dossier": "/Users/dorian_verstappen/Library/CloudStorage/OneDrive-ECAM/MASTER 2/PMD2/CT-scan/Greyhound hindlimb ankle down",
+  "nom": "greyhound_hindlimb_ankle_down",
+  "dimensions_kji": [
+   442,
+   512,
+   512
+  ],
+  "espacement_kji_mm": [
+   0.625,
+   0.267578,
+   0.267578
+  ],
+  "etendue_mm": [
+   275.6,
+   137.0,
+   137.0
+  ],
+  "hu_min": -3024,
+  "hu_max": 2310,
+  "inclinaison_statif_deg": 0.0,
+  "systeme": "LPS"
+ },
+ "parametres": {
+  "AFFINAGE_DEMI_HAUTEUR": true,
+  "AIRE_MIN_FIBULA_MM2": 3.0,
+  "ALLONGEMENT_COMPACT": 3.5,
+  "ALLONGEMENT_OS_LONG": 3.0,
+  "BANDE_PASSANTE_LISSAGE": 0.05,
+  "CAVITE_MAX_OBJET": 0.05,
+  "CONTRASTE_MIN_HU": 300,
+  "CORA_COUVERCLE_MIN_MM2": 80.0,
+  "CORA_OS": [
+   "femur",
+   "tibia"
+  ],
+  "COUVERTURE_MIN_SPHERE": 0.4,
+  "CSTAR_MAX_SESAMOIDE": 1.5,
+  "CV_MAX_OBJET": 0.2,
+  "DEPLACEMENT_MAX_MM": 1.5,
+  "ECART_SURFACE_CIBLE_MM": 0.5,
+  "EPAISSEUR_MAX_MM": 1.0,
+  "EXPORTER_AUTRES": false,
+  "FRACTION_MAX_SESAMOIDE": 0.05,
+  "FRACTION_SPONGIEUX_MAX_OBJET": 0.08,
+  "HU_MIN_VALLEE": 150,
+  "IMAGES_CONTROLE": true,
+  "INLIERS_MIN_SPHERE": 150,
+  "ITERATIONS_LISSAGE": 20,
+  "LISSAGE_DEPLACEMENT": 5,
+  "LONGUEUR_OS_LONG_MM": 50.0,
+  "MARGE_RECADRAGE_MM": 6.0,
+  "MARGE_SPHERE_MM": 1.0,
+  "PAS_SEUIL_HU": 100,
+  "PAS_TRANCHES_MM": 2.0,
+  "PERSISTANCE_HU": 200,
+  "PROFIL_EXTERIEUR_MM": 2.0,
+  "PROFIL_INTERIEUR_MM": 2.5,
+  "PROFONDEUR_VALLEE_HU": 250,
+  "RAPPORT_AIRE_FIBULA_MAX": 0.2,
+  "RAPPORT_CONTACT_FUSION": 3.0,
+  "RAYON_FERMETURE_MM": 1.0,
+  "RAYON_GRAINE_MM": 2.5,
+  "RAYON_RECHERCHE_TETE_MM": 35.0,
+  "RAYON_TETE_MM": [
+   4.0,
+   20.0
+  ],
+  "RAYON_VALLEE_MM": 1.0,
+  "REDUCTION_MAX": 0.75,
+  "SAUT_MAX_FIBULA_MM": 3.0,
+  "SERIE_MIN_FIBULA": 0.15,
+  "SEUIL_GRAINE_DEPART_HU": 500,
+  "SEUIL_GRAINE_MAX_HU": 1500,
+  "SEUIL_OS_HU": 226,
+  "SIGMA_LISSAGE_MM": 0.35,
+  "SIGMA_MAILLAGE_MM": 0.3,
+  "SYSTEME_COORDONNEES": "LPS",
+  "TOLERANCE_ESPACEMENT": 0.05,
+  "TOLERANCE_ORIENTATION": 0.001,
+  "TOLERANCE_SPHERE_MM": 0.6,
+  "TRIANGLES_MAX": 150000,
+  "VARIATION_SEUIL_HU": 50,
+  "VOLUME_MIN_GRAINE_MM3": 30.0,
+  "VOLUME_MIN_MORCEAU_MM3": 300.0,
+  "VOLUME_MIN_NOMME_MM3": 200.0,
+  "VOLUME_MIN_SEGMENT_MM3": 50.0,
+  "VOLUME_PERSISTANCE_MM3": 50.0
+ },
+ "durees_segmentation_s": {
+  "lissage": 0.8,
+  "graines": 2.5,
+  "croissance": 3.7,
+  "fusion": 0.8
+ },
+ "os": {
+  "calcaneus": {
+   "etanche": true,
+   "orientation_coherente": true,
+   "euler": 2,
+   "morceaux": 1,
+   "volume_cm3": 13.934,
+   "surface_cm2": 50.26,
+   "triangles": 115632,
+   "sommets": 57818,
+   "affinage_demi_hauteur": {
+    "moyen_mm": -0.269,
+    "p95_mm": 0.614,
+    "sommets_affines_pct": 96.0
+   },
+   "volume_voxels_cm3": 15.273,
+   "systeme": "LPS",
+   "bords_volume": [],
+   "fichier": "calcaneus.stl",
+   "etiquettes": [
+    3
+   ],
+   "libelle": "calcanéus",
+   "sensibilite_seuil": {
+    "moins": {
+     "seuil_hu": 176,
+     "ecart_moyen_mm": 0.12,
+     "ecart_absolu_moyen_mm": 0.12,
+     "ecart_p95_mm": 0.499,
+     "ecart_max_mm": 2.66,
+     "variation_volume_pct": 2.65
+    },
+    "plus": {
+     "seuil_hu": 276,
+     "ecart_moyen_mm": -0.056,
+     "ecart_absolu_moyen_mm": 0.056,
+     "ecart_p95_mm": 0.169,
+     "ecart_max_mm": 1.08,
+     "variation_volume_pct": -1.55
+    }
+   }
+  },
+  "metatarses": {
+   "etanche": true,
+   "orientation_coherente": true,
+   "euler": 0,
+   "morceaux": 1,
+   "volume_cm3": 23.046,
+   "surface_cm2": 107.52,
+   "triangles": 150000,
+   "sommets": 75000,
+   "affinage_demi_hauteur": {
+    "moyen_mm": -0.293,
+    "p95_mm": 0.732,
+    "sommets_affines_pct": 93.3
+   },
+   "volume_voxels_cm3": 26.016,
+   "systeme": "LPS",
+   "bords_volume": [],
+   "fichier": "metatarses.stl",
+   "etiquettes": [
+    4,
+    5,
+    7,
+    8
+   ],
+   "libelle": "métatarses"
+  },
+  "phalanges": {
+   "etanche": true,
+   "orientation_coherente": true,
+   "euler": -4,
+   "morceaux": 1,
+   "volume_cm3": 10.884,
+   "surface_cm2": 77.84,
+   "triangles": 150000,
+   "sommets": 74996,
+   "affinage_demi_hauteur": {
+    "moyen_mm": -0.231,
+    "p95_mm": 0.692,
+    "sommets_affines_pct": 93.9
+   },
+   "volume_voxels_cm3": 12.627,
+   "systeme": "LPS",
+   "bords_volume": [],
+   "fichier": "phalanges.stl",
+   "etiquettes": [
+    10,
+    11,
+    12,
+    13
+   ],
+   "libelle": "phalanges"
+  },
+  "talus": {
+   "etanche": true,
+   "orientation_coherente": true,
+   "euler": 2,
+   "morceaux": 1,
+   "volume_cm3": 5.596,
+   "surface_cm2": 23.74,
+   "triangles": 58964,
+   "sommets": 29484,
+   "affinage_demi_hauteur": {
+    "moyen_mm": -0.316,
+    "p95_mm": 0.716,
+    "sommets_affines_pct": 91.0
+   },
+   "volume_voxels_cm3": 6.331,
+   "systeme": "LPS",
+   "bords_volume": [],
+   "fichier": "talus.stl",
+   "etiquettes": [
+    6
+   ],
+   "libelle": "talus",
+   "sensibilite_seuil": {
+    "moins": {
+     "seuil_hu": 176,
+     "ecart_moyen_mm": 0.179,
+     "ecart_absolu_moyen_mm": 0.179,
+     "ecart_p95_mm": 1.017,
+     "ecart_max_mm": 3.51,
+     "variation_volume_pct": 4.23
+    },
+    "plus": {
+     "seuil_hu": 276,
+     "ecart_moyen_mm": -0.039,
+     "ecart_absolu_moyen_mm": 0.039,
+     "ecart_p95_mm": 0.149,
+     "ecart_max_mm": 0.49,
+     "variation_volume_pct": -1.33
+    }
+   }
+  },
+  "tarse": {
+   "etanche": true,
+   "orientation_coherente": true,
+   "euler": 0,
+   "morceaux": 1,
+   "volume_cm3": 24.033,
+   "surface_cm2": 82.45,
+   "triangles": 150000,
+   "sommets": 75000,
+   "affinage_demi_hauteur": {
+    "moyen_mm": -0.275,
+    "p95_mm": 0.663,
+    "sommets_affines_pct": 94.7
+   },
+   "volume_voxels_cm3": 26.243,
+   "systeme": "LPS",
+   "bords_volume": [],
+   "fichier": "tarse.stl",
+   "etiquettes": [
+    3,
+    6,
+    9
+   ],
+   "libelle": "tarse (autres os)",
+   "sensibilite_seuil": {
+    "moins": {
+     "seuil_hu": 176,
+     "ecart_moyen_mm": 0.14,
+     "ecart_absolu_moyen_mm": 0.14,
+     "ecart_p95_mm": 0.603,
+     "ecart_max_mm": 5.6,
+     "variation_volume_pct": 2.68
+    },
+    "plus": {
+     "seuil_hu": 276,
+     "ecart_moyen_mm": -0.064,
+     "ecart_absolu_moyen_mm": 0.064,
+     "ecart_p95_mm": 0.195,
+     "ecart_max_mm": 2.76,
+     "variation_volume_pct": -1.55
+    }
+   }
+  },
+  "tibia": {
+   "etanche": true,
+   "orientation_coherente": true,
+   "euler": 2,
+   "morceaux": 1,
+   "volume_cm3": 21.944,
+   "surface_cm2": 59.35,
+   "triangles": 143760,
+   "sommets": 71882,
+   "affinage_demi_hauteur": {
+    "moyen_mm": -0.236,
+    "p95_mm": 0.612,
+    "sommets_affines_pct": 94.5
+   },
+   "volume_voxels_cm3": 23.337,
+   "systeme": "LPS",
+   "bords_volume": [
+    {
+     "axe": "k",
+     "cote": "bas",
+     "point": [
+      -60.205,
+      -36.658,
+      -342.125
+     ],
+     "normale": [
+      -0.0,
+      -0.0,
+      -1.0
+     ]
+    }
+   ],
+   "fichier": "tibia.stl",
+   "etiquettes": [
+    2
+   ],
+   "libelle": "tibia",
+   "sensibilite_seuil": {
+    "moins": {
+     "seuil_hu": 176,
+     "ecart_moyen_mm": 0.077,
+     "ecart_absolu_moyen_mm": 0.077,
+     "ecart_p95_mm": 0.224,
+     "ecart_max_mm": 2.68,
+     "variation_volume_pct": 1.42
+    },
+    "plus": {
+     "seuil_hu": 276,
+     "ecart_moyen_mm": -0.047,
+     "ecart_absolu_moyen_mm": 0.047,
+     "ecart_p95_mm": 0.148,
+     "ecart_max_mm": 0.53,
+     "variation_volume_pct": -0.99
+    }
+   }
+  }
+ },
+ "segments": [
+  {
+   "etiquette": 1,
+   "nom": "objet",
+   "volume_cm3": 40.5,
+   "raison": "intérieur homogène (1290 HU, 0% de voxels < 600 HU) et sans cavité (+0%) : fantôme ou objet, pas un os"
+  },
+  {
+   "etiquette": 2,
+   "nom": "tibia",
+   "volume_cm3": 19.39,
+   "raison": "gros os au-dessus du tarse (le champ du scanner le coupe)"
+  },
+  {
+   "etiquette": 3,
+   "nom": "calcaneus",
+   "volume_cm3": 14.39,
+   "raison": "os du tarse le plus long (78 mm : tubérosité calcanéenne)"
+  },
+  {
+   "etiquette": 4,
+   "nom": "metatarses",
+   "volume_cm3": 7.23,
+   "raison": "os long fin, parallèle à 3 autres (rayons du pied)"
+  },
+  {
+   "etiquette": 5,
+   "nom": "metatarses",
+   "volume_cm3": 6.49,
+   "raison": "os long fin, parallèle à 3 autres (rayons du pied)"
+  },
+  {
+   "etiquette": 6,
+   "nom": "talus",
+   "volume_cm3": 6.24,
+   "raison": "os du tarse au plus grand contact avec le tibia (articulation tarso-crurale)"
+  },
+  {
+   "etiquette": 7,
+   "nom": "metatarses",
+   "volume_cm3": 4.29,
+   "raison": "os long fin, parallèle à 3 autres (rayons du pied)"
+  },
+  {
+   "etiquette": 8,
+   "nom": "metatarses",
+   "volume_cm3": 4.24,
+   "raison": "os long fin, parallèle à 3 autres (rayons du pied)"
+  },
+  {
+   "etiquette": 9,
+   "nom": "tarse",
+   "volume_cm3": 4.24,
+   "raison": "os compact du tarse (entre tibia et métatarses)"
+  },
+  {
+   "etiquette": 10,
+   "nom": "phalanges",
+   "volume_cm3": 3.07,
+   "raison": "au-delà des métatarses (doigts)"
+  },
+  {
+   "etiquette": 11,
+   "nom": "phalanges",
+   "volume_cm3": 3.0,
+   "raison": "au-delà des métatarses (doigts)"
+  },
+  {
+   "etiquette": 12,
+   "nom": "phalanges",
+   "volume_cm3": 2.89,
+   "raison": "au-delà des métatarses (doigts)"
+  },
+  {
+   "etiquette": 13,
+   "nom": "phalanges",
+   "volume_cm3": 2.48,
+   "raison": "au-delà des métatarses (doigts)"
+  }
+ ],
+ "reperes": {},
+ "avertissements": [],
+ "cora": {
+  "tibia": {
+   "complet": false,
+   "raison": "extrémité distale coupée par le champ du scanner : il faut les deux articulations pour la méthode CORA",
+   "cote": "droit",
+   "longueur_mm": 80.6,
+   "angles": null,
+   "torsion_deg": null
+  }
+ }
+}

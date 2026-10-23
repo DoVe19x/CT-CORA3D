@@ -1,0 +1,39 @@
+{
+ "schema": "cora-reel-1",
+ "os": "tibia",
+ "serie": "greyhound_hindlimb_ankle_down",
+ "fichier_stl": "tibia.stl",
+ "systeme": "LPS",
+ "date": "2026-10-13T23:54:05",
+ "longueur_mm": 80.6,
+ "cote": "droit",
+ "raisons": {
+  "proximal": "extrémité la plus large (plateau tibial)",
+  "lateral": "à l'opposé de la malléole médiale (pas de fibula : à vérifier)",
+  "caudal": "à l'opposé de la crête tibiale (crâniale)"
+ },
+ "tronque": {
+  "proximal": false,
+  "distal": true
+ },
+ "couvercles": {
+  "haut": {
+   "coupe": false,
+   "methode": "bords du volume (étape 4)",
+   "bords": []
+  },
+  "bas": {
+   "coupe": true,
+   "methode": "bords du volume (étape 4)",
+   "bords": [
+    "k bas"
+   ]
+  }
+ },
+ "avertissements": [],
+ "cote_scanner": "droit",
+ "complet": false,
+ "raison": "extrémité distale coupée par le champ du scanner : il faut les deux articulations pour la méthode CORA",
+ "nom": "tibia",
+ "stl_modifie": 1791878351.2387283
+}

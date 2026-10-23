@@ -1,0 +1,17 @@
+{
+ "serie": "greyhound_hindlimb_ankle_down",
+ "cible": null,
+ "controlateral": null,
+ "candidats": [
+  {
+   "nom": "tibia",
+   "os": "tibia",
+   "complet": false,
+   "raison": "extrémité distale coupée par le champ du scanner : il faut les deux articulations pour la méthode CORA",
+   "cote": "droit",
+   "longueur_mm": 80.6,
+   "ecart_normes": null
+  }
+ ],
+ "raison": "aucun fémur ni tibia complet dans ce scanner : tibia : extrémité distale coupée par le champ du scanner : il faut les deux articulations pour la méthode CORA"
+}

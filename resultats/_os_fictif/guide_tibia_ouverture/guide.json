@@ -1,0 +1,693 @@
+{
+  "generateur": "CT-CORA3D étape 7 (etape7_guide.py)",
+  "date": "2026-10-23 11:13",
+  "os": "tibia",
+  "type_coin": "ouverture",
+  "prescription": {
+    "schema_version": "v2.2",
+    "theta_deg": 17.7841,
+    "derotation_deg": 0
+  },
+  "repere": "X latéral, Y proximal, Z caudal (repère du maillage)",
+  "parametres": {
+    "jeu_mm": 0.3,
+    "epaisseur_coque_mm": 3.0,
+    "guidage_mm": 10.0,
+    "paroi_mm": 2.0,
+    "lame_mm": 0.6,
+    "jeu_fente_mm": 0.2,
+    "broche_mm": 1.6,
+    "jeu_broche_mm": 0.2,
+    "marge_mm": 8.0,
+    "secteur_deg": 75.0,
+    "depouille_deg": 5.0,
+    "conge_mm": 0.8,
+    "pont_mm": [
+      2.0,
+      5.0
+    ],
+    "pas_grille_mm": 0.3,
+    "reduction_ecart_mm": 4.0,
+    "reduction_manchon_mm": 12.0,
+    "jeu_voisin_mm": 1.0,
+    "marge_cartilage_mm": 1.0,
+    "profondeur_lame_mm": 25.0,
+    "depassement_mm": 1.0,
+    "chanfrein_mm": 0.5,
+    "verrou": 1,
+    "jeu_verrou_mm": 0.6,
+    "oreille_mm": 3.0,
+    "gravure_mm": 0.4
+  },
+  "parametres_modifies": {},
+  "parametres_defaut": {
+    "jeu_mm": 0.3,
+    "epaisseur_coque_mm": 3.0,
+    "guidage_mm": 10.0,
+    "paroi_mm": 2.0,
+    "lame_mm": 0.6,
+    "jeu_fente_mm": 0.2,
+    "broche_mm": 1.6,
+    "jeu_broche_mm": 0.2,
+    "marge_mm": 8.0,
+    "secteur_deg": 75.0,
+    "pont_mm": 5.0,
+    "profondeur_lame_mm": 0.0,
+    "depassement_mm": 1.0,
+    "chanfrein_mm": 0.5,
+    "verrou": 1,
+    "jeu_verrou_mm": 0.6,
+    "oreille_mm": 3.0,
+    "depouille_deg": 5.0,
+    "conge_mm": 0.8,
+    "epaisseur_min_mm": 1.2,
+    "jeu_voisin_mm": 1.0,
+    "marge_cartilage_mm": 1.0,
+    "reduction_ecart_mm": 4.0,
+    "reduction_manchon_mm": 12.0,
+    "reduction_barre_mm": 6.0
+  },
+  "strategie": {
+    "type_coin": "ouverture",
+    "regle_paley": 1,
+    "abord": "médial",
+    "osteotomie_complete": false,
+    "translation_osteotomie_mm": 0,
+    "charniere_profondeur_mm": 2,
+    "decalage_coupe_signe_mm": 0,
+    "configuration_broches": "2+2",
+    "abord_non_usuel": false,
+    "coin_mixte": false
+  },
+  "correction_reelle": {
+    "T_4x4": [
+      [
+        0.966623,
+        -0.255379,
+        0.020527,
+        20.902554
+      ],
+      [
+        0.255138,
+        0.952215,
+        -0.1679,
+        2.370307
+      ],
+      [
+        0.023332,
+        0.167533,
+        0.98559,
+        -13.720893
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "compensation_trait_scie_mm": 0.0
+  },
+  "voisins_et_cartilage": {
+    "voisins": {
+      "fibula": {
+        "distance_guide_mm": 10.11,
+        "interpenetration_mm3": null
+      }
+    },
+    "cartilage": {
+      "distance_guide_mm": null
+    },
+    "broches": {
+      "P1": {
+        "fibula": {
+          "axe_broche_mm": 7.95,
+          "axe_manchon_mm": 17.36
+        },
+        "cartilage": {
+          "axe_broche_mm": 92.05,
+          "axe_manchon_mm": 90.55
+        }
+      },
+      "P2": {
+        "fibula": {
+          "axe_broche_mm": 8.51,
+          "axe_manchon_mm": 17.83
+        },
+        "cartilage": {
+          "axe_broche_mm": 82.68,
+          "axe_manchon_mm": 80.55
+        }
+      },
+      "D1": {
+        "fibula": {
+          "axe_broche_mm": 6.76,
+          "axe_manchon_mm": 16.26
+        },
+        "cartilage": {
+          "axe_broche_mm": 60.57,
+          "axe_manchon_mm": 64.81
+        }
+      },
+      "D2": {
+        "fibula": {
+          "axe_broche_mm": 6.44,
+          "axe_manchon_mm": 16.4
+        },
+        "cartilage": {
+          "axe_broche_mm": 50.57,
+          "axe_manchon_mm": 54.85
+        }
+      }
+    },
+    "fibula_a_osteotomiser": true,
+    "limites": {
+      "guide_voisin_mm": 1.0,
+      "broche_voisin_axe_mm": 1.5,
+      "manchon_voisin_axe_mm": 3.4,
+      "broche_cartilage_axe_mm": 3.0,
+      "manchon_cartilage_axe_mm": 3.4,
+      "guide_cartilage_mm": 1.0
+    },
+    "voisins_evites_guide_coupe": [
+      "fibula"
+    ],
+    "cartilage_connu": true,
+    "noeuds_coque_retires_cartilage": 0
+  },
+  "butee": {
+    "profondeur_lame_mm": 25.0,
+    "mode": "automatique",
+    "profondeur_minimale_mm": 24.52,
+    "arrondi_mm": 5.0,
+    "fentes": [
+      {
+        "plan": 1,
+        "butee": "charnière",
+        "tour_au_dessus_de_la_coque_mm": 10.5,
+        "fente_parallele_charniere": true,
+        "angle_charniere_fente_deg": 0.0
+      }
+    ]
+  },
+  "guide_coupe": {
+    "jeu_demande_mm": 0.3,
+    "jeu_minimal_mesure_mm": 0.305,
+    "sommets_trop_proches": 0,
+    "volume_interpenetration_mm3": 0.0,
+    "surface_appui_mm2": 1008.5,
+    "pieces_ecartees_mm3": [],
+    "moities_apres_coupe_des_ponts": 2,
+    "pieces_attendues": 2,
+    "piece_du_coin": false,
+    "ordre_retrait": [
+      "proximale",
+      "distale"
+    ],
+    "vitesse_separation": {
+      "proximale": -0.0001,
+      "distale": -0.3054
+    },
+    "retrait": {
+      "proximale": {
+        "direction": [
+          -0.8256,
+          0.1526,
+          0.5433
+        ],
+        "points_testes": 4000,
+        "points_bloques": 0,
+        "heurte_autre_moitie_mm3": 0.0,
+        "libre": true
+      },
+      "distale": {
+        "direction": [
+          -0.7464,
+          0.4472,
+          0.4929
+        ],
+        "points_testes": 4000,
+        "points_bloques": 0,
+        "heurte_autre_moitie_mm3": 0.0,
+        "libre": true
+      }
+    },
+    "appui_moities": {
+      "proximale": {
+        "surface_mm2": 524.5,
+        "couverture_deg": 140.3
+      },
+      "distale": {
+        "surface_mm2": 484.0,
+        "couverture_deg": 141.5
+      }
+    },
+    "fentes": [
+      {
+        "plan": 1,
+        "role": "séparation",
+        "largeur_mm": 0.8,
+        "longueur_mm": 14.98,
+        "guidage_mm": 13.48,
+        "inclinaison_max_lame_deg": 0.85,
+        "profondeur": "charniere",
+        "butee": "charnière",
+        "profondeur_lame_mm": 25.0,
+        "profondeur_charniere_mm": 25.0,
+        "profondeur_coupe_complete_mm": 27.0,
+        "fente_parallele_charniere": true,
+        "charniere_parallele_a_la_fente_deg": 0.0,
+        "chanfrein_entree_mm": 0.5
+      }
+    ],
+    "epaisseur_entre_fentes_mm": null,
+    "bras_ajoutes": [],
+    "manchons_isoles": [],
+    "ilots_coque_ecartes_mm3": [],
+    "broches": [
+      {
+        "nom": "P1",
+        "fragment": "proximal",
+        "point_axe": [
+          -0.03,
+          96.948,
+          0.962
+        ],
+        "direction": [
+          0.82557,
+          -0.15259,
+          -0.54328
+        ],
+        "entree_os": [
+          -5.365,
+          97.934,
+          4.473
+        ],
+        "sortie_os": [
+          6.441,
+          95.752,
+          -3.296
+        ],
+        "haut_manchon": [
+          -16.345,
+          99.963,
+          11.699
+        ],
+        "distance_plan_coupe_mm": 13.93,
+        "traverse_un_plan": false,
+        "distance_extremite_os_mm": 105.9,
+        "trop_pres_articulation": false,
+        "distance_trajet_lame_mm": 13.53,
+        "manchon_plein": 1.0,
+        "hauteur_manchon_mm": 13.3
+      },
+      {
+        "nom": "P2",
+        "fragment": "proximal",
+        "point_axe": [
+          -0.021,
+          106.948,
+          1.011
+        ],
+        "direction": [
+          0.82557,
+          -0.15259,
+          -0.54328
+        ],
+        "entree_os": [
+          -5.661,
+          107.99,
+          4.723
+        ],
+        "sortie_os": [
+          6.43,
+          105.755,
+          -3.234
+        ],
+        "haut_manchon": [
+          -16.641,
+          110.02,
+          11.948
+        ],
+        "distance_plan_coupe_mm": 23.81,
+        "traverse_un_plan": false,
+        "distance_extremite_os_mm": 95.9,
+        "trop_pres_articulation": false,
+        "distance_trajet_lame_mm": 23.41,
+        "manchon_plein": 1.0,
+        "hauteur_manchon_mm": 13.3
+      },
+      {
+        "nom": "D1",
+        "fragment": "distal",
+        "point_axe": [
+          -3.889,
+          67.625,
+          3.335
+        ],
+        "direction": [
+          0.74638,
+          -0.44719,
+          -0.49289
+        ],
+        "entree_os": [
+          -8.115,
+          70.157,
+          6.126
+        ],
+        "sortie_os": [
+          2.194,
+          63.98,
+          -0.682
+        ],
+        "haut_manchon": [
+          -18.042,
+          76.104,
+          12.681
+        ],
+        "distance_plan_coupe_mm": 12.21,
+        "traverse_un_plan": false,
+        "distance_extremite_os_mm": 74.8,
+        "trop_pres_articulation": false,
+        "distance_trajet_lame_mm": 7.74,
+        "manchon_plein": 1.0,
+        "hauteur_manchon_mm": 13.3
+      },
+      {
+        "nom": "D2",
+        "fragment": "distal",
+        "point_axe": [
+          -6.45,
+          58.097,
+          4.966
+        ],
+        "direction": [
+          0.74638,
+          -0.44719,
+          -0.49289
+        ],
+        "entree_os": [
+          -10.804,
+          60.706,
+          7.841
+        ],
+        "sortie_os": [
+          -0.245,
+          54.379,
+          0.868
+        ],
+        "haut_manchon": [
+          -20.731,
+          66.653,
+          14.396
+        ],
+        "distance_plan_coupe_mm": 22.03,
+        "traverse_un_plan": false,
+        "distance_extremite_os_mm": 64.8,
+        "trop_pres_articulation": false,
+        "distance_trajet_lame_mm": 17.64,
+        "manchon_plein": 1.0,
+        "hauteur_manchon_mm": 13.3
+      }
+    ],
+    "angle_paires_broches_deg": 17.786,
+    "parallelisme_paire_proximale_deg": 0.0,
+    "parallelisme_paire_distale_deg": 0.0,
+    "inclinaison_max_broche_deg": 0.88,
+    "marquages": [
+      {
+        "moitie": "proximale",
+        "texte": "P 25",
+        "fente": 1,
+        "hauteur_mm": 4.0,
+        "largeur_mm": 12.2
+      },
+      {
+        "moitie": "distale",
+        "texte": "D 25",
+        "fente": 1,
+        "hauteur_mm": 4.0,
+        "largeur_mm": 12.7
+      }
+    ],
+    "etanche_stl": true,
+    "orientation_coherente": true,
+    "tolerance_simplification_mm": 0.0,
+    "pincements_decolles": 0,
+    "sommets_repousses_au_jeu": 1,
+    "pieces": [
+      {
+        "piece": "guide de coupe",
+        "volume_cm3": 6.406,
+        "masse_g": 6.47,
+        "dimensions_mm": [
+          29.0,
+          63.9,
+          34.2
+        ],
+        "triangles": 132980
+      }
+    ]
+  },
+  "verrou_reduction": {
+    "construit": true,
+    "cotes": [
+      "crânial",
+      "caudal"
+    ],
+    "moitie_haute": "proximale",
+    "trois_pieces": false,
+    "compensation_trait_scie_mm": 0.0,
+    "broche_verrouillage_mm": 1.6,
+    "trou_mm": 1.8,
+    "jeu_vertical_mm": 3.48,
+    "epaisseur_oreille_mm": 3.0,
+    "engagement_mm": 8.48,
+    "entraxe_mm": 28.5,
+    "points": [
+      {
+        "cote": "crânial",
+        "axe_point": [
+          -17.643,
+          80.463,
+          -5.745
+        ],
+        "direction": [
+          -0.82557,
+          0.15259,
+          0.54328
+        ],
+        "jeu_vertical_mm": 3.48,
+        "decalage_exterieur_mm": 0.75,
+        "engagement_mm": 8.48
+      },
+      {
+        "cote": "caudal",
+        "axe_point": [
+          -2.003,
+          80.331,
+          18.059
+        ],
+        "direction": [
+          -0.82557,
+          0.15259,
+          0.54328
+        ],
+        "jeu_vertical_mm": 3.48,
+        "decalage_exterieur_mm": 0.75,
+        "engagement_mm": 8.48
+      }
+    ],
+    "deux_broches": [],
+    "ecart_moities_apres_mm": 2.966,
+    "interpenetration_moities_mm3": 0.0,
+    "interpenetration_os_corrige_mm3": 0.0,
+    "voisins_mm": {
+      "fibula": 10.0
+    },
+    "trajet_interpenetration_mm3": 0.0,
+    "trajet_libre": true,
+    "remise_en_place_mm3": 0.0,
+    "remise_en_place_libre": true,
+    "broche_passe": {
+      "crânial": true,
+      "caudal": true
+    },
+    "sensibilite": {
+      "rotation de 1° autour de l'axe de l'os": true,
+      "translation de 0,3 mm le long de l'os": true,
+      "rotation de 1° autour de l'axe des fentes": true,
+      "translation de 0,3 mm le long du trait": true,
+      "rotation de 1° autour de l'axe des broches": true,
+      "translation de 0,3 mm le long des broches": false
+    },
+    "tolerances": {
+      "laterale_mm": 0.2,
+      "angulaire_deg": 1.35,
+      "rotation_axe_broches_deg": 0.4,
+      "rotations_detectees_deg": {
+        "l'axe de l'os": 0.47,
+        "l'axe des fentes": 0.47,
+        "l'axe des broches": 0.39
+      }
+    },
+    "refus": {}
+  },
+  "guide_reduction": null,
+  "protocole": [
+    "Abord médial : exposer la face d'appui de l'os sur toute la longueur du guide de coupe.",
+    "Poser le guide de coupe (marquage P côté proximal, D côté distal) : il ne s'emboîte que dans une seule position ; vérifier qu'il ne bascule pas.",
+    "Forer 2 broches proximales (P1, P2) à travers leurs manchons : le guide est fixé ; puis les 2 distales (D1, D2).",
+    "Butée de profondeur : repérer la graduation 25 mm de la lame (nombre gravé sur les tours) ; c'est la même pour la fente.",
+    "Couper par la fente jusqu'à ce que la graduation 25 mm affleure le haut de la tour : la lame s'arrête à la charnière, la corticale opposée est conservée.",
+    "Couper les 2 ponts (parois d'extrémité de la fente de séparation) au ras des moitiés, à la pince coupe-broche.",
+    "Retirer la moitié proximale en la faisant glisser le long de ses broches, puis la moitié distale (elles peuvent aussi rester sur leurs broches pendant la correction : leur trajet est libre).",
+    "Ostéotomiser la fibula au niveau de la coupe tibiale (ostéotome ou scie, par un court abord latéral) : intacte, elle empêcherait la correction.",
+    "Ouvrir le coin, jusqu'à ce que les 4 broches soient parallèles.",
+    "Verrou de réduction : remettre la moitié distale sur ses broches jusqu'au contact de l'os, puis la moitié proximale : ses oreilles viennent au-dessus de celles de la moitié distale, des côtés crânial et caudal du trait.",
+    "Enfoncer une broche de Ø 1,6 mm dans chaque trou de verrouillage, à travers les deux oreilles jusqu'au fond : elle n'entre que si les fragments sont dans la position planifiée (une rotation de 0,5° ou un décalage de 0,3 mm la bloque). Les moitiés, leurs broches et les broches de verrouillage forment alors un fixateur provisoire.",
+    "Fixer (plaque sur une face libre de l'os, ou broches de stabilisation avant de retirer les moitiés) ; retirer les broches de verrouillage, les moitiés et les broches."
+  ],
+  "alertes": [],
+  "fichiers": [
+    "guide_coupe.stl",
+    "os_corrige.stl",
+    "guide.png",
+    "plan_generique.svg",
+    "plan_generique.pdf",
+    "plan_generique.png",
+    "plan_guide.svg",
+    "plan_guide.pdf",
+    "plan_guide.png"
+  ],
+  "duree_s": 11.9,
+  "dimensions": {
+    "parametres": {
+      "jeu_mm": 0.3,
+      "epaisseur_coque_mm": 3.0,
+      "guidage_mm": 10.0,
+      "paroi_mm": 2.0,
+      "lame_mm": 0.6,
+      "jeu_fente_mm": 0.2,
+      "broche_mm": 1.6,
+      "jeu_broche_mm": 0.2,
+      "marge_mm": 8.0,
+      "secteur_deg": 75.0,
+      "pont_mm": 5.0,
+      "profondeur_lame_mm": 0.0,
+      "depassement_mm": 1.0,
+      "chanfrein_mm": 0.5,
+      "verrou": 1,
+      "jeu_verrou_mm": 0.6,
+      "oreille_mm": 3.0,
+      "depouille_deg": 5.0,
+      "conge_mm": 0.8,
+      "epaisseur_min_mm": 1.2,
+      "jeu_voisin_mm": 1.0,
+      "marge_cartilage_mm": 1.0,
+      "reduction_ecart_mm": 4.0,
+      "reduction_manchon_mm": 12.0,
+      "reduction_barre_mm": 6.0
+    },
+    "fentes": [
+      {
+        "fente": 1,
+        "role": "séparation",
+        "largeur_mm": 0.8,
+        "longueur_mm": 15.0,
+        "largeur_os_mm": 13.0,
+        "hauteur_tour_mm": 17.1,
+        "guidage_mm": 13.5,
+        "epaisseur_tour_mm": 4.8,
+        "butee": "charnière",
+        "profondeur_lame_mm": 25.0,
+        "profondeur_complete_mm": 27.0
+      }
+    ],
+    "angle_entre_fentes_deg": 0.0,
+    "manchon_diametre_exterieur_mm": 5.8,
+    "trou_broche_mm": 1.8,
+    "broches": [
+      {
+        "nom": "P1",
+        "fragment": "proximal",
+        "distance_coupe_mm": 14.8,
+        "hauteur_manchon_mm": 13.3
+      },
+      {
+        "nom": "P2",
+        "fragment": "proximal",
+        "distance_coupe_mm": 24.7,
+        "hauteur_manchon_mm": 13.3
+      },
+      {
+        "nom": "D1",
+        "fragment": "distal",
+        "distance_coupe_mm": 14.8,
+        "hauteur_manchon_mm": 13.3
+      },
+      {
+        "nom": "D2",
+        "fragment": "distal",
+        "distance_coupe_mm": 24.7,
+        "hauteur_manchon_mm": 13.3
+      }
+    ],
+    "ecart_broches_mm": {
+      "proximal": 10.0,
+      "distal": 10.0
+    },
+    "coque": {
+      "longueur_mm": 66.0,
+      "epaisseur_mm": 3.0,
+      "jeu_mm": 0.3,
+      "secteur_deg": 75.0
+    },
+    "ponts": {
+      "nombre": 2,
+      "section_mm": [
+        2.0,
+        5.0
+      ]
+    },
+    "butee": {
+      "profondeur_lame_mm": 25.0,
+      "minimale_mm": 24.5,
+      "depassement_mm": 1.0
+    },
+    "guide_coupe": {
+      "longueur_axe_os_mm": 63.8,
+      "largeur_mm": 34.3,
+      "hauteur_mm": 22.5
+    },
+    "formules": {
+      "longueur de fente": "largeur de l'os dans le plan de coupe + 2 mm",
+      "haut de tour": "butée + pl (pl = os + j + e + g − butée, arrondi aux 5 mm ; le même pour toutes les fentes)",
+      "butée": "charnière, ou corticale opposée − dl (coupe complète)",
+      "épaisseur de tour": "s + js + 2 p",
+      "diamètre du manchon": "Øb + jb + 2 p",
+      "longueur de coque": "de la broche la plus proximale − m à la plus distale + m (≥ 10 mm des extrémités articulaires)",
+      "ponts": "p × hp, en haut des parois d'extrémité de chaque fente de séparation",
+      "oreilles du verrou": "disque Ø(Øb + jb + 2 p), épaisseur eo, superposées à jo l'une de l'autre, au-delà des tours"
+    },
+    "verrou": {
+      "cotes": [
+        "crânial",
+        "caudal"
+      ],
+      "oreille_epaisseur_mm": 3.0,
+      "oreille_diametre_mm": 5.8,
+      "jeu_vertical_mm": 3.5,
+      "decalage_exterieur_mm": 0.8,
+      "trou_mm": 1.8,
+      "engagement_mm": 8.5,
+      "moitie_haute": "proximale",
+      "rotation_detectee_deg": 0.47
+    },
+    "guide_coupe_apres_correction": {
+      "longueur_axe_os_mm": 67.7,
+      "largeur_mm": 34.3,
+      "hauteur_mm": 27.7
+    }
+  }
+}

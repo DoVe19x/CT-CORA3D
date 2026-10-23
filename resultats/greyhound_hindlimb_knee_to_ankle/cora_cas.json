@@ -1,0 +1,26 @@
+{
+ "serie": "greyhound_hindlimb_knee_to_ankle",
+ "cible": "tibia",
+ "controlateral": null,
+ "candidats": [
+  {
+   "nom": "femur",
+   "os": "femur",
+   "complet": false,
+   "raison": "extrémité proximale coupée par le champ du scanner : il faut les deux articulations pour la méthode CORA",
+   "cote": "droit",
+   "longueur_mm": 99.0,
+   "ecart_normes": null
+  },
+  {
+   "nom": "tibia",
+   "os": "tibia",
+   "complet": true,
+   "raison": "",
+   "cote": "gauche",
+   "longueur_mm": 246.6,
+   "ecart_normes": 6.2
+  }
+ ],
+ "raison": "seul os complet du scanner (tibia)"
+}

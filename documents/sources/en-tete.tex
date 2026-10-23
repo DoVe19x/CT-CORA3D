@@ -1,0 +1,32 @@
+% en-tete.tex — quelques réglages de mise en page pour les PDF (ajoutés par pandoc dans l'en-tête LaTeX)
+\IfFontExistsTF{Charter}{\setmainfont{Charter}}{}
+\IfFontExistsTF{Avenir Next}{\setsansfont{Avenir Next}}{}
+\usepackage{xcolor}
+\usepackage{float}
+\floatplacement{figure}{H}                 % chaque figure reste à l'endroit où elle est écrite
+\usepackage{ragged2e}
+\AtBeginDocument{\RaggedRight}             % texte aligné à gauche (TinyTeX n'a pas la césure du français)
+\usepackage{titlesec}
+\titleformat*{\section}{\Large\bfseries\sffamily\color[HTML]{1B4F72}}
+\titleformat*{\subsection}{\large\bfseries\sffamily\color[HTML]{1B4F72}}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf}
+% la table des matières commence sur une nouvelle page, et le texte aussi
+\let\anciennetdm\tableofcontents
+\renewcommand{\tableofcontents}{\clearpage\anciennetdm\clearpage}
+\linespread{1.08}                         % interligne un peu plus aéré
+\usepackage{newunicodechar}
+\newunicodechar{→}{\ensuremath{\rightarrow}}  % la police Charter n'a pas de flèche
+% page de titre : titre plus grand, centré dans le haut de la page
+\makeatletter
+\renewcommand{\@maketitle}{%
+  \null\vspace{2.5cm}%
+  \begin{center}%
+    {\sffamily\bfseries\huge\color[HTML]{1B4F72}\@title\par}%
+    \vspace{2em}%
+    {\large\lineskip .6em\begin{tabular}[t]{c}\@author\end{tabular}\par}%
+    \vspace{1.5em}%
+    {\normalsize\@date\par}%
+  \end{center}%
+  \vspace{1.5cm}}
+\makeatother

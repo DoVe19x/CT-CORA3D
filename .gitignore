@@ -1,0 +1,13 @@
+# Fichiers système macOS / Windows
+.DS_Store
+Thumbs.db
+
+# Caches Python
+__pycache__/
+*.pyc
+
+# Historique R vide
+.Rhistory
+
+# Fichiers temporaires Office
+~$*

@@ -1,0 +1,65 @@
+{
+ "cle": "89a86d7558b4",
+ "explication": "écart = angle (repères détectés) − angle (repères du modèle), os sain du modèle CORA 3D ; valeur normale du programme = valeur publiée + écart",
+ "os": {
+  "femur": {
+   "aLPFA": {
+    "modele": 103.54,
+    "detecte": 103.69,
+    "ecart": 0.15
+   },
+   "aLDFA": {
+    "modele": 96.92,
+    "detecte": 96.93,
+    "ecart": 0.01
+   },
+   "varusFem": {
+    "modele": 6.92,
+    "detecte": 6.93,
+    "ecart": 0.01
+   },
+   "aCdDFA": {
+    "modele": 96.37,
+    "detecte": 88.12,
+    "ecart": -8.25
+   },
+   "torsion": {
+    "modele": 29.71,
+    "detecte": 27.07,
+    "publiee_detecte": 22.75
+   }
+  },
+  "tibia": {
+   "mMPTA": {
+    "modele": 93.31,
+    "detecte": 94.61,
+    "ecart": 1.3
+   },
+   "mMDTA": {
+    "modele": 95.64,
+    "detecte": 95.79,
+    "ecart": 0.14
+   },
+   "valgusTib": {
+    "modele": 8.96,
+    "detecte": 10.4,
+    "ecart": 1.44
+   },
+   "mCaPTA": {
+    "modele": 64.09,
+    "detecte": 73.57,
+    "ecart": 9.48
+   },
+   "mCrDTA": {
+    "modele": 81.42,
+    "detecte": 86.55,
+    "ecart": 5.12
+   },
+   "torsion": {
+    "modele": -0.69,
+    "detecte": -1.0,
+    "publiee_detecte": 2.13
+   }
+  }
+ }
+}

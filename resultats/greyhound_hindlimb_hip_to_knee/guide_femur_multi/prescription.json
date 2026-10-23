@@ -1,0 +1,745 @@
+{
+  "schema_version": "v2.3-multi",
+  "multi": true,
+  "os": "femur",
+  "cote": "droit",
+  "unites": "mm",
+  "generateur": "CT-CORA3D (PMD2, ECAM), os segmenté sur CT, déformité à deux apex",
+  "repere": "X latéral, Y proximal, Z caudal (repère du maillage)",
+  "deformite": {
+    "theta_deg": 25.6387,
+    "theta1_deg": 32.9695,
+    "theta2_deg": 7.3308,
+    "cora1": [
+      2.2548,
+      68.7021,
+      -24.997
+    ],
+    "cora2": [
+      -11.0714,
+      47.9551,
+      -23.1224
+    ],
+    "axe_intermediaire": {
+      "point": [
+        2.2548,
+        68.7021,
+        -24.997
+      ],
+      "direction": [
+        -0.5389,
+        -0.839,
+        0.0758
+      ],
+      "depuis": "déplacement de la ligne centrale par rapport à l'os sain (segment intermédiaire)"
+    },
+    "source": "auto"
+  },
+  "strategie": {
+    "type_coin": "multi",
+    "sites": [
+      "fermeture",
+      "fermeture"
+    ],
+    "configuration_broches": "2+2"
+  },
+  "sites": [
+    {
+      "numero": 1,
+      "os": "femur",
+      "schema_version": "v2.2",
+      "deformite": {
+        "theta_deg": 32.9695
+      },
+      "strategie": {
+        "type_coin": "fermeture",
+        "regle_paley": 1,
+        "abord": "latéral",
+        "abord_non_usuel": false,
+        "faisable_abord_usuel": true,
+        "charniere_profondeur_mm": 2,
+        "coin_mixte": false,
+        "configuration_broches": "2+2",
+        "osteotomie_complete": false,
+        "recommandation": {
+          "type_coin": "fermeture",
+          "critere_decisif": "ouverture"
+        }
+      },
+      "charniere": {
+        "point": [
+          -5.271,
+          71.0884,
+          -20.6064
+        ],
+        "direction": [
+          -0.1393,
+          0,
+          -0.9903
+        ],
+        "marge_mm": 2,
+        "axe_correction_point": [
+          -5.271,
+          71.0884,
+          -20.6064
+        ]
+      },
+      "plans_coupe": [
+        {
+          "point": [
+            -5.271,
+            71.0884,
+            -20.6064
+          ],
+          "normale": [
+            0,
+            -1,
+            0
+          ],
+          "profondeur": "charniere"
+        },
+        {
+          "point": [
+            -5.271,
+            71.0884,
+            -20.6064
+          ],
+          "normale": [
+            -0.5389,
+            -0.839,
+            0.0758
+          ],
+          "profondeur": "charniere"
+        }
+      ],
+      "broches_reduction": [
+        {
+          "fragment": "proximal",
+          "fragment_os": "proximal",
+          "point_axe": [
+            2.2548,
+            95.9249,
+            -24.997
+          ],
+          "direction": [
+            -0.6667,
+            -0.0834,
+            0.7406
+          ],
+          "diametre_mm": 1.6,
+          "hauteur_manchon_mm": 15
+        },
+        {
+          "fragment": "proximal",
+          "fragment_os": "proximal",
+          "point_axe": [
+            2.2548,
+            105.9249,
+            -24.997
+          ],
+          "direction": [
+            -0.6667,
+            -0.0834,
+            0.7406
+          ],
+          "diametre_mm": 1.6,
+          "hauteur_manchon_mm": 15
+        },
+        {
+          "fragment": "distal",
+          "fragment_os": "intermediaire",
+          "point_axe": [
+            -1.3754,
+            61.3662,
+            -23.5194
+          ],
+          "direction": [
+            -0.5899,
+            0.3455,
+            0.7298
+          ],
+          "diametre_mm": 1.6,
+          "hauteur_manchon_mm": 15
+        },
+        {
+          "fragment": "distal",
+          "fragment_os": "intermediaire",
+          "point_axe": [
+            -5.5401,
+            63.6399,
+            -27.9619
+          ],
+          "direction": [
+            -0.5899,
+            0.3455,
+            0.7298
+          ],
+          "diametre_mm": 1.6,
+          "hauteur_manchon_mm": 15
+        }
+      ],
+      "guide": {
+        "face_appui": [
+          0.9495,
+          -0.2838,
+          -0.1336
+        ],
+        "axe_os": [
+          0,
+          -1,
+          0
+        ],
+        "axe_distal": [
+          -0.5389,
+          -0.839,
+          0.0758
+        ],
+        "centre_section": [
+          2.7144,
+          68.7021,
+          -21.7297
+        ],
+        "limite_distale_mm": 12.18
+      },
+      "coin": {
+        "angle_deg": 32.9695,
+        "largeur_base_mm": 11.0658,
+        "profondeur_coupe_mm": 18.6971,
+        "orientation_charniere_deg": 8.0073
+      },
+      "correction": {
+        "T_relative_4x4": [
+          [
+            0.842086,
+            -0.538886,
+            0.022213,
+            37.933936
+          ],
+          [
+            0.538886,
+            0.838961,
+            -0.075805,
+            12.726394
+          ],
+          [
+            0.022214,
+            0.075805,
+            0.996875,
+            -5.336164
+          ],
+          [
+            0,
+            0,
+            0,
+            1
+          ]
+        ],
+        "derotation_deg": 0
+      },
+      "contraintes_coupe": [
+        {
+          "niveau": "ok",
+          "id": "cartilage",
+          "texte": "cartilage articulaire à 10,8 mm du trait (≥ 5 mm)"
+        },
+        {
+          "niveau": "info",
+          "id": "consolidation",
+          "texte": "diaphyse : os cortical, consolidation plus lente (contact osseux et stabilité de la fixation importants)"
+        },
+        {
+          "niveau": "info",
+          "id": "abord",
+          "texte": "abord latéral : nerf sciatique en arrière du fémur (protéger la corticale caudale) ; vaste latéral et biceps fémoral à écarter"
+        }
+      ],
+      "fragments": [
+        "proximal",
+        "intermédiaire"
+      ]
+    },
+    {
+      "numero": 2,
+      "os": "femur",
+      "schema_version": "v2.2",
+      "deformite": {
+        "theta_deg": 7.3308
+      },
+      "strategie": {
+        "type_coin": "fermeture",
+        "regle_paley": 1,
+        "abord": "médial",
+        "abord_non_usuel": false,
+        "faisable_abord_usuel": true,
+        "charniere_profondeur_mm": 2,
+        "coin_mixte": false,
+        "configuration_broches": "2+2",
+        "osteotomie_complete": true,
+        "recommandation": {
+          "type_coin": "fermeture",
+          "critere_decisif": "stabilite"
+        }
+      },
+      "charniere": {
+        "point": [
+          0.6104,
+          42.1174,
+          -14.7441
+        ],
+        "direction": [
+          0.1393,
+          0,
+          0.9903
+        ],
+        "marge_mm": 2,
+        "axe_correction_point": [
+          0.6104,
+          42.1174,
+          -14.7441
+        ]
+      },
+      "plans_coupe": [
+        {
+          "point": [
+            0.6104,
+            42.1174,
+            -14.7441
+          ],
+          "normale": [
+            -0.5389,
+            -0.839,
+            0.0758
+          ],
+          "profondeur": "complete"
+        },
+        {
+          "point": [
+            0.6104,
+            42.1174,
+            -14.7441
+          ],
+          "normale": [
+            -0.4285,
+            -0.9015,
+            0.0603
+          ],
+          "profondeur": "charniere"
+        }
+      ],
+      "broches_reduction": [
+        {
+          "fragment": "distal",
+          "fragment_os": "distal",
+          "point_axe": [
+            -24.8455,
+            18.9735,
+            -21.1849
+          ],
+          "direction": [
+            -0.808,
+            0.3244,
+            0.4918
+          ],
+          "diametre_mm": 1.6,
+          "hauteur_manchon_mm": 15
+        },
+        {
+          "fragment": "distal",
+          "fragment_os": "distal",
+          "point_axe": [
+            -29.1302,
+            9.9581,
+            -20.5822
+          ],
+          "direction": [
+            -0.808,
+            0.3244,
+            0.4918
+          ],
+          "diametre_mm": 1.6,
+          "hauteur_manchon_mm": 15
+        }
+      ],
+      "guide": {
+        "face_appui": [
+          -0.8635,
+          0.4894,
+          0.1215
+        ],
+        "axe_os": [
+          -0.5389,
+          -0.839,
+          0.0758
+        ],
+        "axe_distal": [
+          -0.4285,
+          -0.9015,
+          0.0603
+        ],
+        "centre_section": [
+          -9.6891,
+          47.9551,
+          -13.2953
+        ],
+        "limite_proximale_mm": 10.55
+      },
+      "coin": {
+        "angle_deg": 7.3308,
+        "largeur_base_mm": 3.0946,
+        "profondeur_coupe_mm": 24.1535,
+        "orientation_charniere_deg": 8.0073
+      },
+      "correction": {
+        "T_relative_4x4": [
+          [
+            0.952382,
+            0.162355,
+            0.25809,
+            -1.523478
+          ],
+          [
+            -0.126101,
+            0.980396,
+            -0.151404,
+            -2.677408
+          ],
+          [
+            -0.277611,
+            0.111649,
+            0.954184,
+            -9.602699
+          ],
+          [
+            0,
+            0,
+            0,
+            1
+          ]
+        ],
+        "derotation_deg": 17.93
+      },
+      "contraintes_coupe": [
+        {
+          "niveau": "bloquant",
+          "id": "cartilage",
+          "texte": "cartilage articulaire à 0,0 mm du trait (minimum 5 mm) : fracture articulaire, arthrose ; déplacer la coupe vers la diaphyse"
+        },
+        {
+          "niveau": "info",
+          "id": "consolidation",
+          "texte": "diaphyse : os cortical, consolidation plus lente (contact osseux et stabilité de la fixation importants)"
+        },
+        {
+          "niveau": "info",
+          "id": "abord",
+          "texte": "abord médial : artère et veine fémorales et nerf saphène ; au fémur distal, artère génienne descendante"
+        }
+      ],
+      "fragments": [
+        "intermédiaire",
+        "distal"
+      ]
+    }
+  ],
+  "correction": {
+    "T_intermediaire_4x4": [
+      [
+        0.842086,
+        -0.538886,
+        0.022213,
+        37.933936
+      ],
+      [
+        0.538886,
+        0.838961,
+        -0.075805,
+        12.726394
+      ],
+      [
+        0.022214,
+        0.075805,
+        0.996875,
+        -5.336164
+      ],
+      [
+        0,
+        0,
+        0,
+        1
+      ]
+    ],
+    "T_distal_4x4": [
+      [
+        0.863774,
+        -0.389125,
+        0.320119,
+        37.880548
+      ],
+      [
+        0.428476,
+        0.90154,
+        -0.060273,
+        10.387109
+      ],
+      [
+        -0.265146,
+        0.189226,
+        0.945458,
+        -15.145661
+      ],
+      [
+        0,
+        0,
+        0,
+        1
+      ]
+    ],
+    "derotation_deg": 17.93,
+    "axe_derotation": {
+      "point": [
+        -11.0714,
+        47.9551,
+        -23.1224
+      ],
+      "direction": [
+        0.4285,
+        0.9015,
+        -0.0603
+      ]
+    }
+  },
+  "broches_reduction": [
+    {
+      "site": 1,
+      "fragment": "proximal",
+      "point_axe": [
+        2.2548,
+        95.9249,
+        -24.997
+      ],
+      "direction": [
+        -0.6667,
+        -0.0834,
+        0.7406
+      ],
+      "diametre_mm": 1.6
+    },
+    {
+      "site": 1,
+      "fragment": "proximal",
+      "point_axe": [
+        2.2548,
+        105.9249,
+        -24.997
+      ],
+      "direction": [
+        -0.6667,
+        -0.0834,
+        0.7406
+      ],
+      "diametre_mm": 1.6
+    },
+    {
+      "site": 1,
+      "fragment": "intermediaire",
+      "point_axe": [
+        -1.3754,
+        61.3662,
+        -23.5194
+      ],
+      "direction": [
+        -0.5899,
+        0.3455,
+        0.7298
+      ],
+      "diametre_mm": 1.6
+    },
+    {
+      "site": 1,
+      "fragment": "intermediaire",
+      "point_axe": [
+        -5.5401,
+        63.6399,
+        -27.9619
+      ],
+      "direction": [
+        -0.5899,
+        0.3455,
+        0.7298
+      ],
+      "diametre_mm": 1.6
+    },
+    {
+      "site": 2,
+      "fragment": "distal",
+      "point_axe": [
+        -24.8455,
+        18.9735,
+        -21.1849
+      ],
+      "direction": [
+        -0.808,
+        0.3244,
+        0.4918
+      ],
+      "diametre_mm": 1.6
+    },
+    {
+      "site": 2,
+      "fragment": "distal",
+      "point_axe": [
+        -29.1302,
+        9.9581,
+        -20.5822
+      ],
+      "direction": [
+        -0.808,
+        0.3244,
+        0.4918
+      ],
+      "diametre_mm": 1.6
+    }
+  ],
+  "guide_reduction": {
+    "broches_apres_correction": [
+      {
+        "site": 1,
+        "fragment": "proximal",
+        "point_axe": [
+          2.2548,
+          95.9249,
+          -24.997
+        ],
+        "direction": [
+          -0.6667,
+          -0.0834,
+          0.7406
+        ]
+      },
+      {
+        "site": 1,
+        "fragment": "proximal",
+        "point_axe": [
+          2.2548,
+          105.9249,
+          -24.997
+        ],
+        "direction": [
+          -0.6667,
+          -0.0834,
+          0.7406
+        ]
+      },
+      {
+        "site": 1,
+        "fragment": "intermediaire",
+        "point_axe": [
+          3.1839,
+          65.2519,
+          -24.1607
+        ],
+        "direction": [
+          -0.6667,
+          -0.0834,
+          0.7406
+        ]
+      },
+      {
+        "site": 1,
+        "fragment": "intermediaire",
+        "point_axe": [
+          -1.6471,
+          65.2519,
+          -28.5095
+        ],
+        "direction": [
+          -0.6667,
+          -0.0834,
+          0.7406
+        ]
+      },
+      {
+        "site": 2,
+        "fragment": "distal",
+        "point_axe": [
+          2.2549,
+          18.1237,
+          -24.9971
+        ],
+        "direction": [
+          -0.6667,
+          -0.0834,
+          0.7406
+        ]
+      },
+      {
+        "site": 2,
+        "fragment": "distal",
+        "point_axe": [
+          2.2549,
+          8.1237,
+          -24.9971
+        ],
+        "direction": [
+          -0.6667,
+          -0.0834,
+          0.7406
+        ]
+      }
+    ]
+  },
+  "torsion": {
+    "avant_deg": 10.59,
+    "apres_deg": 31,
+    "cible_deg": 31,
+    "derotation_deg": 17.93
+  },
+  "prevision": {
+    "angle_residuel_deg": 0,
+    "translation_residuelle_mm": 0,
+    "distance_charnieres_mm": 30.1
+  },
+  "alertes": [
+    "site 1, broche D1 : manchon contre la tour de fente",
+    "site 2, broche D1 : dans le cartilage",
+    "site 2, broche D2 : hors de l'os",
+    "les deux ostéotomies demandent deux abords différents (latéral et médial)"
+  ],
+  "os_segmente": {
+    "serie": "greyhound_hindlimb_hip_to_knee",
+    "fichier_stl_scanner": "femur.stl",
+    "systeme_scanner": "LPS",
+    "cote_anatomique": "gauche",
+    "miroir": true,
+    "reperes_detectes": "etape6_reperes.py (repères automatiques)",
+    "repere_scanner": {
+      "os_vers_scanner": [
+        [
+          -0.356294,
+          0.514997,
+          0.779636,
+          -73.0767
+        ],
+        [
+          -0.922897,
+          -0.32434,
+          -0.207518,
+          9.0056
+        ],
+        [
+          -0.145996,
+          0.793462,
+          -0.59085,
+          -384.1212
+        ],
+        [
+          0,
+          0,
+          0,
+          1
+        ]
+      ],
+      "determinant": -1
+    }
+  }
+}
