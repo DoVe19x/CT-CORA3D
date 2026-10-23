@@ -1,0 +1,586 @@
+{
+ "date": "2026-10-14 09:14:35",
+ "duree_s": 120.3,
+ "serie": {
+  "description": "PELVIS",
+  "etude": "",
+  "date": "20130207",
+  "modalite": "CT",
+  "patient": "Greyhound HL1",
+  "id_patient": "07021312",
+  "position_patient": "FFS",
+  "numero_serie": "2",
+  "fabricant": "GE MEDICAL SYSTEMS LightSpeed Ultra",
+  "noyau": "BONEPLUS",
+  "kv": "120",
+  "ma": "100",
+  "epaisseur_mm": 0.625,
+  "pixel_mm": [
+   0.542969,
+   0.542969
+  ],
+  "taille_image": [
+   512,
+   512
+  ],
+  "nb_fichiers": 728,
+  "dossier": "/Users/dorian_verstappen/Library/CloudStorage/OneDrive-ECAM/MASTER 2/PMD2/CT-scan/greyhound hindlimb hip to knee",
+  "nom": "greyhound_hindlimb_hip_to_knee",
+  "dimensions_kji": [
+   728,
+   512,
+   512
+  ],
+  "espacement_kji_mm": [
+   0.625,
+   0.542969,
+   0.542969
+  ],
+  "etendue_mm": [
+   454.4,
+   278.0,
+   278.0
+  ],
+  "hu_min": -3024,
+  "hu_max": 3071,
+  "inclinaison_statif_deg": 0.0,
+  "systeme": "LPS"
+ },
+ "parametres": {
+  "AFFINAGE_DEMI_HAUTEUR": true,
+  "AIRE_MIN_FIBULA_MM2": 3.0,
+  "ALLONGEMENT_COMPACT": 3.5,
+  "ALLONGEMENT_OS_LONG": 3.0,
+  "BANDE_PASSANTE_LISSAGE": 0.05,
+  "CAVITE_MAX_OBJET": 0.05,
+  "CONTRASTE_MIN_HU": 300,
+  "CORA_COUVERCLE_MIN_MM2": 80.0,
+  "CORA_OS": [
+   "femur",
+   "tibia"
+  ],
+  "COUVERTURE_MIN_SPHERE": 0.4,
+  "CSTAR_MAX_SESAMOIDE": 1.5,
+  "CV_MAX_OBJET": 0.2,
+  "DENSITE_IMPRESSION_G_CM3": 1.01,
+  "DEPLACEMENT_MAX_MM": 1.5,
+  "DISTANCE_MIN_ARTICULATION_MM": 10.0,
+  "ECART_SURFACE_CIBLE_MM": 0.5,
+  "EPAISSEUR_MAX_MM": 1.0,
+  "EXPORTER_AUTRES": false,
+  "FRACTION_MAX_SESAMOIDE": 0.05,
+  "FRACTION_SPONGIEUX_MAX_OBJET": 0.08,
+  "GRILLE_MAX_NOEUDS": 12000000.0,
+  "GUIDE_BROCHE_MM": 1.6,
+  "GUIDE_CONGE_MM": 0.8,
+  "GUIDE_DEPOUILLE_DEG": 5.0,
+  "GUIDE_EPAISSEUR_MIN_MM": 1.2,
+  "GUIDE_EPAISSEUR_MM": 3.0,
+  "GUIDE_GUIDAGE_MM": 10.0,
+  "GUIDE_JEU_BROCHE_MM": 0.2,
+  "GUIDE_JEU_FENTE_MM": 0.2,
+  "GUIDE_JEU_MM": 0.3,
+  "GUIDE_LAME_MM": 0.6,
+  "GUIDE_MARGE_MM": 8.0,
+  "GUIDE_PAROI_MM": 2.0,
+  "GUIDE_PAS_MM": 0.3,
+  "GUIDE_PONT_MM": 5.0,
+  "GUIDE_SECTEUR_DEG": 75.0,
+  "HU_MIN_VALLEE": 150,
+  "IMAGES_CONTROLE": true,
+  "INLIERS_MIN_SPHERE": 150,
+  "ITERATIONS_LISSAGE": 20,
+  "LISSAGE_DEPLACEMENT": 5,
+  "LONGUEUR_OS_LONG_MM": 50.0,
+  "MARGE_RECADRAGE_MM": 6.0,
+  "MARGE_SPHERE_MM": 1.0,
+  "PAS_SEUIL_HU": 100,
+  "PAS_TRANCHES_MM": 2.0,
+  "PERSISTANCE_HU": 200,
+  "PROFIL_EXTERIEUR_MM": 2.0,
+  "PROFIL_INTERIEUR_MM": 2.5,
+  "PROFONDEUR_VALLEE_HU": 250,
+  "RAPPORT_AIRE_FIBULA_MAX": 0.2,
+  "RAPPORT_CONTACT_FUSION": 3.0,
+  "RAYON_FERMETURE_MM": 1.0,
+  "RAYON_GRAINE_MM": 2.5,
+  "RAYON_RECHERCHE_TETE_MM": 35.0,
+  "RAYON_TETE_MM": [
+   4.0,
+   20.0
+  ],
+  "RAYON_VALLEE_MM": 1.0,
+  "REDUCTION_BARRE_MM": 6.0,
+  "REDUCTION_ECART_MM": 4.0,
+  "REDUCTION_MANCHON_MM": 12.0,
+  "REDUCTION_MAX": 0.75,
+  "SAUT_MAX_FIBULA_MM": 3.0,
+  "SERIE_MIN_FIBULA": 0.15,
+  "SEUIL_GRAINE_DEPART_HU": 500,
+  "SEUIL_GRAINE_MAX_HU": 1500,
+  "SEUIL_OS_HU": 226,
+  "SIGMA_LISSAGE_MM": 0.35,
+  "SIGMA_MAILLAGE_MM": 0.3,
+  "SYSTEME_COORDONNEES": "LPS",
+  "TOLERANCE_ESPACEMENT": 0.05,
+  "TOLERANCE_ORIENTATION": 0.001,
+  "TOLERANCE_SPHERE_MM": 0.6,
+  "TRIANGLES_MAX": 150000,
+  "VARIATION_SEUIL_HU": 50,
+  "VOLUME_MIN_GRAINE_MM3": 30.0,
+  "VOLUME_MIN_MORCEAU_MM3": 300.0,
+  "VOLUME_MIN_NOMME_MM3": 200.0,
+  "VOLUME_MIN_SEGMENT_MM3": 50.0,
+  "VOLUME_PERSISTANCE_MM3": 50.0
+ },
+ "durees_segmentation_s": {
+  "lissage": 7.0,
+  "graines": 10.5,
+  "croissance": 15.0,
+  "fusion": 5.0
+ },
+ "os": {
+  "bassin": {
+   "etanche": true,
+   "orientation_coherente": true,
+   "euler": -58,
+   "morceaux": 1,
+   "volume_cm3": 200.059,
+   "surface_cm2": 766.79,
+   "triangles": 176802,
+   "sommets": 88343,
+   "affinage_demi_hauteur": {
+    "moyen_mm": -0.134,
+    "p95_mm": 0.444,
+    "sommets_affines_pct": 97.4
+   },
+   "volume_voxels_cm3": 210.607,
+   "systeme": "LPS",
+   "bords_volume": [],
+   "fichier": "bassin.stl",
+   "etiquettes": [
+    2,
+    3,
+    5,
+    6,
+    7,
+    8,
+    9,
+    16
+   ],
+   "libelle": "bassin"
+  },
+  "fabelles": {
+   "etanche": true,
+   "orientation_coherente": true,
+   "euler": 2,
+   "morceaux": 1,
+   "volume_cm3": 0.427,
+   "surface_cm2": 3.07,
+   "triangles": 3148,
+   "sommets": 1576,
+   "affinage_demi_hauteur": {
+    "moyen_mm": -0.274,
+    "p95_mm": 0.521,
+    "sommets_affines_pct": 95.6
+   },
+   "volume_voxels_cm3": 0.519,
+   "systeme": "LPS",
+   "bords_volume": [],
+   "fichier": "fabelles.stl",
+   "etiquettes": [
+    26
+   ],
+   "libelle": "fabelles"
+  },
+  "femur": {
+   "etanche": true,
+   "orientation_coherente": true,
+   "euler": 2,
+   "morceaux": 1,
+   "volume_cm3": 100.286,
+   "surface_cm2": 209.69,
+   "triangles": 150000,
+   "sommets": 75002,
+   "affinage_demi_hauteur": {
+    "moyen_mm": -0.228,
+    "p95_mm": 0.433,
+    "sommets_affines_pct": 98.8
+   },
+   "volume_voxels_cm3": 105.249,
+   "systeme": "LPS",
+   "bords_volume": [],
+   "fichier": "femur.stl",
+   "etiquettes": [
+    1
+   ],
+   "libelle": "fémur",
+   "sensibilite_seuil": {
+    "moins": {
+     "seuil_hu": 176,
+     "ecart_moyen_mm": 0.102,
+     "ecart_absolu_moyen_mm": 0.102,
+     "ecart_p95_mm": 0.422,
+     "ecart_max_mm": 3.26,
+     "variation_volume_pct": 1.3
+    },
+    "plus": {
+     "seuil_hu": 276,
+     "ecart_moyen_mm": -0.073,
+     "ecart_absolu_moyen_mm": 0.073,
+     "ecart_p95_mm": 0.381,
+     "ecart_max_mm": 2.4,
+     "variation_volume_pct": -1.04
+    }
+   }
+  },
+  "fibula": {
+   "etanche": true,
+   "orientation_coherente": true,
+   "euler": 2,
+   "morceaux": 1,
+   "volume_cm3": 1.113,
+   "surface_cm2": 14.8,
+   "triangles": 14940,
+   "sommets": 7472,
+   "affinage_demi_hauteur": {
+    "moyen_mm": -0.258,
+    "p95_mm": 0.43,
+    "sommets_affines_pct": 95.3
+   },
+   "volume_voxels_cm3": 1.537,
+   "systeme": "LPS",
+   "bords_volume": [
+    {
+     "axe": "k",
+     "cote": "bas",
+     "point": [
+      -97.734,
+      -85.789,
+      -487.875
+     ],
+     "normale": [
+      -0.0,
+      -0.0,
+      -1.0
+     ]
+    }
+   ],
+   "fichier": "fibula.stl",
+   "etiquettes": [
+    18
+   ],
+   "libelle": "fibula",
+   "sensibilite_seuil": {
+    "moins": {
+     "seuil_hu": 176,
+     "ecart_moyen_mm": 0.212,
+     "ecart_absolu_moyen_mm": 0.212,
+     "ecart_p95_mm": 1.214,
+     "ecart_max_mm": 3.22,
+     "variation_volume_pct": 10.81
+    },
+    "plus": {
+     "seuil_hu": 276,
+     "ecart_moyen_mm": -0.069,
+     "ecart_absolu_moyen_mm": 0.069,
+     "ecart_p95_mm": 0.384,
+     "ecart_max_mm": 1.04,
+     "variation_volume_pct": -5.25
+    }
+   }
+  },
+  "patella": {
+   "etanche": true,
+   "orientation_coherente": true,
+   "euler": 2,
+   "morceaux": 1,
+   "volume_cm3": 2.242,
+   "surface_cm2": 9.51,
+   "triangles": 8844,
+   "sommets": 4424,
+   "affinage_demi_hauteur": {
+    "moyen_mm": -0.224,
+    "p95_mm": 0.478,
+    "sommets_affines_pct": 99.5
+   },
+   "volume_voxels_cm3": 2.464,
+   "systeme": "LPS",
+   "bords_volume": [],
+   "fichier": "patella.stl",
+   "etiquettes": [
+    10
+   ],
+   "libelle": "patella",
+   "sensibilite_seuil": {
+    "moins": {
+     "seuil_hu": 176,
+     "ecart_moyen_mm": 0.203,
+     "ecart_absolu_moyen_mm": 0.203,
+     "ecart_p95_mm": 0.84,
+     "ecart_max_mm": 2.92,
+     "variation_volume_pct": 4.64
+    },
+    "plus": {
+     "seuil_hu": 276,
+     "ecart_moyen_mm": -0.114,
+     "ecart_absolu_moyen_mm": 0.114,
+     "ecart_p95_mm": 0.435,
+     "ecart_max_mm": 2.34,
+     "variation_volume_pct": -3.16
+    }
+   }
+  },
+  "tibia": {
+   "etanche": true,
+   "orientation_coherente": true,
+   "euler": 2,
+   "morceaux": 1,
+   "volume_cm3": 46.527,
+   "surface_cm2": 112.25,
+   "triangles": 103296,
+   "sommets": 51650,
+   "affinage_demi_hauteur": {
+    "moyen_mm": -0.249,
+    "p95_mm": 0.442,
+    "sommets_affines_pct": 97.5
+   },
+   "volume_voxels_cm3": 49.287,
+   "systeme": "LPS",
+   "bords_volume": [
+    {
+     "axe": "k",
+     "cote": "bas",
+     "point": [
+      -97.734,
+      -85.789,
+      -487.875
+     ],
+     "normale": [
+      -0.0,
+      -0.0,
+      -1.0
+     ]
+    }
+   ],
+   "fichier": "tibia.stl",
+   "etiquettes": [
+    4
+   ],
+   "libelle": "tibia",
+   "sensibilite_seuil": {
+    "moins": {
+     "seuil_hu": 176,
+     "ecart_moyen_mm": 0.11,
+     "ecart_absolu_moyen_mm": 0.11,
+     "ecart_p95_mm": 0.423,
+     "ecart_max_mm": 2.62,
+     "variation_volume_pct": 1.65
+    },
+    "plus": {
+     "seuil_hu": 276,
+     "ecart_moyen_mm": -0.078,
+     "ecart_absolu_moyen_mm": 0.078,
+     "ecart_p95_mm": 0.384,
+     "ecart_max_mm": 2.3,
+     "variation_volume_pct": -1.24
+    }
+   }
+  }
+ },
+ "segments": [
+  {
+   "etiquette": 1,
+   "nom": "femur",
+   "volume_cm3": 82.9,
+   "raison": "os long avec une tête sphérique (rayon 12.62 mm) au contact du bassin"
+  },
+  {
+   "etiquette": 2,
+   "nom": "bassin",
+   "volume_cm3": 60.36,
+   "raison": "gros os au contact de la tête fémorale (acétabulum)"
+  },
+  {
+   "etiquette": 3,
+   "nom": "bassin",
+   "volume_cm3": 57.1,
+   "raison": "relié au bassin par un large contact (os coxal, sacrum, vertèbre)"
+  },
+  {
+   "etiquette": 4,
+   "nom": "tibia",
+   "volume_cm3": 42.57,
+   "raison": "os long longé par un os long fin et parallèle (fibula, segment 18)"
+  },
+  {
+   "etiquette": 5,
+   "nom": "bassin",
+   "volume_cm3": 23.01,
+   "raison": "relié au bassin par un large contact (os coxal, sacrum, vertèbre)"
+  },
+  {
+   "etiquette": 6,
+   "nom": "bassin",
+   "volume_cm3": 22.86,
+   "raison": "relié au bassin par un large contact (os coxal, sacrum, vertèbre)"
+  },
+  {
+   "etiquette": 7,
+   "nom": "bassin",
+   "volume_cm3": 19.48,
+   "raison": "relié au bassin par un large contact (os coxal, sacrum, vertèbre)"
+  },
+  {
+   "etiquette": 8,
+   "nom": "bassin",
+   "volume_cm3": 6.47,
+   "raison": "relié au bassin par un large contact (os coxal, sacrum, vertèbre)"
+  },
+  {
+   "etiquette": 9,
+   "nom": "bassin",
+   "volume_cm3": 6.18,
+   "raison": "relié au bassin par un large contact (os coxal, sacrum, vertèbre)"
+  },
+  {
+   "etiquette": 10,
+   "nom": "patella",
+   "volume_cm3": 2.44,
+   "raison": "petit os compact au contact du fémur (le plus gros)"
+  },
+  {
+   "etiquette": 11,
+   "nom": "",
+   "volume_cm3": 2.29,
+   "raison": ""
+  },
+  {
+   "etiquette": 12,
+   "nom": "",
+   "volume_cm3": 2.24,
+   "raison": ""
+  },
+  {
+   "etiquette": 13,
+   "nom": "",
+   "volume_cm3": 2.15,
+   "raison": ""
+  },
+  {
+   "etiquette": 14,
+   "nom": "",
+   "volume_cm3": 1.9,
+   "raison": ""
+  },
+  {
+   "etiquette": 15,
+   "nom": "",
+   "volume_cm3": 1.82,
+   "raison": ""
+  },
+  {
+   "etiquette": 16,
+   "nom": "bassin",
+   "volume_cm3": 1.78,
+   "raison": "relié au bassin par un large contact (os coxal, sacrum, vertèbre)"
+  },
+  {
+   "etiquette": 17,
+   "nom": "",
+   "volume_cm3": 1.59,
+   "raison": ""
+  },
+  {
+   "etiquette": 18,
+   "nom": "fibula",
+   "volume_cm3": 1.5,
+   "raison": "os long fin parallèle au tibia (allongement 8.7)"
+  },
+  {
+   "etiquette": 19,
+   "nom": "",
+   "volume_cm3": 1.45,
+   "raison": ""
+  },
+  {
+   "etiquette": 20,
+   "nom": "",
+   "volume_cm3": 1.17,
+   "raison": ""
+  },
+  {
+   "etiquette": 21,
+   "nom": "",
+   "volume_cm3": 0.9,
+   "raison": ""
+  },
+  {
+   "etiquette": 22,
+   "nom": "",
+   "volume_cm3": 0.74,
+   "raison": ""
+  },
+  {
+   "etiquette": 23,
+   "nom": "",
+   "volume_cm3": 0.6,
+   "raison": ""
+  },
+  {
+   "etiquette": 24,
+   "nom": "",
+   "volume_cm3": 0.47,
+   "raison": ""
+  },
+  {
+   "etiquette": 25,
+   "nom": "",
+   "volume_cm3": 0.2,
+   "raison": ""
+  },
+  {
+   "etiquette": 26,
+   "nom": "fabelles",
+   "volume_cm3": 0.52,
+   "raison": "petit os compact accolé au fémur (contact 33 mm², c* = 0.51) : sésamoïde du gastrocnémien"
+  }
+ ],
+ "reperes": {
+  "tete_femorale": {
+   "centre_lps": [
+    18.041905423728124,
+    -40.961830782610384,
+    -186.58735963451113
+   ],
+   "rayon_mm": 12.62,
+   "points": 2055,
+   "couverture": 0.685
+  }
+ },
+ "avertissements": [],
+ "cora": {
+  "femur": {
+   "complet": true,
+   "raison": "",
+   "cote": "gauche",
+   "longueur_mm": 236.4,
+   "angles": {
+    "aLPFA": 114.24,
+    "aLDFA": 96.34,
+    "varusFem": 6.34,
+    "aCdDFA": 88.73,
+    "longueur": 222.51
+   },
+   "torsion_deg": 25.13
+  },
+  "tibia": {
+   "complet": false,
+   "raison": "extrémité distale coupée par le champ du scanner : il faut les deux articulations pour la méthode CORA",
+   "cote": "gauche",
+   "longueur_mm": 115.6,
+   "angles": null,
+   "torsion_deg": null
+  }
+ }
+}

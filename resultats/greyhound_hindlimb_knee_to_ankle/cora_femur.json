@@ -1,0 +1,39 @@
+{
+ "schema": "cora-reel-1",
+ "os": "femur",
+ "serie": "greyhound_hindlimb_knee_to_ankle",
+ "fichier_stl": "femur.stl",
+ "systeme": "LPS",
+ "date": "2026-10-13T23:54:08",
+ "longueur_mm": 99.0,
+ "cote": "droit",
+ "raisons": {
+  "proximal": "extrémité qui porte la meilleure sphère (tête fémorale)",
+  "lateral": "à l'opposé de la tête fémorale (la tête est médiale)",
+  "caudal": "côté de l'échancrure intercondylaire"
+ },
+ "tronque": {
+  "proximal": true,
+  "distal": false
+ },
+ "couvercles": {
+  "haut": {
+   "coupe": true,
+   "methode": "bords du volume (étape 4)",
+   "bords": [
+    "k haut"
+   ]
+  },
+  "bas": {
+   "coupe": false,
+   "methode": "bords du volume (étape 4)",
+   "bords": []
+  }
+ },
+ "avertissements": [],
+ "cote_scanner": "droit",
+ "complet": false,
+ "raison": "extrémité proximale coupée par le champ du scanner : il faut les deux articulations pour la méthode CORA",
+ "nom": "femur",
+ "stl_modifie": 1791878432.5655813
+}

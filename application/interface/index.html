@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CT-CORA3D</title>
+<link rel="icon" type="image/png" href="ct/icone.png">
+<style>
+/* CT-CORA3D — page d'accueil : deux onglets (segmentation CT, planification CORA), chacun dans son cadre.
+   Les deux applications gardent leur propre interface ; cette page ne fait que les réunir, transmettre le thème
+   et relier « Planifier CORA » (onglet 1) à l'os segmenté choisi (onglet 2). */
+:root {
+  color-scheme: dark;
+  --bg: #0a1015; --surface: #10181f; --surface-2: #151f28; --line: #23323e;
+  --fg: #e7ecef; --fg-2: #b2c0ca; --fg-3: #8496a3; --accent: #6db4e6; --accent-ink: #061119;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #e9eef2; --surface: #ffffff; --surface-2: #f4f7f9; --line: #d2dce3;
+  --fg: #0e1b25; --fg-2: #3a4f5f; --fg-3: #5b6f7e; --accent: #1b6aa0; --accent-ink: #ffffff;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 400 13px/1.4 var(--font-ui); display: grid; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+header { display: flex; align-items: center; gap: 18px; padding: 8px 16px 0; min-width: 0; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand img { width: 30px; height: 30px; border-radius: 8px; }
+.brand b { font-size: 16px; font-weight: 700; white-space: nowrap; }
+.brand small { display: block; color: var(--fg-3); font-size: 11.5px; white-space: nowrap; }
+nav { display: flex; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); }
+nav button { border: 0; background: transparent; padding: 7px 14px; border-radius: 8px; cursor: pointer; color: var(--fg-2); font-weight: 620; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+nav button .n { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--line); font-size: 11.5px; }
+nav button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+nav button[aria-selected="true"] .n { background: transparent; border-color: currentColor; }
+nav button:hover:not([aria-selected="true"]) { background: var(--surface-2); color: var(--fg); }
+.flux { color: var(--fg-3); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.tools { margin-left: auto; display: flex; gap: 6px; }
+.iconbtn { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); cursor: pointer; color: var(--fg-2); }
+.iconbtn:hover { color: var(--fg); border-color: var(--fg-3); }
+main { position: relative; min-height: 0; }
+iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--bg); }
+iframe[hidden] { display: block; visibility: hidden; pointer-events: none; }   /* reste chargé (état conservé) */
+.fin { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); color: var(--fg-2); font-size: 15px; z-index: 10; }
+@media (max-width: 900px) { .flux, .brand small { display: none; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <img src="ct/icone.png" alt="">
+    <div><b>CT-CORA3D</b><small>PMD2 · ECAM · membre pelvien canin</small></div>
+  </div>
+  <nav role="tablist" aria-label="Parties de l'application">
+    <button role="tab" id="t-ct" aria-selected="true" aria-controls="f-ct"><span class="n">1</span>Segmentation CT</button>
+    <button role="tab" id="t-cora" aria-selected="false" aria-controls="f-cora"><span class="n">2</span>Planification CORA</button>
+  </nav>
+  <span class="flux">DICOM → os segmentés (STL) → repères automatiques → CORA, ostéotomie → prescription du guide</span>
+  <div class="tools">
+    <button class="iconbtn" id="b-theme" title="Thème clair / sombre" aria-label="Thème clair / sombre">◐</button>
+    <button class="iconbtn" id="b-quitter" title="Quitter l'application" aria-label="Quitter">⏻</button>
+  </div>
+</header>
+<main>
+  <iframe id="f-ct" src="ct/" title="Segmentation CT" role="tabpanel" aria-labelledby="t-ct"></iframe>
+  <iframe id="f-cora" src="cora/" title="Planification CORA" role="tabpanel" aria-labelledby="t-cora" hidden></iframe>
+</main>
+<script>
+"use strict";
+const $ = (s) => document.querySelector(s);
+const cadres = { ct: $("#f-ct"), cora: $("#f-cora") };
+const onglets = { ct: $("#t-ct"), cora: $("#t-cora") };
+
+function montrer(nom) {
+  for (const k of Object.keys(cadres)) {
+    cadres[k].hidden = k !== nom;
+    onglets[k].setAttribute("aria-selected", String(k === nom));
+  }
+  try { sessionStorage.setItem("onglet", nom); } catch (e) { /* stockage indisponible */ }
+  // un cadre caché n'a pas pu mesurer sa taille : on le prévient qu'il est visible
+  cadres[nom].contentWindow?.postMessage({ type: "visible" }, "*");
+}
+onglets.ct.addEventListener("click", () => montrer("ct"));
+onglets.cora.addEventListener("click", () => montrer("cora"));
+
+// thème : réglage du système, sauf choix explicite (retenu dans ce navigateur)
+function themeCourant() {
+  let t = null;
+  try { t = localStorage.getItem("theme-ct-cora3d"); } catch (e) { /* rien */ }
+  return t || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+}
+function appliquerTheme() {
+  const t = themeCourant();
+  document.documentElement.dataset.theme = t;
+  for (const c of Object.values(cadres)) c.contentWindow?.postMessage({ type: "theme", theme: t }, "*");
+}
+$("#b-theme").addEventListener("click", () => {
+  try { localStorage.setItem("theme-ct-cora3d", themeCourant() === "light" ? "dark" : "light"); } catch (e) { /* rien */ }
+  appliquerTheme();
+});
+matchMedia("(prefers-color-scheme: light)").addEventListener("change", appliquerTheme);
+for (const c of Object.values(cadres)) c.addEventListener("load", appliquerTheme);
+appliquerTheme();
+
+$("#b-quitter").addEventListener("click", async () => {
+  if (!confirm("Quitter CT-CORA3D ? (un calcul en cours serait interrompu)")) return;
+  await fetch("/api/quitter", { method: "POST" }).catch(() => {});
+  document.body.insertAdjacentHTML("beforeend", '<div class="fin">CT-CORA3D est arrêtée. Vous pouvez fermer cette fenêtre.</div>');
+});
+
+// messages des deux applications
+window.addEventListener("message", (e) => {
+  const m = e.data || {};
+  if (m.type === "cora-ouvrir") {                       // onglet 1 : « Planifier CORA » sur un fémur / tibia
+    montrer("cora");
+    cadres.cora.contentWindow?.postMessage({ type: "ouvrir-os", serie: m.serie, os: m.os }, "*");
+  } else if (m.type === "segmentation-terminee") {      // de nouveaux os sont peut-être prêts
+    cadres.cora.contentWindow?.postMessage({ type: "actualiser" }, "*");
+  } else if (m.type === "onglet") {
+    montrer(m.nom);
+  }
+});
+let initial = "ct";
+try { initial = sessionStorage.getItem("onglet") || "ct"; } catch (e) { /* rien */ }
+montrer(initial);
+</script>
+</body>
+</html>

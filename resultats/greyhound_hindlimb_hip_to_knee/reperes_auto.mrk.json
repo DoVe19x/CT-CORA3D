@@ -1,0 +1,22 @@
+{
+ "@schema": "https://raw.githubusercontent.com/slicer/slicer/master/Modules/Loadable/Markups/Resources/Schema/markups-schema-v1.0.3.json#",
+ "markups": [
+  {
+   "type": "Fiducial",
+   "coordinateSystem": "LPS",
+   "coordinateUnits": "mm",
+   "controlPoints": [
+    {
+     "id": "1",
+     "label": "tete_femorale",
+     "position": [
+      18.0419,
+      -40.9618,
+      -186.5874
+     ],
+     "description": "sphère ajustée, rayon 12.62 mm"
+    }
+   ]
+  }
+ ]
+}

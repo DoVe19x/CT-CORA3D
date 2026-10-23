@@ -1,0 +1,26 @@
+{
+ "serie": "greyhound_hindlimb_hip_to_knee",
+ "cible": "femur",
+ "controlateral": null,
+ "candidats": [
+  {
+   "nom": "femur",
+   "os": "femur",
+   "complet": true,
+   "raison": "",
+   "cote": "gauche",
+   "longueur_mm": 236.4,
+   "ecart_normes": 3.87
+  },
+  {
+   "nom": "tibia",
+   "os": "tibia",
+   "complet": false,
+   "raison": "extrémité distale coupée par le champ du scanner : il faut les deux articulations pour la méthode CORA",
+   "cote": "gauche",
+   "longueur_mm": 115.6,
+   "ecart_normes": null
+  }
+ ],
+ "raison": "seul os complet du scanner (femur)"
+}

@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CT-CORA3D · Segmentation CT</title>
+<link rel="icon" type="image/png" href="icone.png">
+<link rel="stylesheet" href="style.css">
+<script src="../vendor/three_bundle.js"></script>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============================================================ barre du haut -->
+  <header class="topbar">
+    <div class="brand">
+      <img src="icone.png" width="34" height="34" alt="">
+      <div>
+        <h1>Segmentation osseuse <span class="v">CT</span></h1>
+        <small>DICOM → seuillage + croissance de région → os en STL étanches</small>
+      </div>
+    </div>
+    <div class="serie-courante" id="serieCourante">Aucune série ouverte</div>
+    <div class="tools">
+      <button class="btn" id="btnDossierResultats" title="Ouvrir le dossier des résultats de cette série">Dossier des résultats</button>
+      <button class="iconbtn" id="btnTheme" title="Thème clair / sombre" aria-label="Thème">◐</button>
+      <button class="iconbtn" id="btnAide" title="Aide" aria-label="Aide">?</button>
+      <button class="iconbtn" id="btnQuitter" title="Quitter l'application" aria-label="Quitter">⏻</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- ========================================================== gauche : données, réglages, progression -->
+    <aside class="panel" id="gauche">
+      <div class="panel-inner">
+
+        <section class="bloc">
+          <div class="titre-bloc"><span class="num">1</span><h2>Données DICOM</h2></div>
+          <div class="dossier" id="dossierDicom" title="Dossier fouillé"></div>
+          <div class="ligne">
+            <button class="btn" id="btnChoisir">Changer de dossier…</button>
+            <button class="btn" id="btnRelire" title="Refaire l'inventaire du dossier">Relire</button>
+          </div>
+          <div class="series" id="listeSeries" role="listbox" aria-label="Séries trouvées"></div>
+          <p class="aide">Comme le module DICOM de 3D Slicer : toutes les séries du dossier (sous-dossiers compris)
+            sont listées. Cliquez une série pour l'ouvrir.</p>
+        </section>
+
+        <section class="bloc">
+          <div class="titre-bloc"><span class="num">2</span><h2>Segmentation</h2></div>
+          <div class="reglage"><label for="rSeuil">Seuil de l'os</label><span><input id="rSeuil" type="number" step="1" min="100" max="700"> <span class="unite">HU</span></span></div>
+          <div class="reglage"><label for="rSigma">Lissage avant seuillage</label><span><input id="rSigma" type="number" step="0.05" min="0" max="1"> <span class="unite">mm</span></span></div>
+          <div class="reglage"><label for="rFermeture">Fermeture des pores</label><span><input id="rFermeture" type="number" step="0.25" min="0" max="3"> <span class="unite">mm</span></span></div>
+          <div class="reglage"><label for="rTriangles">Triangles max. par os</label><span><input id="rTriangles" type="number" step="10000" min="10000" max="1000000"></span></div>
+          <div class="reglage"><label for="rSysteme">Coordonnées des STL</label>
+            <select id="rSysteme"><option value="LPS">LPS (DICOM, Slicer)</option><option value="RAS">RAS</option></select></div>
+          <label class="case"><input type="checkbox" id="rControle" checked> Contrôle du seuil ± 50 HU (hypothèse H2)</label>
+          <label class="case"><input type="checkbox" id="rImages" checked> Aperçus PNG dans le dossier des résultats</label>
+          <button class="btn principal" id="btnSegmenter" disabled>Segmenter la série</button>
+          <p class="aide" id="aideGraines"></p>
+        </section>
+
+        <section class="bloc" id="blocProgression" hidden>
+          <div class="titre-bloc"><span class="num">⋯</span><h2 id="titreProgression">Calcul</h2></div>
+          <ol class="etapes" id="listeEtapes"></ol>
+          <pre class="journal" id="journal"></pre>
+        </section>
+
+      </div>
+    </aside>
+
+    <!-- ========================================================== centre : 4 vues -->
+    <section class="vues" id="vues">
+      <div class="vue" data-plan="a">
+        <div class="vue-titre"><span class="pastille a"></span>Axiale <span class="indice" data-indice></span>
+          <span class="outils-vue"><button class="mini" data-agrandir title="Agrandir cette vue">⤢</button></span></div>
+        <canvas class="coupe"></canvas>
+        <div class="lettre g"></div><div class="lettre d"></div><div class="lettre h"></div><div class="lettre b"></div>
+      </div>
+      <div class="vue vue3d" data-plan="3d">
+        <div class="vue-titre"><span class="pastille t"></span>3D
+          <span class="outils-vue">
+            <label class="case petit"><input type="checkbox" id="voirAutres"> os non identifiés</label>
+            <label class="case petit"><input type="checkbox" id="voirPlans" checked> plans</label>
+            <button class="mini" id="btnRecentrer" title="Recentrer la vue">⌖</button>
+            <button class="mini" data-agrandir title="Agrandir cette vue">⤢</button></span></div>
+        <canvas id="scene3d"></canvas>
+        <div class="vide" id="vide3d">Ouvrez une série puis lancez « Segmenter » : les os apparaîtront ici.</div>
+      </div>
+      <div class="vue" data-plan="c">
+        <div class="vue-titre"><span class="pastille c"></span>Coronale <span class="indice" data-indice></span>
+          <span class="outils-vue"><button class="mini" data-agrandir title="Agrandir cette vue">⤢</button></span></div>
+        <canvas class="coupe"></canvas>
+        <div class="lettre g"></div><div class="lettre d"></div><div class="lettre h"></div><div class="lettre b"></div>
+      </div>
+      <div class="vue" data-plan="s">
+        <div class="vue-titre"><span class="pastille s"></span>Sagittale <span class="indice" data-indice></span>
+          <span class="outils-vue"><button class="mini" data-agrandir title="Agrandir cette vue">⤢</button></span></div>
+        <canvas class="coupe"></canvas>
+        <div class="lettre g"></div><div class="lettre d"></div><div class="lettre h"></div><div class="lettre b"></div>
+      </div>
+    </section>
+
+    <!-- ========================================================== droite : os, corrections, fichiers -->
+    <aside class="panel" id="droite">
+      <div class="panel-inner">
+
+        <section class="bloc">
+          <div class="titre-bloc"><span class="num">3</span><h2>Os</h2></div>
+          <div class="fenetrage">
+            <span>Fenêtre</span>
+            <div class="seg" id="segFenetre" role="group" aria-label="Fenêtre de densité">
+              <button data-ww="2000" data-wl="500" aria-pressed="true">Os</button>
+              <button data-ww="400" data-wl="40" aria-pressed="false">Tissus mous</button>
+              <button data-ww="3500" data-wl="800" aria-pressed="false">Large</button>
+            </div>
+            <label class="case petit"><input type="checkbox" id="voirCouleurs" checked> os en couleur</label>
+          </div>
+          <div class="carte-cora" id="carteCora" hidden></div>
+          <div class="liste-os" id="listeOs"><p class="aide">Pas encore de segmentation.</p></div>
+        </section>
+
+        <section class="bloc" id="blocSelection" hidden>
+          <div class="titre-bloc"><span class="pastille-os" id="selCouleur"></span><h2 id="selTitre">Os sélectionné</h2></div>
+          <p class="aide" id="selRaison"></p>
+          <div class="calcul" id="selMesures"></div>
+          <div class="sous-bloc" id="zoneRenommer">
+            <div class="ligne">
+              <select id="selNom" aria-label="Nom de l'os"></select>
+              <select id="selCote" aria-label="Côté"><option value="">non précisé</option><option value="gauche">gauche</option><option value="droit">droit</option></select>
+            </div>
+            <div class="ligne">
+              <button class="btn" id="btnRenommer">Renommer</button>
+              <button class="btn" id="btnSeparer" title="Ce segment contient plusieurs os : les séparer avec des points">Séparer…</button>
+            </div>
+            <button class="btn principal" id="btnCora" hidden title="Ouvrir cet os dans l'onglet « Planification CORA »">Planifier CORA sur cet os →</button>
+          </div>
+          <div class="sous-bloc separation" id="zoneSeparer" hidden>
+            <p class="aide">Choisissez un nom, puis cliquez dans une coupe <b>à l'intérieur</b> de cet os. Recommencez
+              pour chaque os du segment (au moins deux noms différents). Une croissance de région partira de ces points.</p>
+            <div class="ligne"><span class="etiquette">Prochain point :</span><select id="sepNom" aria-label="Nom du prochain point"></select></div>
+            <ul class="points" id="sepPoints"></ul>
+            <div class="ligne">
+              <button class="btn principal" id="btnSepValider" disabled>Séparer</button>
+              <button class="btn" id="btnSepAnnuler">Annuler</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="bloc" id="blocReperes" hidden>
+          <div class="titre-bloc"><h2>Repères trouvés</h2></div>
+          <div id="listeReperes" class="calcul"></div>
+        </section>
+
+        <section class="bloc" id="blocFichiers" hidden>
+          <div class="titre-bloc"><span class="num">4</span><h2>Fichiers produits</h2></div>
+          <ul class="fichiers" id="listeFichiers"></ul>
+          <details id="detailsGraines">
+            <summary>Points enregistrés (graines.json) <span class="sous-titre" id="nbGraines"></span></summary>
+            <ul class="points" id="listeGraines"></ul>
+            <button class="btn" id="btnOublier">Effacer tous les points</button>
+          </details>
+        </section>
+
+      </div>
+    </aside>
+  </main>
+
+  <footer class="statut" id="statut">
+    <span id="stPosition">Position : n.d.</span><span id="stHU">HU : n.d.</span><span id="stOs">Os : n.d.</span>
+    <span class="droite">Molette : changer de coupe · Ctrl/⌘ + molette : zoom · glisser (clic droit) : déplacer · clic : viser / sélectionner</span>
+  </footer>
+</div>
+
+<!-- ============================================================ aide -->
+<dialog id="aide">
+  <h2 class="grand">Mode d'emploi</h2>
+  <ol>
+    <li><b>Données.</b> Les séries DICOM du dossier sont listées (par défaut le dossier <code>CT-scan</code>). Cliquez une
+      série : le scanner s'affiche en coupes (axiale, coronale, sagittale), comme dans 3D Slicer.</li>
+    <li><b>Segmenter.</b> Le programme seuille l'os, trouve une graine par os en montant le seuil palier par palier,
+      fait croître toutes les graines en même temps (croissance de région), nomme les os, sépare la tête fémorale et
+      la fibula, puis écrit un STL étanche par os. Environ 30 à 60 s par série.</li>
+    <li><b>Vérifier.</b> Faites défiler les coupes (molette) : chaque os a sa couleur. Cliquez un os (coupe ou 3D)
+      pour voir son nom, la raison de ce nom, son volume, son étanchéité et sa sensibilité au seuil.</li>
+    <li><b>Corriger.</b> Mauvais nom : choisissez le bon nom puis « Renommer ». Deux os dans un même segment :
+      « Séparer… », puis un point par os. Les points sont gardés dans <code>graines.json</code> et réappliqués aux
+      calculs suivants. « autre » : segment ni exporté ni renommé automatiquement.</li>
+    <li><b>Résultats.</b> Dossier <code>CT-CORA3D/resultats/&lt;série&gt;/</code> : un STL par os (coordonnées du scanner,
+      mm), <code>tarse.stl</code> (tout le tarse), <code>segmentation.seg.nrrd</code> (à ouvrir dans 3D Slicer),
+      <code>rapport.md</code>, aperçus PNG et <code>reperes_auto.mrk.json</code> (centre de la tête fémorale).</li>
+    <li><b>Vers CORA.</b> Après la segmentation, le fémur et le tibia <b>complets</b> reçoivent leurs repères anatomiques
+      automatiques (étape 6 : <code>cora_femur.json</code>, <code>cora_tibia.json</code>, aperçus PNG). Le bouton
+      « CORA → » (liste des os) ouvre l'os dans l'onglet « Planification CORA ». Un os coupé par le champ du scanner
+      n'est pas planifiable : il faut ses deux articulations.</li>
+  </ol>
+  <p class="aide">Raccourcis : molette = coupe suivante ; Maj + molette = 5 coupes ; Ctrl/⌘ + molette = zoom ;
+    clic droit glissé = déplacer ; double-clic = remettre la vue à zéro ; Échap = annuler la séparation.</p>
+  <form method="dialog"><button class="btn principal">Fermer</button></form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>
