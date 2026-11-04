@@ -1,0 +1,15 @@
+# Fins de ligne fixées quel que soit l'ordinateur (Mac ou Windows) qui fait le commit
+*.sh          text eol=lf
+*.applescript text eol=lf
+*.bat         text eol=crlf
+# Fichiers binaires : jamais convertis
+*.png  binary
+*.icns binary
+*.ico  binary
+*.rsrc binary
+*.scpt binary
+*.gz   binary
+*.bin  binary
+*.woff2 binary
+*.stl  binary
+CT-CORA3D.app/Contents/MacOS/applet binary
