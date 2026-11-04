@@ -4,7 +4,7 @@
  "serie": "greyhound_hindlimb_hip_to_knee",
  "fichier_stl": "tibia.stl",
  "systeme": "LPS",
- "date": "2026-10-14T09:14:40",
+ "date": "2026-11-04T17:14:21",
  "longueur_mm": 115.6,
  "cote": "gauche",
  "raisons": {
@@ -35,5 +35,5 @@
  "complet": false,
  "raison": "extrémité distale coupée par le champ du scanner : il faut les deux articulations pour la méthode CORA",
  "nom": "tibia",
- "stl_modifie": 1791962052.5969374
+ "stl_modifie": 1791962052.0
 }
