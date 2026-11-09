@@ -1,0 +1,115 @@
+\chapter{Étape 1 — Lire le scanner}
+\label{chap:lecture}
+
+\begin{chapeau}
+Cette étape transforme un dossier de fichiers DICOM en un volume 3D en unités Hounsfield, et calcule la matrice qui
+donne la position de chaque voxel en millimètres. Elle fait les mêmes contrôles que le module DICOM de 3D Slicer.
+\end{chapeau}
+
+\section{Trouver les séries}
+
+Un dossier apporté par le chirurgien peut contenir plusieurs examens, plusieurs séries, des sous-dossiers, des
+fichiers sans extension et des fichiers qui ne sont pas des images (rapports, \fichier{DICOMDIR}). Le logiciel :
+\begin{enumerate}
+  \item parcourt tout le dossier, sous-dossiers compris, et garde les fichiers dont l'en-tête est DICOM ;
+  \item lit seulement l'en-tête (pas les pixels), ce qui est rapide ;
+  \item écarte ce qui n'est pas une image en coupe (pas de position ou d'orientation) ;
+  \item regroupe les fichiers par série (\code{SeriesInstanceUID}) et donne à chaque série un nom de dossier sûr
+  (minuscules, chiffres, tirets), tiré du nom du dossier.
+\end{enumerate}
+
+\section{Ranger les coupes dans le bon ordre}
+
+Les fichiers d'une série ne sont pas forcément nommés dans l'ordre, et le champ \code{InstanceNumber}, qui donne
+le numéro de l'image, n'est pas fiable. Le logiciel range donc les coupes \textbf{par leur position dans l'espace}. Soient $\vb{r}$ et
+$\vb{c}$ les directions des lignes et des colonnes de l'image (les deux triplets de \code{ImageOrientationPatient}).
+La normale aux coupes est
+\begin{equation}
+  \vb{n} = \vb{r} \times \vb{c}.
+\end{equation}
+La coupe $k$, dont le premier pixel est en $\vb{P}_k$ (\code{ImagePositionPatient}), est à la distance
+$d_k = \vb{P}_k \cdot \vb{n}$ le long de cette normale. Trier les coupes, c'est trier les $d_k$.
+
+\section{Contrôler la géométrie}
+
+Avant de lire les pixels, plusieurs contrôles évitent un volume faux :
+\begin{itemize}
+  \item \textbf{une seule orientation} : les coupes dont l'orientation diffère de la plus fréquente (à $10^{-3}$ près)
+  sont écartées. Ce sont en général les images de repérage, comme le topogramme (\cref{sec:topogramme}) ;
+  \item \textbf{pas de doublon} : deux coupes à la même position, la seconde est écartée ;
+  \item \textbf{espacement régulier} : le pas $\Delta = \operatorname{médiane}(d_{k+1} - d_k)$ ; si un écart s'en
+  éloigne de plus de 5~\%, il manque sans doute des coupes ;
+  \item \textbf{épaisseur} : au-delà de 1~mm, un avertissement est donné, car la précision des surfaces en souffre.
+\end{itemize}
+
+Si l'espacement est irrégulier, le volume est rééchantillonné sur une grille régulière de pas $\Delta$, par
+interpolation linéaire entre les deux coupes voisines :
+\begin{equation}
+  I(d) = (1 - w)\, I_k + w\, I_{k+1},
+  \qquad
+  w = \frac{d - d_k}{d_{k+1} - d_k},
+  \qquad d_k \le d \le d_{k+1}.
+\end{equation}
+
+\section{Convertir en unités Hounsfield}
+
+Chaque pixel stocké (\emph{stored value}, SV) devient une valeur en HU par la règle donnée dans l'en-tête :
+\begin{equation}
+  \tcbhighmath{\mathrm{HU} = \mathrm{SV} \times \texttt{RescaleSlope} + \texttt{RescaleIntercept}.}
+\end{equation}
+Le volume est gardé en entiers de 16 bits (de $-32\,768$ à $32\,767$), ce qui suffit et divise la mémoire par deux par
+rapport à des réels. Si pydicom ne sait pas décoder une image compressée, le logiciel la relit avec SimpleITK.
+
+\section{De l'indice de voxel aux millimètres}
+\label{sec:affine}
+
+C'est le calcul le plus important de l'étape : tout ce qui suit (STL, repères, guides) en dépend. Le voxel d'indices
+$(i, j, k)$ (colonne, ligne, coupe) est au point
+\begin{equation}
+  \begin{pmatrix} x \\ y \\ z \\ 1 \end{pmatrix}
+  = \underbrace{\begin{pmatrix}
+    \Delta_c\, r_x & \Delta_r\, c_x & \delta_x & P_{0,x} \\
+    \Delta_c\, r_y & \Delta_r\, c_y & \delta_y & P_{0,y} \\
+    \Delta_c\, r_z & \Delta_r\, c_z & \delta_z & P_{0,z} \\
+    0 & 0 & 0 & 1
+  \end{pmatrix}}_{\mt{A}}
+  \begin{pmatrix} i \\ j \\ k \\ 1 \end{pmatrix},
+  \qquad
+  \boldsymbol{\delta} = \frac{\vb{P}_{N-1} - \vb{P}_0}{N - 1},
+  \label{eq:affine}
+\end{equation}
+où $\Delta_c$ est l'écart entre deux colonnes et $\Delta_r$ l'écart entre deux lignes (\code{PixelSpacing} donne
+$[\Delta_r, \Delta_c]$, dans cet ordre), $\vb{P}_0$ la position du premier voxel et $\boldsymbol{\delta}$ le pas
+réel d'une coupe à la suivante, calculé avec la première et la dernière coupe.
+
+\begin{pourquoi}
+On pourrait prendre $\boldsymbol{\delta} = \Delta\,\vb{n}$. Mais si le statif du scanner était incliné
+(\emph{gantry tilt}), les coupes glissent les unes par rapport aux autres et le pas n'est pas parallèle à la normale.
+Avec $\boldsymbol{\delta}$ mesuré sur les positions, la matrice reste exacte. L'inclinaison est
+$\arccos\bigl(\abs{\boldsymbol{\delta}\cdot\vb{n}} / \norm{\boldsymbol{\delta}}\bigr)$ ; au-delà de 0,5\degre, le
+logiciel le signale.
+\end{pourquoi}
+
+L'opération inverse, des millimètres aux indices, résout le système linéaire :
+$(i, j, k)^{\mathsf T} = \mt{A}_{3\times3}^{-1}\,(\vb{p} - \vb{P}_0)$. Les indices obtenus peuvent être
+fractionnaires : on interpole alors entre les voxels.
+
+\begin{exemple}
+Série genou--cheville du lévrier : 748 coupes de $512 \times 512$ pixels, voxel de
+$0{,}625 \times 0{,}56 \times 0{,}56$~mm, soit un volume de $467 \times 287 \times 287$~mm et
+196 millions de voxels (392~Mo en entiers de 16 bits). Statif non incliné.
+\end{exemple}
+
+\begin{danslecode}
+\fichier{code_source/etape1_lecture_dicom.py} :
+\code{inventaire()} trouve et regroupe les séries ; \code{charger()} trie, contrôle, lit, convertit en HU et
+construit la matrice $\mt{A}$ (classe \code{Volume}, avec \code{vers_lps()} et \code{vers_indices()}) ;
+\code{lire_pixels()} applique \code{RescaleSlope} et \code{RescaleIntercept}. Réglages dans
+\fichier{parametres.py} : \code{EPAISSEUR_MAX_MM}, \code{TOLERANCE_ESPACEMENT}, \code{TOLERANCE_ORIENTATION}.
+\end{danslecode}
+
+\begin{attention}[title={Données personnelles}]
+L'en-tête DICOM contient souvent le nom de l'animal, parfois celui du propriétaire, et un identifiant. L'inventaire
+les lit, et le rapport de l'étape 5 les recopie (\cref{sec:securite}). Il vaut mieux rendre les scanners anonymes avant
+de les importer.
+\end{attention}

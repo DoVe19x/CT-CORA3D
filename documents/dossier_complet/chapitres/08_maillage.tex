@@ -1,0 +1,186 @@
+\chapter{Étapes 4 et 5 — Fabriquer les surfaces et les contrôler}
+\label{chap:maillage}
+
+\begin{chapeau}
+L'étape 4 transforme chaque os segmenté en une surface 3D fermée, un fichier STL. L'étape 5 mesure la sensibilité du
+résultat au seuil choisi et écrit les rapports.
+\end{chapeau}
+
+\section{Remplir l'os}
+
+Le STL doit décrire la surface extérieure de l'os, pas le canal médullaire. On remplit donc chaque os :
+\begin{enumerate}
+  \item une \textbf{fermeture morphologique} de rayon 1~mm (une dilatation suivie d'une érosion) bouche les petits
+  pores de la corticale ;
+  \item si l'os sort du champ du scanner, sa section au bord est d'abord fermée par un \textbf{couvercle} (la section
+  remplie en 2D) : sinon le canal resterait ouvert et ne se remplirait pas ;
+  \item un \textbf{remplissage des trous} en 3D remplit tout ce qui n'est pas relié à l'extérieur : canal et os
+  spongieux.
+\end{enumerate}
+
+\section{Extraire la surface}
+
+\subsection{Marching cubes}
+
+Le masque rempli vaut 1 dans l'os et 0 dehors. On le floute légèrement ($\sigma = 0{,}3$~mm) pour obtenir un champ
+$g$ qui passe en douceur de 1 à 0, puis on extrait la surface $g = 0{,}5$ par l'algorithme des \emph{marching cubes}
+\cite{lorensen1987}, dans sa version rapide \emph{Flying Edges} \cite{schroeder2015}. Le principe : on parcourt les
+petits cubes formés par 8 voxels voisins. Pour chaque cube, on regarde quels coins sont au-dessus de 0,5 ; parmi les
+256 cas possibles, une table donne les triangles à placer dans le cube. Le sommet d'un triangle posé sur l'arête qui
+relie deux coins $a$ et $b$ est placé par interpolation linéaire, au point
+\begin{equation}
+  \vb{x} = \vb{x}_a + t\,(\vb{x}_b - \vb{x}_a), \qquad t = \frac{0{,}5 - g_a}{g_b - g_a}.
+\end{equation}
+Le léger flou supprime l'effet d'escalier des voxels. Les sommets, calculés en indices de voxels, passent ensuite en
+millimètres par la matrice $\mt{A}$ (\cref{eq:affine}).
+
+\subsection{Lisser sans rétrécir}
+
+Un lissage simple, qui rapproche chaque sommet de la moyenne de ses voisins, fait rétrécir le maillage. On utilise un
+lissage « à fenêtre sinc » \cite{taubin1995} (20 itérations, bande passante 0,05) : c'est un filtre passe-bas sur la
+position des sommets, qui enlève les petites bosses sans changer la taille de l'objet. C'est aussi le choix de 3D
+Slicer.
+
+\subsection{Alléger}
+
+Au-delà de 150\,000 triangles (environ 7~Mo de STL), le maillage est simplifié par la méthode des \emph{quadriques}
+\cite{garland1997}. Chaque sommet accumule une matrice $\mt{Q} = \sum_{p} \vb{p}\vb{p}^{\mathsf T}$, où
+$\vb{p} = (a, b, c, d)$ décrit le plan $ax + by + cz + d = 0$ de chaque triangle voisin. L'erreur
+$\vb{x}^{\mathsf T}\mt{Q}\,\vb{x}$ (en coordonnées homogènes) est la somme des carrés des distances de $\vb{x}$ à ces
+plans. On fusionne en priorité les sommets dont la fusion coûte le moins. La simplification n'est gardée que si le
+maillage reste étanche, et elle ne retire jamais plus de 75~\% des triangles.
+
+\section{Placer la surface au vrai bord}
+\label{sec:demi-hauteur}
+
+\subsection{Le biais d'un seuil bas}
+
+Le scanner floute les bords (\cref{sec:scanner}). Modélisons un bord d'os par une marche floutée : du côté de l'os
+(position $s < 0$ le long de la normale) l'intensité vaut $C$ (corticale, environ 1300~HU), dehors elle vaut $B$
+(tissus mous, environ 40~HU), et entre les deux
+\begin{equation}
+  I(s) = B + (C - B)\,\Phi\!\left(-\frac{s}{\sigma}\right),
+  \label{eq:bord}
+\end{equation}
+où $\Phi$ est la fonction de répartition de la loi normale et $\sigma$ l'écart-type du flou. Le vrai bord est en
+$s = 0$, là où l'intensité vaut la moitié entre $B$ et $C$. Un seuil $T$ place la surface là où $I(s) = T$, donc en
+\begin{equation}
+  \tcbhighmath{s_T = -\sigma\,\Phi^{-1}\!\left(\frac{T - B}{C - B}\right).}
+  \label{eq:biais}
+\end{equation}
+
+\fig{profil_bord.pdf}{Un seuil bas (226~HU) place la surface trop à l'extérieur d'environ un écart-type du flou ; la
+demi-hauteur retrouve le vrai bord.}{fig:profil-bord}
+
+\begin{exemple}
+Fantôme du test \fichier{test_chaine.py} : flou du scanner $\sigma_{\text{PSF}} = 0{,}5$~mm et lissage du logiciel
+$0{,}35$~mm, soit $\sigma = \sqrt{0{,}5^2 + 0{,}35^2} = 0{,}61$~mm. Avec $T = 226$, $B = 40$ et $C = 1300$~HU :
+$(T - B)/(C - B) = 0{,}148$, $\Phi^{-1}(0{,}148) = -1{,}05$, donc $s_T = +0{,}64$~mm. Le test mesure $+0{,}60$~mm : la
+surface au seuil est trop grande de 0,6~mm, plus que la tolérance de 0,5~mm du projet.
+\end{exemple}
+
+\subsection{L'affinage à demi-hauteur}
+
+Pour supprimer ce biais, chaque sommet est déplacé le long de sa normale jusqu'au point où l'intensité vaut la moitié
+entre le pic de la corticale et le fond :
+\begin{enumerate}
+  \item on lit le profil d'intensité le long de la normale, de 2,5~mm à l'intérieur à 2~mm à l'extérieur, tous les
+  0,1~mm (interpolation trilinéaire dans l'image) ;
+  \item le \emph{pic} est le maximum du côté intérieur, le \emph{fond} le minimum après le pic ;
+  \item le nouveau bord est le premier point, après le pic, où le profil passe sous $(\text{pic} + \text{fond})/2$
+  (interpolation linéaire entre deux échantillons) ;
+  \item le déplacement est ignoré si le contraste est faible (moins de 300~HU) ou s'il dépasse 1,5~mm (articulation
+  serrée, profil douteux) ;
+  \item les déplacements sont lissés sur le maillage (cinq passes de moyenne avec les voisins), pour ne pas créer de
+  bruit d'un sommet à l'autre.
+\end{enumerate}
+
+\begin{exemple}
+Sur le fantôme, l'écart passe de $+0{,}60$ à $+0{,}16$~mm ; le reste vient de la corticale très fine du fantôme
+(1,5~mm), dont le pic est atténué par le flou. Sur le lévrier, les sommets reculent en moyenne de 0,21 à 0,32~mm
+vers l'intérieur selon l'os.
+\end{exemple}
+
+\section{Vérifier que la surface est fermée}
+
+Un fichier à imprimer doit décrire un solide fermé. Le logiciel vérifie :
+\begin{itemize}
+  \item l'\textbf{étanchéité} : chaque arête est partagée par exactement deux triangles ;
+  \item l'\textbf{orientation} : les triangles voisins sont parcourus dans le même sens, et les normales sortent de
+  l'os. Le volume, calculé par $V = \tfrac16 \sum_{\text{triangles}} \vb{a}\cdot(\vb{b}\times\vb{c})$, doit être
+  positif ; sinon on retourne tous les triangles ;
+  \item la \textbf{caractéristique d'Euler} $\chi = S - A + F$ (sommets, arêtes, faces) vaut 2 pour une surface fermée
+  sans trou, comme une sphère. Un os seul doit donner $\chi = 2$ ; un groupe de $n$ os sans trou donne $2n$.
+\end{itemize}
+
+Les fichiers sont écrits au format \textbf{STL binaire} : 80 octets d'en-tête, le nombre de triangles, puis
+50 octets par triangle (sa normale, ses trois sommets en réels de 4 octets et 2 octets libres). Le logiciel écrit aussi
+\fichier{segmentation.seg.nrrd}, qui contient toutes les étiquettes avec leurs noms et leurs couleurs et s'ouvre dans
+3D Slicer par-dessus la série DICOM, pour vérifier ou retoucher.
+
+Enfin, l'étape 4 note les \textbf{bords du champ} touchés par chaque os (un plan et sa normale) : l'étape 6 s'en sert
+pour savoir si une extrémité articulaire manque (\cref{sec:completude}).
+
+\section{Étape 5 — La sensibilité au seuil}
+\label{sec:sensibilite}
+
+Le document de cadrage demandait de vérifier que le résultat ne dépend pas trop du seuil choisi (« variation du seuil
+de ± 50~HU et mesure de l'impact »). Pour chaque os principal, le logiciel :
+\begin{enumerate}
+  \item re-segmente l'os à 176 puis à 276~HU, dans la même zone (l'os dilaté de 3~mm, sans les autres os) ;
+  \item le remplit de la même façon et en extrait la surface ;
+  \item mesure la distance de chaque sommet de cette nouvelle surface à la surface de référence.
+\end{enumerate}
+La distance est calculée avec une précision inférieure au voxel. Si $g$ est le masque de référence flouté (celui du
+STL) et $\vb{p}$ un point proche de la surface $g = 0{,}5$, un développement au premier ordre donne
+\begin{equation}
+  g(\vb{p}) \approx 0{,}5 - d\,\norm{\nabla g(\vb{p})}
+  \quad\Longrightarrow\quad
+  d \approx \frac{0{,}5 - g(\vb{p})}{\norm{\nabla g(\vb{p})}},
+\end{equation}
+avec $d > 0$ quand la nouvelle surface est à l'extérieur. Loin de la surface ($g$ proche de 0 ou de 1), on prend une
+carte de distance exacte au voxel près (transformée de Maurer \cite{maurer2003}).
+
+\begin{table}[htbp]
+\centering\small
+\caption{Sensibilité au seuil sur le lévrier : écart moyen (en valeur absolue) entre la surface à 226~HU et celle à
+176~HU, et 95\textsuperscript{e} centile de l'écart avec la surface à 276~HU.}
+\label{tab:sensibilite}
+\begin{tabular}{lrr}
+\toprule
+\titrecol{Os (série)} & \titrecol{écart moyen, 176 HU (mm)} & \titrecol{95\textsuperscript{e} centile, 276 HU (mm)} \\
+\midrule
+fémur (hanche--genou) & 0,10 & 0,38 \\
+tibia (genou--cheville) & 0,11 & 0,40 \\
+fibula (genou--cheville) & 0,17 & 0,40 \\
+rotule (genou--cheville) & 0,20 & 0,46 \\
+talus (genou--cheville) & 0,21 & 0,39 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Les grands os bougent en moyenne d'un dixième de millimètre ; 95~\% des points restent à moins de 0,5~mm. Les petits
+os fins (fibula, rotule, talus) sont un peu plus sensibles.
+
+\section{Les rapports}
+
+Pour chaque série, l'étape 5 écrit dans \fichier{resultats/<série>/} :
+\begin{itemize}
+  \item \fichier{rapport.md} (lisible) et \fichier{rapport.json} (toutes les valeurs) : la série, les os exportés
+  (volume, triangles, étanchéité, Euler, affinage, sensibilité), l'identification avec ses raisons, les avertissements ;
+  \item \fichier{apercu_3d.png} et \fichier{apercu_coupes.png}, pour un contrôle visuel rapide ;
+  \item \fichier{reperes_auto.mrk.json} : la tête du fémur, au format de 3D Slicer.
+\end{itemize}
+
+\begin{danslecode}
+\fichier{code_source/etape4_maillage.py} : \code{remplir()}, \code{mailler()} (flou, Flying Edges, lissage,
+décimation, normales), \code{affiner_demi_hauteur()}, \code{controle()} (étanchéité, Euler, volume),
+\code{bords_touches()}, \code{ecrire_stl()}, \code{ecrire_seg_nrrd()} et \code{lire_seg_nrrd()}, \code{exporter()}.
+\fichier{code_source/etape5_controle.py} : \code{sensibilite_seuil()}, \code{apercu_3d()}, \code{apercu_coupes()},
+\code{rapport_md()}, \code{controler()}.
+\end{danslecode}
+
+\begin{attention}[title={Le rapport recopie le nom du patient}]
+\fichier{rapport.md} et \fichier{rapport.json} recopient le nom et l'identifiant lus dans l'en-tête DICOM. C'est
+utile pour reconnaître un examen, mais ces fichiers ne doivent pas être partagés tels quels (\cref{sec:securite}).
+\end{attention}

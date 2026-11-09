@@ -83,9 +83,8 @@ function lisezMoiExport(P, kind, presc, voisins = [], cartilage = false) {
     `  macOS   : .venv/bin/python CT-CORA3D/code_source/etape7_guide.py --prescription <dossier>/prescription.json --os <dossier>/${P.bone}_planifie.bin${voisins.map((n) => ` --voisin ${n}=<dossier>/voisin_${n}.stl`).join('')}${cartilage ? ` --cartilage <dossier>/cartilage_${P.bone}.u8` : ''} --sortie <dossier>`,
     `  Windows : .venv\\Scripts\\python CT-CORA3D\\code_source\\etape7_guide.py --prescription <dossier>\\prescription.json --os <dossier>\\${P.bone}_planifie.bin${voisins.map((n) => ` --voisin ${n}=<dossier>\\voisin_${n}.stl`).join('')}${cartilage ? ` --cartilage <dossier>\\cartilage_${P.bone}.u8` : ''} --sortie <dossier>`,
     '(sans les options --voisin et --cartilage, le guide ignorerait les os voisins et le cartilage).',
-    'Résultat : guide_coupe.stl (à imprimer d\'une pièce : moitiés reliées par des ponts sécables, pièce du coin en fermeture,',
-    'oreilles du verrou de réduction ; guide_reduction.stl en plus si le verrou est désactivé ou impossible), os_corrige.stl,',
-    'guide.json (contrôles et mode opératoire), guide.png, plans 2D.');
+    'Résultat : guide_coupe.stl (à imprimer d\'une pièce : deux moitiés reliées par des ponts sécables), guide_reduction.stl,',
+    'os_corrige.stl, guide.json (contrôles et mode opératoire), guide.png, plans 2D.');
   if (R) {
     lignes.push('',
       'Revenir aux coordonnées du scanner (pour superposer le guide au CT, par exemple dans 3D Slicer) :',

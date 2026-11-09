@@ -1,0 +1,355 @@
+% =====================================================================================================================
+% preambule.tex — mise en page du dossier complet CT-CORA3D (XeLaTeX)
+% Texte : Libertinus Serif. Titres, légendes, tableaux, en-têtes : Avenir Next (police livrée avec macOS ; si elle
+% manque, Libertinus Sans la remplace). Code : Inconsolata. Mathématiques : Libertinus Math. Icônes : Font Awesome 5.
+% Couleurs : bleu marine (titres, bandeaux), terre cuite (accents), une couleur par type d'encadré.
+% =====================================================================================================================
+\usepackage{mathtools}                                      % avant unicode-math
+\usepackage{fontspec}
+\usepackage[math-style=ISO,bold-style=ISO]{unicode-math}
+\setmainfont{LibertinusSerif}[Extension=.otf, UprightFont=*-Regular, ItalicFont=*-Italic,
+  BoldFont=*-Semibold, BoldItalicFont=*-SemiboldItalic, Scale=1.04]
+\setmathfont{LibertinusMath-Regular.otf}[Scale=1.04]
+\setmonofont{Inconsolatazi4}[Extension=.otf, UprightFont=*-Regular, BoldFont=*-Bold, Scale=MatchLowercase]
+\IfFontExistsTF{Avenir Next}{%
+  \setsansfont{Avenir Next}[UprightFont={* Regular}, ItalicFont={* Italic}, BoldFont={* Demi Bold},
+    BoldItalicFont={* Demi Bold Italic}, Scale=MatchLowercase]
+  \newfontfamily\policegrasse{Avenir Next}[UprightFont={* Bold}, Scale=MatchLowercase]
+  \newfontfamily\policefine{Avenir Next}[UprightFont={* Ultra Light}, Scale=MatchLowercase]
+  \newfontfamily\policemoyenne{Avenir Next}[UprightFont={* Medium}, BoldFont={* Demi Bold}, Scale=MatchLowercase]
+}{%
+  \setsansfont{LibertinusSans}[Extension=.otf, UprightFont=*-Regular, ItalicFont=*-Italic, BoldFont=*-Bold]
+  \newfontfamily\policegrasse{LibertinusSans}[Extension=.otf, UprightFont=*-Bold]
+  \newfontfamily\policefine{LibertinusSans}[Extension=.otf, UprightFont=*-Regular]
+  \newfontfamily\policemoyenne{LibertinusSans}[Extension=.otf, UprightFont=*-Regular, BoldFont=*-Bold]
+}
+\usepackage[french]{babel}
+\frenchsetup{ItemLabels=\textendash, StandardItemizeEnv=true}
+
+\usepackage[a4paper, left=2.5cm, right=2.5cm, top=2.8cm, bottom=2.8cm, headheight=16pt, headsep=0.7cm,
+  footskip=1.2cm]{geometry}
+\usepackage{microtype}
+\setlength{\parskip}{0.5em}
+\setlength{\parindent}{0pt}
+\linespread{1.08}
+\emergencystretch=1.5em
+
+% --------------------------------------------------------------------------------------------------------- couleurs
+\usepackage[table]{xcolor}
+\definecolor{titre}{HTML}{1B4F72}      % bleu marine : titres, bandeaux, liens
+\definecolor{nuit}{HTML}{0F2B40}       % marine profond : couverture, pages de partie
+\definecolor{halo}{HTML}{245A80}       % halo clair derrière le rendu de la couverture
+\definecolor{accent}{HTML}{C2602A}     % terre cuite : numéros, filets, étiquettes
+\definecolor{accentclair}{HTML}{F0A877}
+\definecolor{encre}{HTML}{1E2832}      % couleur du texte
+\definecolor{ardoise}{HTML}{55636F}    % texte secondaire (légendes, en-têtes)
+\definecolor{filet}{HTML}{D3DBE2}      % filets fins
+\definecolor{zebre}{HTML}{F3F6F9}      % lignes alternées des tableaux
+\definecolor{entete}{HTML}{DFE9F2}     % ligne de titre des tableaux
+\definecolor{segm}{HTML}{1F5F8B}       \definecolor{segmfond}{HTML}{EAF2FA}
+\definecolor{planif}{HTML}{B8611A}     \definecolor{planiffond}{HTML}{FDF2E6}
+\definecolor{guide}{HTML}{3A7D2C}      \definecolor{guidefond}{HTML}{EBF6E7}
+\definecolor{bloc}{HTML}{6F4A99}       \definecolor{blocfond}{HTML}{F3EDF8}
+\definecolor{alerte}{HTML}{B03A3A}     \definecolor{alertefond}{HTML}{FBEBEB}
+\definecolor{gris}{HTML}{5B6B7A}       \definecolor{grisfond}{HTML}{F2F4F7}
+\definecolor{code}{HTML}{2D3E50}       \definecolor{codefond}{HTML}{F5F7FA}
+\makeatletter                                               % texte en « encre » plutôt qu'en noir pur
+\AtBeginDocument{\color{encre}\let\default@color\current@color\let\XC@default@color\XC@current@color}
+\makeatother
+
+% --------------------------------------------------------------------------------------------------------- outils
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{placeins}
+\renewcommand{\topfraction}{0.85}          % une figure peut occuper presque toute la page
+\renewcommand{\bottomfraction}{0.6}
+\renewcommand{\textfraction}{0.1}
+\renewcommand{\floatpagefraction}{0.75}
+\setcounter{topnumber}{3}
+\setcounter{totalnumber}{5}
+\usepackage{caption}
+\DeclareCaptionLabelSeparator{barre}{\enspace{\color{accent!45}\rule[-0.2em]{0.7pt}{1.05em}}\enspace}
+\captionsetup{font={small,sf}, labelfont={sf,bf,color=accent}, textfont={color=ardoise}, labelsep=barre,
+  margin=0.4cm, skip=8pt}
+\captionsetup[table]{position=top, skip=6pt}
+\usepackage{subcaption}
+\usepackage{booktabs, tabularx, longtable, multirow, makecell, array}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\usepackage{enumitem}
+\setlist{itemsep=0.2em, topsep=0.35em, parsep=0.1em}
+\setlist[itemize,1]{label={\color{accent}\rule[0.1em]{0.33em}{0.33em}}, leftmargin=1.35em}
+\setlist[itemize,2]{label={\color{titre}\textendash}, leftmargin=1.3em}
+\setlist[enumerate,1]{label={\sffamily\bfseries\color{titre}\arabic*.}, leftmargin=1.7em}
+\usepackage{siunitx}
+\sisetup{locale=FR, group-minimum-digits=4}
+\usepackage{pdflscape}
+\usepackage{tikz}
+\usetikzlibrary{calc, positioning, fadings}
+\usepackage[most]{tcolorbox}
+\usepackage{listings}
+\usepackage{xurl}
+\usepackage{fontawesome5}
+
+% --------------------------------------------------------------------------------------------------------- tableaux
+% Ligne de titre teintée (ajoutée par \toprule), lignes alternées, filets bleu marine, pas d'espace blanc autour
+% des filets (sinon les lignes colorées seraient coupées).
+\renewcommand{\arraystretch}{1.32}
+\setlength{\aboverulesep}{0pt}
+\setlength{\belowrulesep}{0pt}
+\setlength{\heavyrulewidth}{0.9pt}
+\setlength{\lightrulewidth}{0.5pt}
+\arrayrulecolor{titre}
+\let\topruleorigine\toprule
+\renewcommand{\toprule}{\topruleorigine\rowcolor{entete}}
+\newcommand{\titrecol}[1]{{\sffamily\bfseries\color{titre}#1}}   % texte de la ligne de titre
+\AtBeginDocument{\rowcolors{2}{zebre}{white}}
+
+% --------------------------------------------------------------------------------------------------------- titres
+\usepackage[explicit]{titlesec}
+\newcommand{\espacelettres}[1]{{\addfontfeature{LetterSpace=14}#1}}          % lettres espacées
+\newcommand{\etiquette}[1]{{\sffamily\bfseries\addfontfeature{LetterSpace=16}\MakeUppercase{#1}}}
+\newcommand{\etiquettesansnumero}{CT-CORA3D · dossier complet}
+\newif\ifnumerochapitre
+\newif\ifannexe
+\newlength{\hauteurbandeau}
+\setlength{\hauteurbandeau}{6.5cm}
+% bandeau d'ouverture de chapitre : #1 étiquette (« Chapitre 6 »), #2 numéro décoratif, #3 titre
+\newcommand{\bandeau}[3]{%
+  \begin{tikzpicture}[remember picture, overlay]
+    \coordinate (bhg) at (current page.north west);
+    \coordinate (bbd) at ([yshift=-\hauteurbandeau]current page.north east);
+    \fill[titre] (bhg) rectangle (bbd);
+    \begin{scope}
+      \clip (bhg) rectangle (bbd);
+      \node[anchor=south east, inner sep=0pt, text=white, opacity=0.10,
+        font=\policegrasse\fontsize{200}{200}\selectfont] at ([xshift=-1.0cm, yshift=-0.9cm]bbd) {#2};
+    \end{scope}
+    \fill[accent] ([yshift=-\hauteurbandeau]current page.north west) rectangle ([yshift=-2.6pt]bbd);
+    \node[anchor=south west, inner sep=0pt, text width=13.6cm, text=white]   % (align=left forcerait des césures)
+      at ([xshift=2.5cm, yshift=-\hauteurbandeau+1.25cm]current page.north west)
+      {\raggedright{\fontsize{8.6}{11}\selectfont\color{accentclair}\etiquette{#1}}\par\vspace{9pt}%
+       {\sffamily\bfseries\fontsize{25}{30.5}\selectfont #3\par}};
+  \end{tikzpicture}}
+\titleformat{\chapter}[block]{}{}{0pt}
+  {\global\numerochapitretrue\bandeau{\chaptertitlename~\thechapter}{\thechapter}{#1}}
+\titleformat{name=\chapter, numberless}[block]{}{}{0pt}
+  {\global\numerochapitrefalse\bandeau{\etiquettesansnumero}{}{#1}}
+\newlength{\espacebandeau}                 % espace entre le haut du texte et la fin du bandeau
+\setlength{\espacebandeau}{\dimexpr\hauteurbandeau-1.95cm\relax}
+\titlespacing*{\chapter}{0pt}{-\topskip}{\espacebandeau}
+
+\newcommand{\formatsection}{\sffamily\bfseries\fontsize{15}{18.5}\selectfont\color{titre}\raggedright}
+\newcommand{\formatsoussection}{\sffamily\bfseries\fontsize{12.3}{15.2}\selectfont\color{titre}\raggedright}
+\titleformat{\section}{\formatsection}{\textcolor{accent}{\thesection}}{0.75em}{#1}
+\titleformat{name=\section, numberless}{\formatsection}{}{0pt}{#1}
+\titleformat{\subsection}{\formatsoussection}{\textcolor{accent}{\thesubsection}}{0.7em}{#1}
+\titleformat{name=\subsection, numberless}{\formatsoussection}{}{0pt}{#1}
+\titleformat{\subsubsection}{\sffamily\bfseries\normalsize\color{ardoise}\raggedright}{}{0em}{#1}
+\titlespacing*{\section}{0pt}{1.7em}{0.55em}
+\titlespacing*{\subsection}{0pt}{1.3em}{0.4em}
+\titlespacing*{\subsubsection}{0pt}{1em}{0.25em}
+\setcounter{secnumdepth}{2}
+\setcounter{tocdepth}{1}
+
+% premier paragraphe d'un chapitre (ce que contient le chapitre)
+\newenvironment{chapeau}
+  {\par\begingroup\fontsize{12.3}{17}\selectfont\color{ardoise}}
+  {\par\endgroup\vspace{2pt}{\color{accent}\rule{2.4cm}{1.3pt}}\par\vspace{5pt}}
+
+% --------------------------------------------------------------------------------------------------------- en-têtes
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+\newcommand{\styleentete}{\sffamily\fontsize{8.4}{10}\selectfont}
+\newcommand{\numeropage}{{\sffamily\bfseries\fontsize{9.5}{11}\selectfont\color{titre}\thepage}}
+% onglet sur le bord droit de la page : sa hauteur dépend du chapitre (chapitres 1 à 14, puis annexes A à E)
+\newcommand{\onglet}{%
+  \ifnumerochapitre
+  \begin{tikzpicture}[remember picture, overlay]
+    \pgfmathsetlengthmacro{\hautonglet}{2.3cm + (\the\numexpr\ifannexe 14+\fi\value{chapter}\relax - 1)*1.33cm}
+    \fill[\ifannexe accent\else titre\fi, rounded corners=3pt]
+      ([xshift=-0.78cm, yshift=-\hautonglet]current page.north east) rectangle
+      ([xshift=0.2cm, yshift=-\hautonglet-1.18cm]current page.north east);
+    \node[text=white, font=\policegrasse\fontsize{10.5}{12}\selectfont]
+      at ([xshift=-0.39cm, yshift=-\hautonglet-0.59cm]current page.north east) {\thechapter};
+  \end{tikzpicture}%
+  \fi}
+\fancyhead[L]{\styleentete\color{ardoise}\ifnumerochapitre{\bfseries\color{accent}\thechapter}\hspace{0.7em}\fi
+  \nouppercase{\leftmark}}
+\fancyhead[R]{\styleentete\bfseries\color{titre}\espacelettres{CT-CORA3D}}
+\fancyfoot[C]{\onglet}
+\fancyfoot[R]{\numeropage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{{\color{filet}\hrule width\headwidth height\headrulewidth}}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[R]{\numeropage}\renewcommand{\headrulewidth}{0pt}}
+\fancypagestyle{paysage}{\fancyhf{}\fancyfoot[R]{\numeropage}\renewcommand{\headrulewidth}{0pt}}
+
+% --------------------------------------------------------------------------------------------------------- liens
+\usepackage{hyperref}
+\hypersetup{colorlinks=true, linkcolor=titre, citecolor=accent, urlcolor=segm,
+  pdftitle={CT-CORA3D — Dossier complet du projet}, pdfauthor={Dorian Verstappen},
+  pdfsubject={Planification CORA 3D et guides de coupe imprimables chez le chien}, pdflang={fr-FR}}
+\usepackage{bookmark}
+\usepackage[french, noabbrev, nameinlink]{cleveref}
+\crefname{figure}{figure}{figures}            \Crefname{figure}{Figure}{Figures}
+\crefname{table}{tableau}{tableaux}           \Crefname{table}{Tableau}{Tableaux}
+\crefname{equation}{équation}{équations}      \Crefname{equation}{Équation}{Équations}
+\crefname{chapter}{chapitre}{chapitres}       \Crefname{chapter}{Chapitre}{Chapitres}
+\crefname{section}{section}{sections}         \Crefname{section}{Section}{Sections}
+\crefname{subsection}{section}{sections}      \Crefname{subsection}{Section}{Sections}
+\crefname{appendix}{annexe}{annexes}          \Crefname{appendix}{Annexe}{Annexes}
+\creflabelformat{equation}{#2(#1)#3}
+
+\numberwithin{equation}{chapter}
+
+% --------------------------------------------------------------------------------------------------------- sommaire
+\usepackage{etoc}
+\newcommand{\pointstoc}{\leaders\hbox to 0.75em{\hss\textcolor{ardoise!55}{.}\hss}\hfill}
+\newcommand{\lignetoc}[6][\hfill]{% [#1 remplissage], #2 retrait, #3 largeur du numéro, #4 numéro, #5 titre, #6 page
+  {\leftskip=#2\relax \rightskip=1.3cm plus 1fil\relax \parfillskip=-\rightskip \parindent=0pt
+   \noindent\llap{\makebox[#3][l]{#4}}#5\nobreak#1\nobreak\makebox[1.3cm][r]{#6}\par}}
+\newcommand{\tabledesmatieres}{%
+  \begingroup
+  \etocsettocstyle{\chapter*{\contentsname}\markboth{\contentsname}{}}{}%
+  \etocsetstyle{part}{}{\addvspace{15pt}}
+    {\begingroup\hypersetup{linkcolor=white}\noindent
+     \colorbox{titre}{\makebox[\dimexpr\linewidth-2\fboxsep\relax][l]{\rule[-0.6em]{0pt}{1.85em}\hspace{0.45em}%
+       \etocifnumbered{{\sffamily\bfseries\fontsize{8.4}{10}\selectfont\color{accentclair}%
+         \espacelettres{PARTIE~\etocthenumber}}\hspace{1.1em}}{}%
+       {\sffamily\bfseries\color{white}\etocname}\hfill
+       {\sffamily\bfseries\color{white}\etocpage}\hspace{0.45em}}}\par\endgroup\nobreak\addvspace{3pt}}{}%
+  \etocsetstyle{chapter}{}{\addvspace{8pt}}
+    {\begingroup\hypersetup{linkcolor=titre}%
+     \lignetoc{1.25cm}{1.25cm}{\etocifnumbered{\policegrasse\fontsize{12.5}{14}\selectfont\color{accent}%
+       \etocthenumber}{}}{\sffamily\bfseries\fontsize{11.3}{14}\selectfont\etocname}%
+       {\sffamily\bfseries\color{titre}\etocpage}\endgroup\nobreak\addvspace{1pt}}{}%
+  \etocsetstyle{section}{}{}
+    {\begingroup\hypersetup{linkcolor=encre}%
+     \lignetoc[\pointstoc]{2.35cm}{1.1cm}{\sffamily\fontsize{8.8}{11}\selectfont\color{ardoise}\etocthenumber}%
+       {\fontsize{10.4}{12.8}\selectfont\etocname}%
+       {\sffamily\fontsize{8.8}{11}\selectfont\color{ardoise}\etocpage}\endgroup}{}%
+  \etocsettocdepth{section}%
+  \tableofcontents
+  \endgroup}
+
+% --------------------------------------------------------------------------------------------------------- parties
+% \partie{titre}{description} : page pleine en bleu nuit, grand numéro, description et liste des chapitres ;
+% \partieannexes{description} : la même page pour les annexes (sans numéro de partie)
+\newcommand{\pagepartie}[4]{% #1 étiquette, #2 grand signe décoratif, #3 titre, #4 description
+  \begin{tikzpicture}[remember picture, overlay]
+    \fill[nuit] (current page.south west) rectangle (current page.north east);
+    \begin{scope}
+      \clip (current page.south west) rectangle (current page.north east);
+      \node[anchor=south east, inner sep=0pt, text=white, opacity=0.07,
+        font=\policegrasse\fontsize{360}{360}\selectfont] at ([xshift=-0.8cm, yshift=-1.6cm]current page.south east)
+        {#2};
+    \end{scope}
+  \end{tikzpicture}\par
+  \vspace*{\dimexpr3.3cm-\baselineskip\relax}%
+  \begingroup
+  \raggedright\color{white}\hyphenpenalty=10000
+  {\fontsize{9.5}{11}\selectfont\color{accentclair}\etiquette{#1}\par}%
+  \vspace{12pt}%
+  {\sffamily\bfseries\fontsize{29}{35}\selectfont #3\par}%
+  \vspace{16pt}%
+  {\color{accent}\rule{2.2cm}{2.6pt}\par}%
+  \vspace{16pt}%
+  {\sffamily\fontsize{12.6}{18}\selectfont\color{white!78!nuit}#4\par}%
+  \vspace{1.3cm}%
+  \hypersetup{linkcolor=white}%
+  \etocsetstyle{chapter}{}{\addvspace{7pt}}
+    {\lignetoc{1.3cm}{1.3cm}{\policegrasse\fontsize{13}{15}\selectfont\color{accentclair}\etocthenumber}%
+       {\sffamily\fontsize{12.4}{15.5}\selectfont\color{white}\etocname}%
+       {\sffamily\fontsize{11}{13}\selectfont\color{white!60!nuit}\etocthepage}}{}%
+  \etocsettocstyle{}{}%
+  \etocsetnexttocdepth{chapter}%
+  \localtableofcontents
+  \endgroup
+  \clearpage}
+\newcommand{\partie}[2]{%
+  \clearpage
+  \thispagestyle{empty}%
+  \refstepcounter{part}%
+  \addcontentsline{toc}{part}{\protect\numberline{\thepart}#1}%
+  \global\numerochapitrefalse
+  \pagepartie{Partie \Roman{part}}{\Roman{part}}{#1}{#2}}
+\newcommand{\partieannexes}[1]{%
+  \clearpage
+  \thispagestyle{empty}%
+  \phantomsection
+  \addcontentsline{toc}{part}{Annexes}%
+  \global\numerochapitrefalse
+  \pagepartie{Pour aller plus loin}{A}{Annexes}{#1}}
+
+% --------------------------------------------------------------------------------------------------------- encadrés
+% Fond teinté, filet de couleur à gauche, pastille ronde avec une icône posée sur le filet.
+\newcommand{\pastille}[2]{\node[circle, fill=#1, text=white, inner sep=0pt, minimum size=17pt,
+  font=\fontsize{8.3}{8.3}\selectfont] at ([xshift=1.5pt, yshift=-11pt]frame.north west) {#2};}
+\tcbset{
+  boite/.style n args={3}{enhanced, sharp corners=west, arc=3pt, boxrule=0pt, leftrule=3pt,
+    colframe=#1, colback=#2, colupper=encre, left=14pt, right=10pt, top=6pt, bottom=7pt,
+    before skip=0.95em, after skip=0.95em, fonttitle=\sffamily\bfseries\small, coltitle=#1,
+    attach title to upper={\par\smallskip}, parbox=false, overlay={\pastille{#1}{#3}}},
+  highlight math style={enhanced, colback=accent!5, colframe=accent!55, boxrule=0.6pt, arc=3pt,
+    left=7pt, right=7pt, top=4pt, bottom=4pt}}
+\newtcolorbox{aretenir}[1][]{boite={segm}{segmfond}{\faLightbulb[regular]}, title={À retenir}, #1}
+\newtcolorbox{danslecode}[1][]{boite={gris}{grisfond}{\faCode}, title={Dans le code}, fontupper=\small, #1}
+\newtcolorbox{exemple}[1][]{boite={guide}{guidefond}{\faCalculator}, title={Exemple chiffré}, #1}
+\newtcolorbox{attention}[1][]{boite={planif}{planiffond}{\faExclamationTriangle}, title={Attention}, #1}
+\newtcolorbox{pourquoi}[1][]{boite={bloc}{blocfond}{\faQuestion}, title={Pourquoi ce choix ?}, #1}
+% carte du guide de lecture : #1 icône, #2 lecteur
+\newtcolorbox{carte}[2]{enhanced, colback=white, colframe=filet, boxrule=0.7pt, arc=4pt, left=11pt, right=11pt,
+  top=10pt, bottom=10pt, fontupper=\small, colupper=encre, title={#2}, fonttitle=\sffamily\bfseries\normalsize,
+  coltitle=titre, attach title to upper={\par\smallskip},
+  overlay={\node[anchor=north east, text=accent!80, font=\fontsize{17}{17}\selectfont]
+    at ([xshift=-10pt, yshift=-9pt]frame.north east) {#1};}}
+
+% --------------------------------------------------------------------------------------------------------- code
+\lstdefinestyle{dossier}{basicstyle=\ttfamily\small\color{code}, keywordstyle=\color{segm}\bfseries,
+  commentstyle=\color{gris!90}, stringstyle=\color{planif}, numbers=none, frame=l, framerule=2.5pt,
+  rulecolor=\color{titre!40}, backgroundcolor=\color{codefond}, xleftmargin=10pt, framexleftmargin=8pt,
+  framextopmargin=3pt, framexbottommargin=3pt, aboveskip=0.8em, belowskip=0.8em, showstringspaces=false,
+  columns=fullflexible, keepspaces=true, breaklines=true, upquote=true,
+  literate={é}{{\'e}}1 {è}{{\`e}}1 {ê}{{\^e}}1 {à}{{\`a}}1 {â}{{\^a}}1 {ù}{{\`u}}1 {û}{{\^u}}1 {ô}{{\^o}}1
+           {î}{{\^i}}1 {ç}{{\c c}}1 {É}{{\'E}}1 {À}{{\`A}}1 {θ}{{$\theta$}}1 {→}{{$\to$}}1 {−}{{-}}1}
+\lstset{style=dossier}
+
+% --------------------------------------------------------------------------------------------------------- macros
+\newcommand{\fichier}[1]{\nolinkurl{#1}}                  % nom de fichier ou de dossier
+\ExplSyntaxOn                                              % nom de fonction, de clé, de variable :
+\tl_new:N \l__dossier_code_tl                              % coupure de ligne permise après chaque « _ »
+\NewDocumentCommand{\code}{m}
+  {
+    \tl_set:Nx \l__dossier_code_tl { \tl_to_str:n {#1} }
+    \regex_replace_all:nnN { \_ } { \c{textunderscore} \c{allowbreak} } \l__dossier_code_tl
+    \texttt { \tl_use:N \l__dossier_code_tl }
+  }
+\ExplSyntaxOff
+\newcommand{\vb}[1]{\symbf{#1}}                            % vecteur
+\newcommand{\mt}[1]{\symbf{#1}}                            % matrice
+\DeclarePairedDelimiter{\norm}{\lVert}{\rVert}
+\DeclarePairedDelimiter{\abs}{\lvert}{\rvert}
+\DeclareMathOperator{\atantwo}{atan2}
+\DeclareMathOperator{\clamp}{clamp}
+\DeclareMathOperator{\smin}{smin}
+\newcommand{\dd}{\,\mathrm{d}}
+\newcommand{\RR}{\mathbb{R}}
+\renewcommand{\degre}{\ensuremath{^\circ}}
+\newcommand{\etape}[1]{\textsf{\bfseries\color{titre}#1}}  % nom d'étape dans le texte
+\newcommand{\ui}[1]{\textsf{«\,#1\,»}}                      % libellé de l'interface
+\newcommand{\remarque}[1]{{\small\color{gris}#1}}
+
+% figure sur toute la largeur, chemin relatif au dossier figures/
+\graphicspath{{figures/}{figures/externes/}}
+\newcommand{\fig}[4][1]{%
+  \begin{figure}[htbp]\centering\includegraphics[width=#1\linewidth]{#2}\caption{#3}\label{#4}\end{figure}}
+% une image d'une planche de rendus 3D : #1 hauteur, #2 image, #3 lettre, #4 légende courte
+\newsavebox{\boitepanneau}
+\newcommand{\panneau}[4]{%
+  \sbox{\boitepanneau}{\includegraphics[height=#1]{#2}}%
+  \begin{minipage}[t]{\ifdim\wd\boitepanneau<2.9cm 2.9cm\else\wd\boitepanneau\fi}\centering
+    \usebox{\boitepanneau}\par\vspace{5pt}
+    {\sffamily\footnotesize\color{ardoise}{\bfseries\color{accent}#3}\enspace #4\par}%
+  \end{minipage}}

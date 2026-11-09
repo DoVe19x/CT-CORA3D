@@ -134,8 +134,7 @@ function clearFragments() {
 
 // Broches de réduction (Kirschner) : deux par fragment (système de réduction de CT-CORA3D ; une par fragment dans
 // les prescriptions plus anciennes). Les distales sont forées avec l'inverse de la correction : toutes deviennent
-// parallèles quand la correction (angle + dérotation) est faite : les moitiés du guide de coupe, remises dessus, se
-// verrouillent alors l'une à l'autre (ou le guide de réduction s'enfile sur les 4).
+// parallèles quand la correction (angle + dérotation) est faite : le guide de réduction s'enfile alors sur elles.
 function buildPins(P, O) {
   const r = INSTRUMENT.broche / 2, longueur = P.section.largeur + 26;
   for (const bb of O.brochesReduction || O.broches) {
@@ -243,19 +242,16 @@ function updateTorsionBone(bone, tau, rho) {
 }
 
 // ------------------------------------------------------------ guides imprimables (étape 7) --
-// Maillages lus sur le serveur (repère de l'os) : moitiés du guide de coupe, pièce du coin, ponts sécables ; après la
-// correction (fragment proximal fixe) : moitiés remises en place et broches de verrouillage (verrou intégré), ou guide de
-// réduction séparé.
+// Maillages lus sur le serveur (repère de l'os) : moitiés du guide de coupe et ponts sécables ; après la correction
+// (fragment proximal fixe) : guide de réduction.
 const MAT_GUIDE = {
   proximal: new THREE.MeshStandardMaterial({ color: 0x2f6db5, roughness: 0.55, metalness: 0.05 }),
   distal: new THREE.MeshStandardMaterial({ color: 0x23a08f, roughness: 0.55, metalness: 0.05 }),
   ponts: new THREE.MeshStandardMaterial({ color: 0xe8822b, roughness: 0.5, metalness: 0.05 }),
   reduction: new THREE.MeshStandardMaterial({ color: 0x8e44ad, roughness: 0.5, metalness: 0.05 }),
-  coin: new THREE.MeshStandardMaterial({ color: 0xd9b43a, roughness: 0.55, metalness: 0.05 }),
-  verrou_broches: new THREE.MeshStandardMaterial({ color: 0xc0392b, roughness: 0.4, metalness: 0.3 }),
 };
 // pièces montrées après la correction (vue « réduction ») et leur matériau
-const APRES_CORRECTION = { reduction: 'reduction', verrou_proximal: 'proximal', verrou_distal: 'distal', verrou_broches: 'verrou_broches' };
+const APRES_CORRECTION = { reduction: 'reduction' };
 function meshGuide(m, mat) {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(m.pos, 3));
@@ -265,7 +261,7 @@ function meshGuide(m, mat) {
 }
 function construireGuides(meshes) {
   clearGroup(G.guide); clearGroup(G.guideRed);
-  // clés « proximal », « distal », « coin », « ponts » (guide de coupe) ; « reduction » ou « verrou_* » (après la correction)
+  // clés « proximal », « distal », « ponts » (guide de coupe) ; « reduction » (après la correction)
   for (const [k, m] of Object.entries(meshes)) {
     if (APRES_CORRECTION[k]) G.guideRed.add(meshGuide(m, MAT_GUIDE[APRES_CORRECTION[k]]));
     else if (MAT_GUIDE[k]) G.guide.add(meshGuide(m, MAT_GUIDE[k]));

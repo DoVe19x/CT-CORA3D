@@ -178,18 +178,10 @@ GUIDE_JEU_VOISIN_MM = 1.0        # distance minimale entre les guides et un os v
                                  # mous (le guide ne doit ni reposer ni accrocher sur un autre os) — choix de CT-CORA3D
 GUIDE_MARGE_CARTILAGE_MM = 1.0   # la coque d'appui s'arrête à plus de jeu + épaisseur + 1 mm du cartilage articulaire
                                  # (le guide ne repose jamais sur une surface articulaire) — choix de CT-CORA3D
-# Guide v3 (20/10/2026) : butée de profondeur, verrou de réduction intégré (« 2 en 1 »), finitions — choix de CT-CORA3D
-GUIDE_PROFONDEUR_LAME_MM = 0.0   # profondeur de lame, du haut des tours à la butée (charnière, ou corticale opposée en
-                                 # coupe complète), LA MÊME pour toutes les fentes ; 0 = automatique : la plus petite
-                                 # valeur qui garde le guidage g, arrondie aux GUIDE_PAS_PROFONDEUR_MM supérieurs (une
-                                 # graduation de la lame) ; ou la longueur utile de la lame : la scie bute sur la tour
-GUIDE_PAS_PROFONDEUR_MM = 5.0    # arrondi de la profondeur automatique (graduations des lames de scie oscillante)
-GUIDE_DEPASSEMENT_MM = 1.0       # coupe complète : la lame dépasse la corticale opposée de 1 mm (au point le plus profond)
-GUIDE_CHANFREIN_MM = 0.5         # chanfreins à 45° à l'entrée des fentes, des manchons et des trous de verrouillage
-GUIDE_VERROU = 1                 # 1 : verrou de réduction intégré aux moitiés (« 2 en 1 ») ; 0 : guide de réduction séparé
-GUIDE_JEU_VERROU_MM = 0.6        # écart entre les deux oreilles superposées du verrou (deux pièces distinctes en PA12)
-GUIDE_OREILLE_MM = 3.0           # épaisseur de chaque oreille du verrou (trou guidé sur 2 × 3 mm)
-GUIDE_GRAVURE_MM = 0.4           # profondeur des marquages gravés (P, D, profondeur de lame)
+# Guide simplifié (06/11/2026, choix de Dorian) : guide de coupe en deux moitiés reliées par des ponts sécables + guide
+# de réduction séparé. La butée graduée, le verrou de réduction intégré (« 2 en 1 »), la pièce du coin et les gravures
+# de la v3 ont été retirés.
+GUIDE_CHANFREIN_MM = 0.5         # chanfreins à 45° à l'entrée des fentes et des manchons
 REDUCTION_ECART_MM = 4.0         # guide de réduction : distance minimale à l'os (tissus mous, plaque)
 REDUCTION_MANCHON_MM = 12.0      # longueur des manchons du guide de réduction (≥ 6 diamètres de broche)
 REDUCTION_BARRE_MM = 6.0         # épaisseur de la barre qui relie les 4 manchons

@@ -4,7 +4,7 @@
  "serie": "greyhound_hindlimb_hip_to_knee",
  "fichier_stl": "femur.stl",
  "systeme": "LPS",
- "date": "2026-11-04T17:13:41",
+ "date": "2026-11-04T17:39:34",
  "longueur_mm": 236.4,
  "cote": "gauche",
  "raisons": {
@@ -77,7 +77,7 @@
    ]
   ],
   "y_haut": 233.698,
-  "y_bas": -0.0
+  "y_bas": 0.0
  },
  "reperes": {
   "head_center": [
@@ -910,7 +910,7 @@
   ]
  },
  "nom": "femur",
- "stl_modifie": 1791962046.0,
+ "stl_modifie": 1791962046.9140308,
  "maillages": {
   "femur": "cora_femur.bin"
  }

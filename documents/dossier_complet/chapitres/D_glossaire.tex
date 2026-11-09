@@ -1,0 +1,62 @@
+\chapter{Glossaire}
+\label{ann:glossaire}
+
+\begin{description}[style=nextline, leftmargin=1.2em, font=\sffamily\bfseries\color{titre}, itemsep=0.25em]
+  \item[Abord (voie d'abord)] Chemin par lequel le chirurgien atteint l'os, à travers la peau et les muscles.
+  \item[ACA] \emph{Angulation correction axis} : axe autour duquel on fait tourner le fragment distal pour corriger
+  l'angle. Il doit être sur la bissectrice transverse du CORA.
+  \item[ACP (analyse en composantes principales)] Calcul des directions dans lesquelles un nuage de points est le plus
+  étendu.
+  \item[Angle vrai] Angle de la déformité mesuré en 3D, dans son plan ; il n'est pas la somme des angles vus de face et
+  de profil.
+  \item[Antéversion] Torsion du fémur : angle entre l'axe du col et la ligne qui passe derrière les condyles.
+  \item[Apex] Sommet de la courbure d'un os déformé.
+  \item[Axe anatomique, axe mécanique] Axe qui suit le milieu de la diaphyse ; axe qui relie les centres des deux
+  articulations.
+  \item[Bissectrice transverse] Droite qui partage en deux l'angle entre les axes des deux segments, dans le plan de la
+  déformité.
+  \item[Broche de Kirschner] Fine tige métallique forée dans l'os (ici 1,6~mm).
+  \item[Charnière] Petit pont d'os laissé intact, autour duquel les fragments tournent.
+  \item[Coin de fermeture, d'ouverture] Correction qui retire un coin d'os (deux traits) ; correction qui ouvre l'os
+  (un trait).
+  \item[Contre-dépouille] Partie d'une pièce qui passe « sous » l'objet et empêche de la poser ou de la retirer en
+  translation.
+  \item[CORA] \emph{Center of rotation of angulation} : point où se croisent les axes des deux segments d'un os
+  déformé.
+  \item[Corticale] Couche d'os dense qui forme le tube de la diaphyse.
+  \item[Croissance de région] Méthode de segmentation qui fait grandir une région à partir d'une graine.
+  \item[Dérotation] Rotation du fragment distal autour de son axe, pour corriger une torsion.
+  \item[Diaphyse, épiphyse, métaphyse, physe] Corps de l'os ; extrémité ; zone intermédiaire ; cartilage de croissance.
+  \item[DICOM] Format standard des images médicales : une image par fichier, avec un en-tête de métadonnées.
+  \item[Distance signée] Distance d'un point à une surface, comptée négativement à l'intérieur.
+  \item[Fabelles] Petits os placés derrière les condyles du fémur, dans les tendons du gastrocnémien.
+  \item[Fibula] Os long et fin, le long du tibia, côté latéral.
+  \item[Graine] Point ou groupe de voxels d'où part une croissance de région.
+  \item[Guide de coupe, de réduction] Pièce imprimée qui guide la scie et les broches ; pièce qui s'enfile sur les
+  broches parallèles après la correction et tient les fragments dans la position prévue.
+  \item[HU (unité Hounsfield)] Unité de densité du scanner : eau = 0, air = $-1000$.
+  \item[JOL] \emph{Joint orientation line} : ligne d'orientation articulaire, passant par deux repères d'une
+  articulation.
+  \item[LPS] Repère du patient en DICOM : $x$ vers la gauche, $y$ vers l'arrière, $z$ vers la tête.
+  \item[Manchon] Tube du guide qui guide une broche.
+  \item[Maillage, STL] Surface faite de triangles ; format de fichier de ces surfaces, utilisé pour l'impression 3D.
+  \item[Marching cubes] Algorithme qui extrait une surface d'une image 3D.
+  \item[Ostéotomie] Section chirurgicale d'un os ; complète si elle traverse tout l'os.
+  \item[Pes varus] Varus du tibia distal, fréquent chez le teckel.
+  \item[Plan frontal, sagittal, transverse] Plans de la vue de face, de profil, et d'une coupe perpendiculaire à l'os.
+  \item[Pont sécable] Petit morceau de plastique qui relie les deux moitiés du guide de coupe ; on le coupe à la pince
+  après la coupe de l'os.
+  \item[Prescription] Fichier JSON produit par la planification, qui décrit la coupe et la correction.
+  \item[Profondeur de lame] Distance, mesurée sur la lame, du haut de la tour du guide à la charnière (ou à la
+  corticale opposée) ; le logiciel la calcule pour chaque fente.
+  \item[RANSAC] Méthode d'ajustement robuste : on essaie des modèles construits sur des points tirés au hasard et on
+  garde celui que le plus de points soutiennent.
+  \item[Règles 1, 2, 3 de Paley] Coupe au CORA sans translation ; coupe ailleurs, ACA au CORA, avec translation ;
+  coupe et ACA loin du CORA, axes décalés.
+  \item[Segmentation] Décider, pour chaque voxel, à quel os il appartient.
+  \item[Topogramme] Image de repérage 2D faite par le scanner avant l'examen ; elle ne remplace pas les coupes.
+  \item[Torsion] Rotation d'une extrémité de l'os par rapport à l'autre, autour de l'axe de l'os.
+  \item[Valgus, varus] Bas de l'os dévié vers l'extérieur ; vers l'intérieur.
+  \item[Procurvatum, recurvatum] Sommet de la courbure en avant ; en arrière.
+  \item[Voxel] Petit cube de l'image 3D du scanner, l'équivalent 3D d'un pixel.
+\end{description}

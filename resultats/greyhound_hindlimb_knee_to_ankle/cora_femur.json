@@ -4,8 +4,8 @@
  "serie": "greyhound_hindlimb_knee_to_ankle",
  "fichier_stl": "femur.stl",
  "systeme": "LPS",
- "date": "2026-10-13T23:54:08",
- "longueur_mm": 99.0,
+ "date": "2026-11-06T18:14:11",
+ "longueur_mm": 101.8,
  "cote": "droit",
  "raisons": {
   "proximal": "extrémité qui porte la meilleure sphère (tête fémorale)",
@@ -35,5 +35,5 @@
  "complet": false,
  "raison": "extrémité proximale coupée par le champ du scanner : il faut les deux articulations pour la méthode CORA",
  "nom": "femur",
- "stl_modifie": 1791878432.5655813
+ "stl_modifie": 1793985240.9651332
 }

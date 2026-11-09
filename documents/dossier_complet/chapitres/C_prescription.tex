@@ -1,0 +1,71 @@
+\chapter{Le format de la prescription}
+\label{ann:prescription}
+
+\begin{chapeau}
+La prescription (\fichier{prescription.json}, format v2.2) est le fichier qui relie la planification (JavaScript) à la
+construction des guides (Python). Elle est écrite par la fonction \code{prescription()} de \fichier{cora_simple.js}.
+Toutes les coordonnées sont en millimètres, dans le repère de l'os ($X$ latéral, $Y$ proximal, $Z$ caudal ; un membre
+gauche y est mis en miroir). Les signes suivent la convention du prototype précédent : frontal $+$ = varus, sagittal
+$+$ = procurvatum.
+\end{chapeau}
+
+\begin{table}[htbp]
+\centering\small
+\caption{Les blocs de la prescription.}
+\label{tab:prescription}
+\begin{tabularx}{\linewidth}{L{3.6cm}Y}
+\toprule
+\titrecol{Clé} & \titrecol{Contenu} \\
+\midrule
+\code{schema_version}, \code{os}, \code{cote}, \code{repere} & version du format, os, côté traité (toujours droit), description du repère \\
+\code{deformite} & angle vrai, composantes frontale et sagittale, orientation $\varphi$, torsion mesurée, écart entre les axes $\delta$, position du CORA \\
+\code{reference} & la référence utilisée : os sain, ou valeurs normales (avec leurs valeurs) \\
+\code{strategie} & type de coin, règle de Paley, torsion corrigée ou non, niveau de coupe, translation, abord, face du coin, abord non usuel, os voisin sur la lame, profondeur de charnière, coin mixte, configuration des broches, recommandation et critère décisif, ostéotomie complète \\
+\code{charniere} & point, direction, distance au CORA, profondeur, point de l'ACA (règle 2) \\
+\code{plans_coupe} & pour chaque trait : un point, la normale, la profondeur (\code{charniere} ou \code{complete}) \\
+\code{coin} & angle, base, profondeur de coupe, changement de longueur, rayons convexe et concave, angle entre les coupes, orientation de la charnière \\
+\code{correction} & axe, angle, point, dérotation et son axe, matrices $4\times4$ de la correction complète et de la seule correction angulaire \\
+\code{broches}, \code{broches_reduction} & pour chaque broche : fragment, point de l'axe, direction, diamètre, hauteur du manchon \\
+\code{placement_broches} & rotation $\beta$, inclinaison $\gamma$, distances à la coupe, disposition, écarts, contraintes respectées \\
+\code{guide_reduction} & position des broches après la correction \\
+\code{torsion} & définition, valeurs avant, après correction angulaire, cible, après, dérotation, normale et seuils \\
+\code{guide} & face d'appui, axes proximal et distal, centre de la section \\
+\code{contraintes_coupe}, \code{alertes} & contraintes chirurgicales au niveau du trait (niveau, texte) ; alertes de la planification \\
+\code{prevision} & angle et translation résiduels prévus (doivent être nuls) \\
+\code{os_segmente} & os segmenté : série, fichier STL, côté anatomique, miroir, matrice os → scanner \\
+\code{verite_terrain} & déformité de test : apex, angle, torsion imposés (pour la validation) \\
+\code{parametres_guide} & dimensions du guide changées pour ce cas \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section*{Un extrait}
+
+Extrait de la prescription du guide de la \cref{fig:guide-v3}, image d (os fictif, tibia, cas de démonstration d'un
+grand varus
+avec recurvatum, en coin de fermeture forcé ; valeurs arrondies, listes raccourcies) :
+
+\begin{lstlisting}[language={}, basicstyle=\ttfamily\footnotesize]
+{ "schema_version": "v2.2", "os": "tibia", "cote": "droit",
+  "deformite":  { "theta_deg": 30.77, "frontal_deg": 28.02, "sagittal_deg": -15.04, "phi_deg": 26.79,
+                  "ecart_axes_mm": 0.0008, "cora": [-0.05, 71.65, 0.84] },
+  "strategie":  { "type_coin": "fermeture", "regle_paley": 1, "charniere_profondeur_mm": 2,
+                  "abord_non_usuel": true, "configuration_broches": "2+2", "osteotomie_complete": true,
+                  "recommandation": { "type_coin": "ouverture", "critere_decisif": "abord" } },
+  "charniere":  { "point": [-3.57, 72.99, -2.79], "direction": [0.451, 0.004, -0.893] },
+  "plans_coupe": [ { "point": [-3.57, 72.99, -2.79], "normale": [0.000, -1.000, -0.005], "profondeur": "complete" },
+                   { "point": [-3.57, 72.99, -2.79], "normale": [-0.457, -0.858, -0.235], "profondeur": "complete" } ],
+  "coin":       { "angle_deg": 30.77, "largeur_base_mm": 6.33, "profondeur_coupe_mm": 11.51, "delta_L_mm": -2.42 },
+  "correction": { "axe": [-0.451, -0.004, 0.893], "angle_deg": 30.77, "derotation_deg": 0,
+                  "T_4x4": [[0.888, -0.456, -0.059, 32.74], [0.457, 0.859, 0.230, 12.55],
+                            [-0.055, -0.231, 0.971, 16.60], [0, 0, 0, 1]] },
+  "broches_reduction": [ { "fragment": "proximal", "point_axe": [-0.94, 86.16, 2.69],
+                           "direction": [-0.860, 0.268, -0.434], "diametre_mm": 1.6, "hauteur_manchon_mm": 15 }, ... ],
+  "prevision":  { "angle_residuel_deg": 0, "translation_residuelle_mm": 0.0008 } }
+\end{lstlisting}
+
+\enlargethispage{3\baselineskip}%
+On y vérifie quelques relations du \cref{chap:planification} : les deux plans de coupe passent par la charnière ;
+leurs normales font l'angle $\theta = 30{,}8\degre$ ; la direction de la charnière est l'axe de correction (au signe
+près) ; la base vaut $2 D \tan(\theta/2)$ avec $D = 11{,}5$~mm, soit 6,3~mm ; la planification conseillait le coin
+d'ouverture (critère : l'accès), et ce coin de fermeture a été forcé pour éprouver le programme.

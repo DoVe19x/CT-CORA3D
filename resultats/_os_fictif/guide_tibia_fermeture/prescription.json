@@ -7,16 +7,16 @@
   "fichier_maillage": "tibia_deforme.stl",
   "repere": "X latéral, Y proximal, Z caudal (repère du maillage)",
   "deformite": {
-    "theta_deg": 30.7697,
-    "frontal_deg": 28.0182,
-    "sagittal_deg": -15.038,
-    "phi_deg": 26.7888,
+    "theta_deg": 15,
+    "frontal_deg": 0.0019,
+    "sagittal_deg": -15,
+    "phi_deg": 89.9931,
     "torsion_mesuree_deg": 0,
-    "ecart_axes_mm": 0.0008,
+    "ecart_axes_mm": 0.0003,
     "cora": [
-      -0.0521,
-      71.6489,
-      0.8382
+      -0.0254,
+      101.6465,
+      0.9853
     ]
   },
   "reference": {
@@ -29,49 +29,50 @@
     "decalage_coupe_mm": 0,
     "decalage_coupe_signe_mm": 0,
     "translation_osteotomie_mm": 0,
-    "abord": null,
+    "abord": "médial",
     "face_du_coin": [
-      0.8603,
-      -0.2682,
-      0.4335
+      0,
+      -0.1354,
+      0.9908
     ],
-    "abord_non_usuel": true,
-    "faisable_abord_usuel": false,
-    "ecart_face_coin_deg": 0,
+    "abord_non_usuel": false,
+    "faisable_abord_usuel": true,
+    "ecart_face_coin_deg": 30,
+    "voisin_sur_lame": null,
     "charniere_profondeur_mm": 2,
     "coin_mixte": false,
     "configuration_broches": "2+2",
     "recommandation": {
-      "type_coin": "ouverture",
-      "critere_decisif": "abord"
+      "type_coin": "fermeture",
+      "critere_decisif": "stabilite"
     },
     "osteotomie_complete": true
   },
   "charniere": {
     "point": [
-      -3.5711,
-      72.9855,
-      -2.7903
+      0.0462,
+      102.4626,
+      -4.9866
     ],
     "direction": [
-      0.451,
-      0.004,
-      -0.8925
+      1,
+      -0.0009,
+      -0.0001
     ],
-    "d_mm": -4.9589,
+    "d_mm": -6.0274,
     "marge_mm": 2,
     "axe_correction_point": [
-      -3.5711,
-      72.9855,
-      -2.7903
+      0.0462,
+      102.4626,
+      -4.9866
     ]
   },
   "plans_coupe": [
     {
       "point": [
-        -3.5711,
-        72.9855,
-        -2.7903
+        0.0462,
+        102.4626,
+        -4.9866
       ],
       "normale": [
         -0.0009,
@@ -82,71 +83,71 @@
     },
     {
       "point": [
-        -3.5711,
-        72.9855,
-        -2.7903
+        0.0462,
+        102.4626,
+        -4.9866
       ],
       "normale": [
-        -0.4574,
-        -0.8577,
-        -0.235
+        -0.0009,
+        -0.9646,
+        -0.2636
       ],
       "profondeur": "complete"
     }
   ],
   "coin": {
-    "angle_deg": 30.7697,
-    "largeur_base_mm": 6.3322,
-    "profondeur_coupe_mm": 11.5064,
-    "delta_L_mm": -2.424,
-    "r_convexe_mm": 6.5475,
-    "r_concave_mm": 6.9589,
-    "angle_entre_coupes_deg": 30.7697,
-    "orientation_charniere_deg": 26.809
+    "angle_deg": 15,
+    "largeur_base_mm": 2.9993,
+    "profondeur_coupe_mm": 11.3909,
+    "delta_L_mm": -1.2268,
+    "r_convexe_mm": 5.3635,
+    "r_concave_mm": 8.0274,
+    "angle_entre_coupes_deg": 15,
+    "orientation_charniere_deg": 89.9931
   },
   "correction": {
     "axe": [
-      -0.451,
-      -0.004,
-      0.8925
+      -1,
+      0.0009,
+      0.0001
     ],
-    "angle_deg": 30.7697,
+    "angle_deg": 15,
     "point": [
-      -3.5711,
-      72.9855,
-      -2.7903
+      0.0462,
+      102.4626,
+      -4.9866
     ],
     "derotation_deg": 0,
     "axe_derotation": {
       "point": [
-        -0.0523,
-        71.6489,
-        0.8386
+        -0.0252,
+        101.6465,
+        0.9853
       ],
       "direction": [
-        0.4574,
-        0.8577,
-        0.235
+        0.0009,
+        0.9646,
+        0.2636
       ]
     },
     "T_4x4": [
       [
-        0.887865,
-        -0.456343,
-        -0.058706,
-        32.742192
+        1,
+        -6.1e-05,
+        0.000224,
+        0.007383
       ],
       [
-        0.45685,
-        0.859233,
-        0.230232,
-        12.547813
+        1e-06,
+        0.965926,
+        0.258819,
+        4.781958
       ],
       [
-        -0.054623,
-        -0.231235,
-        0.971363,
-        16.601826
+        -0.000232,
+        -0.258819,
+        0.965926,
+        26.349346
       ],
       [
         0,
@@ -157,22 +158,22 @@
     ],
     "T_angulaire_4x4": [
       [
-        0.887865,
-        -0.456343,
-        -0.058706,
-        32.742192
+        1,
+        -6.1e-05,
+        0.000224,
+        0.007383
       ],
       [
-        0.45685,
-        0.859233,
-        0.230232,
-        12.547813
+        1e-06,
+        0.965926,
+        0.258819,
+        4.781958
       ],
       [
-        -0.054623,
-        -0.231235,
-        0.971363,
-        16.601826
+        -0.000232,
+        -0.258819,
+        0.965926,
+        26.349346
       ],
       [
         0,
@@ -186,45 +187,45 @@
     {
       "fragment": "proximal",
       "point_axe": [
-        -0.9412,
-        86.164,
-        2.6942
+        -0.0107,
+        118.5022,
+        1.0682
       ],
       "direction": [
-        -0.8603,
-        0.2682,
-        -0.4335
+        0.5,
+        0.0038,
+        -0.866
       ],
       "diametre_mm": 1.6
     },
     {
       "fragment": "distal",
       "point_axe": [
-        -8.9688,
-        56.6115,
-        -1.4936
+        -0.0401,
+        85.3867,
+        -3.4573
       ],
       "direction": [
-        -0.6176,
-        0.7233,
-        -0.3089
+        0.5002,
+        0.2278,
+        -0.8354
       ],
       "diametre_mm": 1.6
     }
   ],
-  "angle_entre_broches_deg": 30.7697,
+  "angle_entre_broches_deg": 12.9802,
   "broches_reduction": [
     {
       "fragment": "proximal",
       "point_axe": [
-        -0.9412,
-        86.164,
-        2.6942
+        -0.0107,
+        118.5022,
+        1.0682
       ],
       "direction": [
-        -0.8603,
-        0.2682,
-        -0.4335
+        0.5,
+        0.0038,
+        -0.866
       ],
       "diametre_mm": 1.6,
       "hauteur_manchon_mm": 15
@@ -232,14 +233,14 @@
     {
       "fragment": "proximal",
       "point_axe": [
-        -0.9324,
-        96.1639,
-        2.7434
+        -0.0018,
+        128.5021,
+        1.1174
       ],
       "direction": [
-        -0.8603,
-        0.2682,
-        -0.4335
+        0.5,
+        0.0038,
+        -0.866
       ],
       "diametre_mm": 1.6,
       "hauteur_manchon_mm": 15
@@ -247,14 +248,14 @@
     {
       "fragment": "distal",
       "point_axe": [
-        -8.9688,
-        56.6115,
-        -1.4936
+        -0.0401,
+        85.3867,
+        -3.4573
       ],
       "direction": [
-        -0.6176,
-        0.7233,
-        -0.3089
+        0.5002,
+        0.2278,
+        -0.8354
       ],
       "diametre_mm": 1.6,
       "hauteur_manchon_mm": 15
@@ -262,14 +263,14 @@
     {
       "fragment": "distal",
       "point_axe": [
-        -13.5423,
-        48.0347,
-        -3.8431
+        -0.0489,
+        75.7403,
+        -6.093
       ],
       "direction": [
-        -0.6176,
-        0.7233,
-        -0.3089
+        0.5002,
+        0.2278,
+        -0.8354
       ],
       "diametre_mm": 1.6,
       "hauteur_manchon_mm": 15
@@ -279,8 +280,8 @@
     "rotation_deg": 0,
     "inclinaison_deg": 0,
     "distance_coupe_mm": [
-      13.2,
-      16.2
+      16.1,
+      16.1
     ],
     "disposition": [
       "axiale",
@@ -297,63 +298,63 @@
       {
         "fragment": "proximal",
         "point_axe": [
-          -0.9412,
-          86.164,
-          2.6942
+          -0.0107,
+          118.5022,
+          1.0682
         ],
         "direction": [
-          -0.8603,
-          0.2682,
-          -0.4335
+          0.5,
+          0.0038,
+          -0.866
         ]
       },
       {
         "fragment": "proximal",
         "point_axe": [
-          -0.9324,
-          96.1639,
-          2.7434
+          -0.0018,
+          128.5021,
+          1.1174
         ],
         "direction": [
-          -0.8603,
-          0.2682,
-          -0.4335
+          0.5,
+          0.0038,
+          -0.866
         ]
       },
       {
         "fragment": "distal",
         "point_axe": [
-          -0.9675,
-          56.7491,
-          2.5503
+          -0.0387,
+          86.3643,
+          0.9102
         ],
         "direction": [
-          -0.8603,
-          0.2682,
-          -0.4335
+          0.5,
+          0.0038,
+          -0.866
         ]
       },
       {
         "fragment": "distal",
         "point_axe": [
-          -0.9763,
-          46.7492,
-          2.5012
+          -0.0475,
+          76.3645,
+          0.861
         ],
         "direction": [
-          -0.8603,
-          0.2682,
-          -0.4335
+          0.5,
+          0.0038,
+          -0.866
         ]
       }
     ]
   },
   "torsion": {
     "definition": "CORA 3D (modèle synthétique)",
-    "avant_deg": -1.97,
-    "apres_correction_angulaire_deg": -0.57,
+    "avant_deg": -1.51,
+    "apres_correction_angulaire_deg": -0.71,
     "cible_deg": -0.69,
-    "apres_deg": -0.57,
+    "apres_deg": -0.71,
     "derotation_deg": 0,
     "normale": {
       "moyenne_deg": -4,
@@ -367,9 +368,9 @@
   },
   "guide": {
     "face_appui": [
-      0.8603,
-      -0.2682,
-      0.4335
+      -0.5,
+      -0.0038,
+      0.866
     ],
     "axe_os": [
       -0.0009,
@@ -377,21 +378,21 @@
       -0.0049
     ],
     "axe_distal": [
-      -0.4574,
-      -0.8577,
-      -0.235
+      -0.0009,
+      -0.9646,
+      -0.2636
     ],
     "centre_section": [
-      0.695,
-      71.6555,
-      -0.6404
+      0.0462,
+      101.6465,
+      0.9853
     ]
   },
   "contraintes_coupe": [
     {
       "niveau": "ok",
       "id": "cartilage",
-      "texte": "cartilage articulaire à 66,5 mm du trait (≥ 5 mm)"
+      "texte": "cartilage articulaire à 88,4 mm du trait (≥ 5 mm)"
     },
     {
       "niveau": "info",
@@ -399,30 +400,28 @@
       "texte": "diaphyse : os cortical, consolidation plus lente (contact osseux et stabilité de la fixation importants)"
     },
     {
-      "niveau": "attention",
+      "niveau": "info",
       "id": "abord",
-      "texte": "abord non usuel pour ce type de coin : dissection plus large, structures du côté opposé à protéger"
+      "texte": "abord médial : veine et artère saphènes médiales et nerf saphène, qui croisent la face médiale ; derrière l'os, artères poplitée puis tibiale crâniale (protéger la corticale opposée avec un écarteur de Hohmann)"
     }
   ],
   "prevision": {
     "angle_residuel_deg": 0,
-    "translation_residuelle_mm": 0.000828
+    "translation_residuelle_mm": 0.000306
   },
   "alertes": [
-    "broches du fragment proximal décalées de 2 mm de la ligne centrale de l'os (cartilage ou os voisin évités)",
-    "broches du fragment distal décalées de 2 mm de la ligne centrale de l'os (cartilage ou os voisin évités)",
-    "coin non réalisable par un abord usuel : la lame doit entrer par la face caudo-latérale (la fibula est sur le trajet de la lame) ; guide posé sur cette face (abord non usuel, os voisin à écarter ou à ostéotomiser) ; l'abord médial n'y entre qu'à 93° de la face du coin, du côté de la charnière"
+    "face du coin caudale (hors des abords chirurgicaux usuels) : guide posé par l'abord médial, face caudo-médiale à 30° de la face du coin, ostéotomie complète (charnière non conservée)"
   ],
   "verite_terrain": {
     "synthetique": true,
     "apex": [
-      0.2954,
-      71.7537,
-      -0.6876
+      0.023,
+      101.8264,
+      -0.3305
     ],
-    "theta_deg": 30.7699,
+    "theta_deg": 15,
     "torsion_deg": 0,
-    "frontal_deg": 28,
+    "frontal_deg": 0,
     "sagittal_deg": -15
   }
 }

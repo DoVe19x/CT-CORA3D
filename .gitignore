@@ -11,3 +11,6 @@ __pycache__/
 
 # Fichiers temporaires Office
 ~$*
+
+# Fichiers intermédiaires de LaTeX (dossier complet)
+documents/dossier_complet/construction/

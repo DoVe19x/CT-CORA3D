@@ -153,11 +153,9 @@ def controler(dossier, garder=False):
         return res
     M["duree_s"] = round(time.time() - t0, 1)
     C, R = info["guide_coupe"], info["guide_reduction"]
-    # avertissements : limites de conception avec un repli valide (fentes très proches : coin d'ouverture conseillé ;
-    # verrou d'un seul côté, ou impossible : guide de réduction séparé construit ; contact d'une moitié avec un os voisin
-    # déplacé par la correction, dont la position n'est qu'approchée) ; tout le reste est une erreur
-    LIMITES = ("fentes très proches", "verrou d'un seul côté", "verrou de réduction impossible",
-               "après la correction, une moitié touche")
+    # avertissements : limites de conception avec un repli valide (fentes très proches : coin d'ouverture conseillé) ;
+    # tout le reste est une erreur
+    LIMITES = ("fentes très proches",)
     for a in info["alertes"]:
         (A if a.startswith(LIMITES) else E).append(f"étape 7 : {a}")
     for a in plan["osteo"].get("alertes") or []:
@@ -305,35 +303,6 @@ def controler(dossier, garder=False):
                 E.append(f"coupe {i + 1} : {nom} sur le trajet de la lame (côté de la face d'appui)")
             elif complete and (dans_l & (h_ <= 0) & (h_ > h_os.min() - 3)).any():
                 A.append(f"coupe {i + 1} : {nom} derrière l'os sur le trajet d'une coupe complète (à protéger)")
-
-    # verrou de réduction intégré : moitiés remises en place après la correction réelle (trait de scie compensé) contre
-    # les voisins corrigés (seul un vrai contact compte : < 0,3 mm), broche de verrouillage et sensibilité
-    Vr = info.get("verrou_reduction") or {}
-    M["verrou"] = int(bool(Vr.get("construit")))
-    if Vr.get("construit") and (sortie / "verrou_distal.bin").exists():
-        Tr = np.asarray(info["correction_reelle"]["T_4x4"], float)
-        moit = E7.vers_manifold(*lire_bin(sortie / "verrou_proximal.bin")) + E7.vers_manifold(*lire_bin(sortie / "verrou_distal.bin"))
-        mv_, _mf = E7.depuis_manifold(moit)
-        for nom, (vv, ff) in voisins.items():
-            vcv, vcf = E7.voisin_corrige(nom, vv, ff, plans, Tr)
-            dr = float(E7.DistanceSurface(vcv, vcf, zone=(mv_.min(0) - 6, mv_.max(0) + 6))(mv_).min())
-            try:
-                vol = float((moit ^ E7.vers_manifold(vcv, vcf)).volume())
-            except ValueError:
-                vol = 0.0
-            M[f"verrou_{nom}_mm"] = round(dr, 2)
-            if vol > 0.01 or dr < 0.3:
-                E.append(f"voisin : après la correction, une moitié {'traverse' if vol > 0.01 else 'touche'} {nom} (jeu {dr:.2f} mm)")
-        if not all(Vr["broche_passe"].values()):
-            E.append("verrou : la broche de verrouillage ne passe pas")
-        if not all(v_ for k_, v_ in Vr["sensibilite"].items() if "le long des broches" not in k_):
-            A.append("verrou : une erreur de 1° ou de 0,3 mm ne bloque pas toujours la broche")
-        M["verrou_cotes"] = len(Vr["cotes"])
-        tol_ = (Vr.get("tolerances") or {}).get("rotations_detectees_deg")
-        if tol_:
-            M["verrou_rotation_detectee_deg"] = max(tol_.values())
-    elif Vr.get("demande", True) and not Vr.get("construit"):
-        A.append(f"verrou : non construit ({(Vr.get('raison') or '').split(' : ')[0]}), guide de réduction séparé")
 
     # guide de réduction contre les voisins après correction
     if R and (sortie / "guide_reduction.bin").exists():

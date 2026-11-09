@@ -1,0 +1,106 @@
+\chapter{Introduction}
+\label{chap:intro}
+
+\begin{chapeau}
+Ce chapitre présente le problème médical, l'idée du projet et ce que fait le logiciel, en une page. Le détail vient
+dans les chapitres suivants.
+\end{chapeau}
+
+\section{Le problème : un os qui pousse de travers}
+
+Chez le chien, il arrive qu'un os de la patte arrière pousse de travers. Le fémur ou le tibia prend alors une forme
+courbée ou vrillée : on parle de \emph{déformité angulaire}. Les cas les plus fréquents sont le fémur courbé vers
+l'intérieur qui accompagne la luxation de la rotule, le fémur courbé vers l'extérieur des grandes races, le tibia
+tordu du teckel (le \emph{pes varus}) et le tibia trop incliné vers l'avant ou vers l'arrière
+\cite{brower2017,vezzoni2022,petazzoni2012}. Une déformité peut faire boiter le chien, user ses articulations ou faire
+sortir sa rotule de sa place.
+
+Pour corriger, le chirurgien fait une \emph{ostéotomie} : il coupe l'os, remet le morceau du bas dans la bonne
+direction, puis le fixe avec une plaque vissée. Tout l'enjeu est de savoir \textbf{où couper, comment couper et de
+combien tourner}. Une erreur de quelques degrés peut laisser une déformité, et une torsion mal corrigée peut obliger à
+réopérer \cite{worth2019}.
+
+\section{Pourquoi un scanner, et pourquoi des guides imprimés}
+
+La méthode de référence pour préparer une ostéotomie est la méthode \emph{CORA} de Paley \cite{paley2002}. Le
+chirurgien trace des lignes sur une radiographie de face et sur une radiographie de profil, puis il en déduit
+l'endroit et l'angle de la coupe. Cette méthode a deux limites :
+\begin{itemize}
+  \item elle se fait à la main, vue par vue, alors qu'une vraie déformité est souvent \emph{oblique}, c'est-à-dire
+  visible à la fois de face et de profil \cite{kim2017} ;
+  \item une radiographie montre mal la \emph{torsion} de l'os : l'os vrillé sur lui-même et l'os simplement mal posé
+  sur la table donnent presque la même image \cite{apelt2005,aper2005}.
+\end{itemize}
+
+Le scanner (CT, pour \emph{computed tomography}) donne l'os en trois dimensions. On y voit sa vraie forme et on peut
+y mesurer la torsion \cite{dudley2006,alaiyan2021}. L'impression 3D permet en plus de fabriquer des \emph{guides
+patient-spécifiques} : des pièces en plastique moulées sur l'os du patient, qui guident la scie et les broches pendant
+l'opération. Plusieurs équipes vétérinaires les utilisent déjà, avec une précision de l'ordre de 2\degre{}
+\cite{hall2019,jeon2023,bright2024}. Mais la préparation de ces guides se fait encore à la main, dans des logiciels de
+conception, par des spécialistes.
+
+\section{Ce que fait CT-CORA3D}
+
+Notre objectif est de faire \textbf{toute la chaîne automatiquement}, du scanner aux pièces prêtes à imprimer, en
+montrant et en expliquant chaque étape. Le chirurgien garde la décision : le logiciel propose, mesure et explique ; il
+ne décide pas à sa place.
+
+\fig{chaine_du_projet.pdf}{Les grandes étapes du projet, du scanner à la chirurgie. Les étapes 1 à 5 sont faites par
+le logiciel ; la dernière est faite à la main.}{fig:chaine-projet}
+
+Concrètement, à partir d'un dossier DICOM, le logiciel :
+\begin{enumerate}
+  \item reconstruit le volume du scanner et isole chaque os en 3D (segmentation), puis lui donne un nom ;
+  \item fabrique un fichier 3D étanche par os (format STL, celui de l'impression 3D) ;
+  \item trouve automatiquement les repères anatomiques du fémur ou du tibia et mesure ses angles articulaires et sa
+  torsion ;
+  \item calcule la déformité en 3D (CORA, angle vrai, plan de la déformité) et la correction ;
+  \item choisit une stratégie chirurgicale : coin d'ouverture ou de fermeture, niveau de la coupe, charnière, broches,
+  voie d'abord ; il explique chaque choix et le chirurgien peut tout changer ;
+  \item construit deux pièces à imprimer : un guide de coupe, qui guide la scie et les broches, et un guide de
+  réduction, qui tient les fragments dans la position corrigée prévue ;
+  \item vérifie tout par des contrôles indépendants et écrit le mode opératoire et des plans 2D cotés.
+\end{enumerate}
+
+Tout cela tient dans une application de bureau à deux onglets : \ui{Segmentation CT} et \ui{Planification CORA}.
+
+\section{Ce que ce projet apporte}
+
+Les briques de base existent séparément (logiciels de segmentation, méthode CORA, guides imprimés). L'apport du projet
+est de les \textbf{relier} et d'\textbf{automatiser les décisions} qui sont aujourd'hui faites à la main :
+\begin{itemize}
+  \item des repères anatomiques trouvés sans aide, avec les définitions des articles, et une correction de
+  l'écart entre mesure 2D (radiographie) et mesure 3D (\cref{sec:calibration}) ;
+  \item une méthode CORA faite en 3D, qui donne directement le coin oblique unique au lieu de deux corrections
+  successives (\cref{chap:planification}) ;
+  \item une stratégie chirurgicale choisie par des règles écrites et testées sur des centaines de cas
+  (\cref{sec:strategie}) ;
+  \item un guide conçu par modélisation implicite, qui respecte des contraintes de pose (pas de contre-dépouille, pas
+  de matière entre deux os), accompagné d'un guide de réduction (\cref{chap:guides}) ;
+  \item une validation systématique par des déformités simulées dont on connaît la réponse
+  (\cref{chap:validation}).
+\end{itemize}
+
+\section{Le cadre}
+
+\begin{itemize}
+  \item \textbf{Projet} : PMD2, master en ingénierie biomédicale à l'ECAM Bruxelles, 2026--2027.
+  \item \textbf{Données} : trois scanners d'un lévrier sain (hanche--genou, genou--cheville, pied). Les déformités
+  sont donc simulées sur des os sains. Un premier cas clinique a été reçu fin octobre 2026 (\cref{sec:topogramme}).
+  \item \textbf{Membre traité} : le membre pelvien (fémur et tibia). Au fémur, seulement les déformités proches du
+  genou (\cref{sec:hypotheses}).
+  \item \textbf{Statut} : prototype de recherche. Il ne doit pas servir sur un animal sans validation par le
+  chirurgien.
+\end{itemize}
+
+\section{Plan du document}
+
+La \textbf{partie I} pose le problème : les notions d'anatomie, de chirurgie et d'imagerie (\cref{chap:notions}),
+puis l'état de l'art (\cref{chap:etat}). La \textbf{partie II} suit le chemin d'un cas, du scanner au guide : vue
+d'ensemble (\cref{chap:chaine}), lecture du DICOM (\cref{chap:lecture}), segmentation (\cref{chap:segmentation}),
+identification des os (\cref{chap:identification}), maillage et contrôle (\cref{chap:maillage}), repères
+(\cref{chap:reperes}), planification CORA (\cref{chap:planification}) et guides (\cref{chap:guides}). Chaque chapitre
+donne le principe, les calculs, puis le fichier et la fonction du code qui les font. La \textbf{partie III} décrit
+l'application (\cref{chap:application}), la validation (\cref{chap:validation}), les limites et la suite
+(\cref{chap:limites}). Les annexes détaillent le code fichier par fichier, tous les paramètres, le format de la
+prescription, un glossaire et les commandes utiles.

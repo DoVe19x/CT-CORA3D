@@ -1,6 +1,6 @@
 {
- "date": "2026-10-13 10:00:47",
- "duree_s": 31.4,
+ "date": "2026-11-06 18:14:11",
+ "duree_s": 23.9,
  "serie": {
   "description": "PELVIS",
   "etude": "",
@@ -62,12 +62,40 @@
   "COUVERTURE_MIN_SPHERE": 0.4,
   "CSTAR_MAX_SESAMOIDE": 1.5,
   "CV_MAX_OBJET": 0.2,
+  "DENSITE_IMPRESSION_G_CM3": 1.01,
   "DEPLACEMENT_MAX_MM": 1.5,
+  "DISTANCE_MIN_ARTICULATION_MM": 10.0,
   "ECART_SURFACE_CIBLE_MM": 0.5,
   "EPAISSEUR_MAX_MM": 1.0,
   "EXPORTER_AUTRES": false,
   "FRACTION_MAX_SESAMOIDE": 0.05,
   "FRACTION_SPONGIEUX_MAX_OBJET": 0.08,
+  "GRILLE_MAX_NOEUDS": 12000000.0,
+  "GUIDE_BROCHE_MM": 1.6,
+  "GUIDE_CHANFREIN_MM": 0.5,
+  "GUIDE_CONGE_MM": 0.8,
+  "GUIDE_DEPASSEMENT_MM": 1.0,
+  "GUIDE_DEPOUILLE_DEG": 5.0,
+  "GUIDE_EPAISSEUR_MIN_MM": 1.2,
+  "GUIDE_EPAISSEUR_MM": 3.0,
+  "GUIDE_GRAVURE_MM": 0.4,
+  "GUIDE_GUIDAGE_MM": 10.0,
+  "GUIDE_JEU_BROCHE_MM": 0.2,
+  "GUIDE_JEU_FENTE_MM": 0.2,
+  "GUIDE_JEU_MM": 0.3,
+  "GUIDE_JEU_VERROU_MM": 0.6,
+  "GUIDE_JEU_VOISIN_MM": 1.0,
+  "GUIDE_LAME_MM": 0.6,
+  "GUIDE_MARGE_CARTILAGE_MM": 1.0,
+  "GUIDE_MARGE_MM": 8.0,
+  "GUIDE_OREILLE_MM": 3.0,
+  "GUIDE_PAROI_MM": 2.0,
+  "GUIDE_PAS_MM": 0.3,
+  "GUIDE_PAS_PROFONDEUR_MM": 5.0,
+  "GUIDE_PONT_MM": 5.0,
+  "GUIDE_PROFONDEUR_LAME_MM": 0.0,
+  "GUIDE_SECTEUR_DEG": 75.0,
+  "GUIDE_VERROU": 1,
   "HU_MIN_VALLEE": 150,
   "IMAGES_CONTROLE": true,
   "INLIERS_MIN_SPHERE": 150,
@@ -92,12 +120,15 @@
    20.0
   ],
   "RAYON_VALLEE_MM": 1.0,
+  "REDUCTION_BARRE_MM": 6.0,
+  "REDUCTION_ECART_MM": 4.0,
+  "REDUCTION_MANCHON_MM": 12.0,
   "REDUCTION_MAX": 0.75,
   "SAUT_MAX_FIBULA_MM": 3.0,
   "SERIE_MIN_FIBULA": 0.15,
   "SEUIL_GRAINE_DEPART_HU": 500,
   "SEUIL_GRAINE_MAX_HU": 1500,
-  "SEUIL_OS_HU": 226,
+  "SEUIL_OS_HU": 100,
   "SIGMA_LISSAGE_MM": 0.35,
   "SIGMA_MAILLAGE_MM": 0.3,
   "SYSTEME_COORDONNEES": "LPS",
@@ -115,7 +146,7 @@
  "durees_segmentation_s": {
   "lissage": 0.8,
   "graines": 2.5,
-  "croissance": 3.4,
+  "croissance": 3.5,
   "fusion": 0.7
  },
  "os": {
@@ -124,16 +155,16 @@
    "orientation_coherente": true,
    "euler": 2,
    "morceaux": 1,
-   "volume_cm3": 13.957,
-   "surface_cm2": 49.47,
-   "triangles": 44124,
-   "sommets": 22064,
+   "volume_cm3": 15.081,
+   "surface_cm2": 56.49,
+   "triangles": 49564,
+   "sommets": 24784,
    "affinage_demi_hauteur": {
-    "moyen_mm": -0.283,
-    "p95_mm": 0.65,
-    "sommets_affines_pct": 96.9
+    "moyen_mm": -0.389,
+    "p95_mm": 0.892,
+    "sommets_affines_pct": 82.2
    },
-   "volume_voxels_cm3": 15.368,
+   "volume_voxels_cm3": 17.269,
    "systeme": "LPS",
    "bords_volume": [],
    "fichier": "calcaneus.stl",
@@ -143,20 +174,20 @@
    "libelle": "calcanéus",
    "sensibilite_seuil": {
     "moins": {
-     "seuil_hu": 176,
-     "ecart_moyen_mm": 0.157,
-     "ecart_absolu_moyen_mm": 0.157,
-     "ecart_p95_mm": 0.788,
-     "ecart_max_mm": 2.62,
-     "variation_volume_pct": 3.04
+     "seuil_hu": 50,
+     "ecart_moyen_mm": 1.15,
+     "ecart_absolu_moyen_mm": 1.15,
+     "ecart_p95_mm": 2.858,
+     "ecart_max_mm": 4.41,
+     "variation_volume_pct": 31.22
     },
     "plus": {
-     "seuil_hu": 276,
-     "ecart_moyen_mm": -0.074,
-     "ecart_absolu_moyen_mm": 0.074,
-     "ecart_p95_mm": 0.405,
-     "ecart_max_mm": 1.13,
-     "variation_volume_pct": -1.7
+     "seuil_hu": 150,
+     "ecart_moyen_mm": -0.202,
+     "ecart_absolu_moyen_mm": 0.202,
+     "ecart_p95_mm": 0.816,
+     "ecart_max_mm": 3.08,
+     "variation_volume_pct": -7.36
     }
    }
   },
@@ -165,16 +196,16 @@
    "orientation_coherente": true,
    "euler": 2,
    "morceaux": 1,
-   "volume_cm3": 0.427,
-   "surface_cm2": 3.05,
-   "triangles": 3028,
-   "sommets": 1516,
+   "volume_cm3": 0.469,
+   "surface_cm2": 3.49,
+   "triangles": 3536,
+   "sommets": 1770,
    "affinage_demi_hauteur": {
-    "moyen_mm": -0.28,
-    "p95_mm": 0.468,
-    "sommets_affines_pct": 95.4
+    "moyen_mm": -0.442,
+    "p95_mm": 0.791,
+    "sommets_affines_pct": 83.8
    },
-   "volume_voxels_cm3": 0.522,
+   "volume_voxels_cm3": 0.638,
    "systeme": "LPS",
    "bords_volume": [],
    "fichier": "fabelles.stl",
@@ -186,18 +217,18 @@
   "femur": {
    "etanche": true,
    "orientation_coherente": true,
-   "euler": 2,
+   "euler": 0,
    "morceaux": 1,
-   "volume_cm3": 53.389,
-   "surface_cm2": 101.01,
-   "triangles": 87796,
-   "sommets": 43900,
+   "volume_cm3": 54.385,
+   "surface_cm2": 105.78,
+   "triangles": 92424,
+   "sommets": 46212,
    "affinage_demi_hauteur": {
-    "moyen_mm": -0.211,
-    "p95_mm": 0.435,
-    "sommets_affines_pct": 97.9
+    "moyen_mm": -0.365,
+    "p95_mm": 0.689,
+    "sommets_affines_pct": 91.4
    },
-   "volume_voxels_cm3": 55.533,
+   "volume_voxels_cm3": 58.246,
    "systeme": "LPS",
    "bords_volume": [
     {
@@ -217,43 +248,43 @@
    ],
    "fichier": "femur.stl",
    "etiquettes": [
-    3
+    2
    ],
    "libelle": "fémur",
    "sensibilite_seuil": {
     "moins": {
-     "seuil_hu": 176,
-     "ecart_moyen_mm": 0.124,
-     "ecart_absolu_moyen_mm": 0.124,
-     "ecart_p95_mm": 0.505,
-     "ecart_max_mm": 3.36,
-     "variation_volume_pct": 1.36
+     "seuil_hu": 50,
+     "ecart_moyen_mm": 0.636,
+     "ecart_absolu_moyen_mm": 0.636,
+     "ecart_p95_mm": 2.242,
+     "ecart_max_mm": 3.83,
+     "variation_volume_pct": 7.95
     },
     "plus": {
-     "seuil_hu": 276,
-     "ecart_moyen_mm": -0.085,
-     "ecart_absolu_moyen_mm": 0.085,
-     "ecart_p95_mm": 0.413,
-     "ecart_max_mm": 1.41,
-     "variation_volume_pct": -1.07
+     "seuil_hu": 150,
+     "ecart_moyen_mm": -0.157,
+     "ecart_absolu_moyen_mm": 0.157,
+     "ecart_p95_mm": 0.608,
+     "ecart_max_mm": 2.51,
+     "variation_volume_pct": -2.51
     }
    }
   },
   "fibula": {
    "etanche": true,
    "orientation_coherente": true,
-   "euler": 2,
+   "euler": -2,
    "morceaux": 1,
-   "volume_cm3": 3.79,
-   "surface_cm2": 42.27,
-   "triangles": 38700,
-   "sommets": 19352,
+   "volume_cm3": 4.561,
+   "surface_cm2": 49.49,
+   "triangles": 44864,
+   "sommets": 22430,
    "affinage_demi_hauteur": {
-    "moyen_mm": -0.258,
-    "p95_mm": 0.47,
-    "sommets_affines_pct": 93.1
+    "moyen_mm": -0.356,
+    "p95_mm": 0.744,
+    "sommets_affines_pct": 82.3
    },
-   "volume_voxels_cm3": 5.001,
+   "volume_voxels_cm3": 6.394,
    "systeme": "LPS",
    "bords_volume": [],
    "fichier": "fibula.stl",
@@ -263,38 +294,38 @@
    "libelle": "fibula",
    "sensibilite_seuil": {
     "moins": {
-     "seuil_hu": 176,
-     "ecart_moyen_mm": 0.174,
-     "ecart_absolu_moyen_mm": 0.174,
-     "ecart_p95_mm": 0.84,
-     "ecart_max_mm": 2.95,
-     "variation_volume_pct": 8.18
+     "seuil_hu": 50,
+     "ecart_moyen_mm": 0.799,
+     "ecart_absolu_moyen_mm": 0.799,
+     "ecart_p95_mm": 2.367,
+     "ecart_max_mm": 3.5,
+     "variation_volume_pct": 45.94
     },
     "plus": {
-     "seuil_hu": 276,
-     "ecart_moyen_mm": -0.068,
-     "ecart_absolu_moyen_mm": 0.068,
-     "ecart_p95_mm": 0.396,
-     "ecart_max_mm": 2.07,
-     "variation_volume_pct": -4.4
+     "seuil_hu": 150,
+     "ecart_moyen_mm": -0.158,
+     "ecart_absolu_moyen_mm": 0.158,
+     "ecart_p95_mm": 0.637,
+     "ecart_max_mm": 2.69,
+     "variation_volume_pct": -15.1
     }
    }
   },
   "metatarses": {
    "etanche": true,
    "orientation_coherente": true,
-   "euler": 0,
+   "euler": -6,
    "morceaux": 1,
-   "volume_cm3": 26.094,
-   "surface_cm2": 102.92,
-   "triangles": 85472,
-   "sommets": 42736,
+   "volume_cm3": 28.478,
+   "surface_cm2": 107.97,
+   "triangles": 90496,
+   "sommets": 45242,
    "affinage_demi_hauteur": {
-    "moyen_mm": -0.256,
-    "p95_mm": 0.624,
-    "sommets_affines_pct": 94.1
+    "moyen_mm": -0.322,
+    "p95_mm": 0.747,
+    "sommets_affines_pct": 83.1
    },
-   "volume_voxels_cm3": 28.78,
+   "volume_voxels_cm3": 31.997,
    "systeme": "LPS",
    "bords_volume": [
     {
@@ -323,18 +354,18 @@
   "patella": {
    "etanche": true,
    "orientation_coherente": true,
-   "euler": 2,
+   "euler": 0,
    "morceaux": 1,
-   "volume_cm3": 2.23,
-   "surface_cm2": 9.5,
-   "triangles": 8556,
-   "sommets": 4280,
+   "volume_cm3": 2.383,
+   "surface_cm2": 10.82,
+   "triangles": 10068,
+   "sommets": 5034,
    "affinage_demi_hauteur": {
-    "moyen_mm": -0.244,
-    "p95_mm": 0.497,
-    "sommets_affines_pct": 100.0
+    "moyen_mm": -0.378,
+    "p95_mm": 0.765,
+    "sommets_affines_pct": 85.9
    },
-   "volume_voxels_cm3": 2.471,
+   "volume_voxels_cm3": 2.817,
    "systeme": "LPS",
    "bords_volume": [],
    "fichier": "patella.stl",
@@ -344,20 +375,20 @@
    "libelle": "patella",
    "sensibilite_seuil": {
     "moins": {
-     "seuil_hu": 176,
-     "ecart_moyen_mm": 0.195,
-     "ecart_absolu_moyen_mm": 0.195,
-     "ecart_p95_mm": 0.798,
-     "ecart_max_mm": 2.38,
-     "variation_volume_pct": 4.66
+     "seuil_hu": 50,
+     "ecart_moyen_mm": 0.756,
+     "ecart_absolu_moyen_mm": 0.756,
+     "ecart_p95_mm": 2.311,
+     "ecart_max_mm": 3.94,
+     "variation_volume_pct": 21.13
     },
     "plus": {
-     "seuil_hu": 276,
-     "ecart_moyen_mm": -0.104,
-     "ecart_absolu_moyen_mm": 0.104,
-     "ecart_p95_mm": 0.456,
-     "ecart_max_mm": 2.47,
-     "variation_volume_pct": -2.91
+     "seuil_hu": 150,
+     "ecart_moyen_mm": -0.183,
+     "ecart_absolu_moyen_mm": 0.183,
+     "ecart_p95_mm": 0.609,
+     "ecart_max_mm": 2.41,
+     "variation_volume_pct": -6.85
     }
    }
   },
@@ -366,16 +397,16 @@
    "orientation_coherente": true,
    "euler": 4,
    "morceaux": 2,
-   "volume_cm3": 4.388,
-   "surface_cm2": 30.54,
-   "triangles": 27592,
-   "sommets": 13800,
+   "volume_cm3": 5.06,
+   "surface_cm2": 35.03,
+   "triangles": 31172,
+   "sommets": 15590,
    "affinage_demi_hauteur": {
-    "moyen_mm": -0.25,
-    "p95_mm": 0.594,
-    "sommets_affines_pct": 92.5
+    "moyen_mm": -0.326,
+    "p95_mm": 0.782,
+    "sommets_affines_pct": 81.3
    },
-   "volume_voxels_cm3": 5.186,
+   "volume_voxels_cm3": 6.198,
    "systeme": "LPS",
    "bords_volume": [
     {
@@ -396,8 +427,8 @@
    "fichier": "phalanges.stl",
    "etiquettes": [
     9,
-    12,
-    14
+    11,
+    15
    ],
    "libelle": "phalanges"
   },
@@ -406,16 +437,16 @@
    "orientation_coherente": true,
    "euler": 2,
    "morceaux": 1,
-   "volume_cm3": 5.618,
-   "surface_cm2": 23.31,
-   "triangles": 21308,
-   "sommets": 10656,
+   "volume_cm3": 5.872,
+   "surface_cm2": 24.37,
+   "triangles": 22584,
+   "sommets": 11294,
    "affinage_demi_hauteur": {
-    "moyen_mm": -0.314,
-    "p95_mm": 0.735,
-    "sommets_affines_pct": 90.6
+    "moyen_mm": -0.408,
+    "p95_mm": 0.918,
+    "sommets_affines_pct": 83.0
    },
-   "volume_voxels_cm3": 6.368,
+   "volume_voxels_cm3": 6.878,
    "systeme": "LPS",
    "bords_volume": [],
    "fichier": "talus.stl",
@@ -425,20 +456,20 @@
    "libelle": "talus",
    "sensibilite_seuil": {
     "moins": {
-     "seuil_hu": 176,
-     "ecart_moyen_mm": 0.206,
-     "ecart_absolu_moyen_mm": 0.206,
-     "ecart_p95_mm": 1.121,
-     "ecart_max_mm": 3.26,
-     "variation_volume_pct": 4.93
+     "seuil_hu": 50,
+     "ecart_moyen_mm": 0.922,
+     "ecart_absolu_moyen_mm": 0.922,
+     "ecart_p95_mm": 2.797,
+     "ecart_max_mm": 3.75,
+     "variation_volume_pct": 22.23
     },
     "plus": {
-     "seuil_hu": 276,
-     "ecart_moyen_mm": -0.053,
-     "ecart_absolu_moyen_mm": 0.053,
-     "ecart_p95_mm": 0.389,
-     "ecart_max_mm": 1.14,
-     "variation_volume_pct": -1.46
+     "seuil_hu": 150,
+     "ecart_moyen_mm": -0.114,
+     "ecart_absolu_moyen_mm": 0.114,
+     "ecart_p95_mm": 0.562,
+     "ecart_max_mm": 2.73,
+     "variation_volume_pct": -4.69
     }
    }
   },
@@ -447,16 +478,16 @@
    "orientation_coherente": true,
    "euler": 0,
    "morceaux": 1,
-   "volume_cm3": 24.221,
-   "surface_cm2": 79.74,
-   "triangles": 68892,
-   "sommets": 34446,
+   "volume_cm3": 26.089,
+   "surface_cm2": 86.85,
+   "triangles": 73940,
+   "sommets": 36970,
    "affinage_demi_hauteur": {
-    "moyen_mm": -0.273,
-    "p95_mm": 0.603,
-    "sommets_affines_pct": 95.0
+    "moyen_mm": -0.373,
+    "p95_mm": 0.845,
+    "sommets_affines_pct": 82.1
    },
-   "volume_voxels_cm3": 26.401,
+   "volume_voxels_cm3": 29.28,
    "systeme": "LPS",
    "bords_volume": [],
    "fichier": "tarse.stl",
@@ -468,20 +499,20 @@
    "libelle": "tarse (autres os)",
    "sensibilite_seuil": {
     "moins": {
-     "seuil_hu": 176,
-     "ecart_moyen_mm": 0.144,
-     "ecart_absolu_moyen_mm": 0.144,
-     "ecart_p95_mm": 0.648,
-     "ecart_max_mm": 3.26,
-     "variation_volume_pct": 2.65
+     "seuil_hu": 50,
+     "ecart_moyen_mm": 0.991,
+     "ecart_absolu_moyen_mm": 0.991,
+     "ecart_p95_mm": 2.801,
+     "ecart_max_mm": 3.85,
+     "variation_volume_pct": 23.13
     },
     "plus": {
-     "seuil_hu": 276,
-     "ecart_moyen_mm": -0.109,
-     "ecart_absolu_moyen_mm": 0.109,
-     "ecart_p95_mm": 0.443,
-     "ecart_max_mm": 5.2,
-     "variation_volume_pct": -1.86
+     "seuil_hu": 150,
+     "ecart_moyen_mm": -0.204,
+     "ecart_absolu_moyen_mm": 0.204,
+     "ecart_p95_mm": 0.84,
+     "ecart_max_mm": 2.93,
+     "variation_volume_pct": -6.52
     }
    }
   },
@@ -490,16 +521,16 @@
    "orientation_coherente": true,
    "euler": 2,
    "morceaux": 1,
-   "volume_cm3": 82.215,
-   "surface_cm2": 192.52,
+   "volume_cm3": 83.982,
+   "surface_cm2": 204.78,
    "triangles": 150000,
    "sommets": 75002,
    "affinage_demi_hauteur": {
-    "moyen_mm": -0.237,
-    "p95_mm": 0.496,
-    "sommets_affines_pct": 98.9
+    "moyen_mm": -0.367,
+    "p95_mm": 0.788,
+    "sommets_affines_pct": 90.7
    },
-   "volume_voxels_cm3": 86.718,
+   "volume_voxels_cm3": 91.377,
    "systeme": "LPS",
    "bords_volume": [],
    "fichier": "tibia.stl",
@@ -509,20 +540,20 @@
    "libelle": "tibia",
    "sensibilite_seuil": {
     "moins": {
-     "seuil_hu": 176,
-     "ecart_moyen_mm": 0.114,
-     "ecart_absolu_moyen_mm": 0.114,
-     "ecart_p95_mm": 0.477,
-     "ecart_max_mm": 3.4,
-     "variation_volume_pct": 1.51
+     "seuil_hu": 50,
+     "ecart_moyen_mm": 0.862,
+     "ecart_absolu_moyen_mm": 0.862,
+     "ecart_p95_mm": 2.584,
+     "ecart_max_mm": 4.12,
+     "variation_volume_pct": 14.53
     },
     "plus": {
-     "seuil_hu": 276,
-     "ecart_moyen_mm": -0.069,
-     "ecart_absolu_moyen_mm": 0.069,
-     "ecart_p95_mm": 0.398,
-     "ecart_max_mm": 2.22,
-     "variation_volume_pct": -1.08
+     "seuil_hu": 150,
+     "ecart_moyen_mm": -0.145,
+     "ecart_absolu_moyen_mm": 0.145,
+     "ecart_p95_mm": 0.572,
+     "ecart_max_mm": 3.61,
+     "variation_volume_pct": -3.07
     }
    }
   }
@@ -531,164 +562,164 @@
   {
    "etiquette": 1,
    "nom": "tibia",
-   "volume_cm3": 71.92,
+   "volume_cm3": 80.11,
    "raison": "os long dont on a séparé la fibula (petite tache parallèle sur les coupes)"
   },
   {
    "etiquette": 2,
-   "nom": "objet",
-   "volume_cm3": 44.54,
-   "raison": "intérieur homogène (1286 HU, 0% de voxels < 600 HU) et sans cavité (+0%) : fantôme ou objet, pas un os"
+   "nom": "femur",
+   "volume_cm3": 53.86,
+   "raison": "gros os au contact du plateau tibial (genou, segment 1)"
   },
   {
    "etiquette": 3,
-   "nom": "femur",
-   "volume_cm3": 43.63,
-   "raison": "gros os au contact du plateau tibial (genou, segment 1)"
+   "nom": "objet",
+   "volume_cm3": 44.89,
+   "raison": "intérieur homogène (1278 HU, 0% de voxels < 600 HU) et sans cavité (+0%) : fantôme ou objet, pas un os"
   },
   {
    "etiquette": 4,
    "nom": "metatarses",
-   "volume_cm3": 7.65,
+   "volume_cm3": 8.66,
    "raison": "os long fin, parallèle à 2 autres (rayons du pied)"
   },
   {
    "etiquette": 5,
    "nom": "calcaneus",
-   "volume_cm3": 14.49,
-   "raison": "os du tarse le plus long (78 mm : tubérosité calcanéenne)"
+   "volume_cm3": 16.26,
+   "raison": "os du tarse le plus long (79 mm : tubérosité calcanéenne)"
   },
   {
    "etiquette": 6,
    "nom": "metatarses",
-   "volume_cm3": 11.96,
+   "volume_cm3": 13.41,
    "raison": "os long fin, parallèle à 2 autres (rayons du pied)"
   },
   {
    "etiquette": 7,
    "nom": "metatarses",
-   "volume_cm3": 4.43,
+   "volume_cm3": 4.89,
    "raison": "os long fin, parallèle à 2 autres (rayons du pied)"
   },
   {
    "etiquette": 8,
    "nom": "patella",
-   "volume_cm3": 2.46,
+   "volume_cm3": 2.76,
    "raison": "petit os compact au contact du fémur (le plus gros)"
   },
   {
    "etiquette": 9,
    "nom": "phalanges",
-   "volume_cm3": 2.37,
+   "volume_cm3": 2.75,
    "raison": "au-delà des métatarses (doigts)"
   },
   {
    "etiquette": 10,
    "nom": "",
-   "volume_cm3": 1.8,
+   "volume_cm3": 2.09,
    "raison": ""
   },
   {
    "etiquette": 11,
-   "nom": "",
-   "volume_cm3": 1.46,
-   "raison": ""
+   "nom": "phalanges",
+   "volume_cm3": 1.69,
+   "raison": "au-delà des métatarses (doigts)"
   },
   {
    "etiquette": 12,
-   "nom": "phalanges",
-   "volume_cm3": 1.44,
-   "raison": "au-delà des métatarses (doigts)"
+   "nom": "",
+   "volume_cm3": 1.69,
+   "raison": ""
   },
   {
    "etiquette": 13,
    "nom": "",
-   "volume_cm3": 1.17,
+   "volume_cm3": 1.37,
    "raison": ""
   },
   {
    "etiquette": 14,
-   "nom": "phalanges",
-   "volume_cm3": 0.92,
-   "raison": "au-delà des métatarses (doigts)"
+   "nom": "",
+   "volume_cm3": 1.08,
+   "raison": ""
   },
   {
    "etiquette": 15,
-   "nom": "",
-   "volume_cm3": 0.9,
-   "raison": ""
+   "nom": "phalanges",
+   "volume_cm3": 1.03,
+   "raison": "au-delà des métatarses (doigts)"
   },
   {
    "etiquette": 16,
    "nom": "",
-   "volume_cm3": 0.84,
+   "volume_cm3": 0.98,
    "raison": ""
   },
   {
    "etiquette": 17,
    "nom": "",
-   "volume_cm3": 0.75,
+   "volume_cm3": 0.93,
    "raison": ""
   },
   {
    "etiquette": 18,
    "nom": "",
-   "volume_cm3": 0.59,
+   "volume_cm3": 0.73,
    "raison": ""
   },
   {
    "etiquette": 19,
    "nom": "",
-   "volume_cm3": 0.48,
+   "volume_cm3": 0.59,
    "raison": ""
   },
   {
    "etiquette": 20,
    "nom": "",
-   "volume_cm3": 0.37,
+   "volume_cm3": 0.45,
    "raison": ""
   },
   {
    "etiquette": 21,
    "nom": "",
-   "volume_cm3": 0.35,
+   "volume_cm3": 0.42,
    "raison": ""
   },
   {
    "etiquette": 22,
    "nom": "",
-   "volume_cm3": 0.3,
+   "volume_cm3": 0.36,
    "raison": ""
   },
   {
    "etiquette": 23,
    "nom": "",
-   "volume_cm3": 0.23,
+   "volume_cm3": 0.28,
    "raison": ""
   },
   {
    "etiquette": 24,
    "nom": "fibula",
-   "volume_cm3": 4.88,
+   "volume_cm3": 5.91,
    "raison": "petite tache parallèle au tibia sur les coupes, prolongée par croissance de région"
   },
   {
    "etiquette": 25,
    "nom": "talus",
-   "volume_cm3": 6.28,
+   "volume_cm3": 6.7,
    "raison": "os du tarse au plus grand contact avec le tibia (articulation tarso-crurale)"
   },
   {
    "etiquette": 26,
    "nom": "tarse",
-   "volume_cm3": 4.12,
+   "volume_cm3": 4.51,
    "raison": "os compact du tarse (entre tibia et métatarses)"
   },
   {
    "etiquette": 27,
    "nom": "fabelles",
-   "volume_cm3": 0.52,
-   "raison": "petit os compact accolé au fémur (contact 30 mm², c* = 0.47) : sésamoïde du gastrocnémien"
+   "volume_cm3": 0.61,
+   "raison": "petit os compact accolé au fémur (contact 54 mm², c* = 0.75) : sésamoïde du gastrocnémien"
   }
  ],
  "reperes": {},
@@ -698,24 +729,17 @@
    "complet": false,
    "raison": "extrémité proximale coupée par le champ du scanner : il faut les deux articulations pour la méthode CORA",
    "cote": "droit",
-   "longueur_mm": 99.0,
+   "longueur_mm": 101.8,
    "angles": null,
    "torsion_deg": null
   },
   "tibia": {
-   "complet": true,
-   "raison": "",
-   "cote": "gauche",
-   "longueur_mm": 246.6,
-   "angles": {
-    "mMPTA": 91.24,
-    "mMDTA": 96.48,
-    "valgusTib": 7.72,
-    "mCaPTA": 77.66,
-    "mCrDTA": 84.52,
-    "longueur": 238.65
-   },
-   "torsion_deg": -7.9
+   "complet": false,
+   "raison": "échec de l'analyse : 'distal_center'",
+   "cote": null,
+   "longueur_mm": null,
+   "angles": null,
+   "torsion_deg": null
   }
  }
 }

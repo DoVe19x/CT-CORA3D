@@ -1,0 +1,226 @@
+% =====================================================================================================================
+% CT-CORA3D — Dossier complet du projet (de l'état de l'art au code)
+% Compilation : bash construire.sh   (ou : xelatex ×3 sur ce fichier)
+% Pour ajouter les membres de l'équipe ou l'encadrement : modifier les commandes ci-dessous.
+% =====================================================================================================================
+\documentclass[11pt, a4paper, oneside, openany]{report}
+\input{preambule}
+
+\newcommand{\auteurs}{Dorian Verstappen}
+\newcommand{\formation}{Master en ingénierie biomédicale · ECAM Bruxelles}
+\newcommand{\equipe}{Projet PMD2}
+\newcommand{\referent}{Référent clinique : Anas, chirurgien vétérinaire}
+\newcommand{\dateversion}{novembre 2026}
+
+\begin{document}
+
+% --------------------------------------------------------------------------------------------------- couverture
+\begin{titlepage}
+\begin{tikzpicture}[remember picture, overlay]
+  \fill[nuit] (current page.south west) rectangle (current page.north east);
+  % halo clair derrière le guide, puis le rendu 3D sur toute la hauteur de la page
+  \shade[inner color=halo, outer color=nuit] ([xshift=-4.7cm, yshift=-13.4cm]current page.north east) circle (9.6cm);
+  \node[anchor=north west, inner sep=0pt] at ([xshift=6.2cm]current page.north west)
+    {\includegraphics[height=\paperheight]{rendu_couverture.png}};
+  % titre
+  \node[anchor=north west, inner sep=0pt, text width=8.7cm]      % (align=left forcerait des césures)
+    at ([xshift=2.1cm, yshift=-2.7cm]current page.north west)
+    {\raggedright{\fontsize{8.8}{11}\selectfont\color{accentclair}\etiquette{Dossier complet du projet}}\par\vspace{16pt}
+     {\policegrasse\fontsize{40}{44}\selectfont\color{white}CT-CORA3D}\par\vspace{14pt}
+     {\color{accent}\rule{2.6cm}{2.6pt}}\par\vspace{16pt}
+     {\sffamily\bfseries\fontsize{17}{22}\selectfont\color{white}Du scanner au guide de coupe imprimable}\par
+     \vspace{9pt}
+     {\sffamily\fontsize{12.5}{17}\selectfont\color{white!78!nuit}Planifier en 3D la correction\\d'un os déformé
+      chez le chien}\par};
+  % la chaîne en quatre temps
+  \foreach \k in {1,...,4} \coordinate (e\k) at ([xshift=2.45cm, yshift=-12.6cm-(\k-1)*1.5cm]current page.north west);
+  \draw[white!30!nuit, line width=1pt] (e1) -- (e4);
+  \foreach \k/\t in {1/Scanner DICOM de la patte, 2/Os en 3D et repères anatomiques, 3/Planification CORA en 3D,
+                     4/Guides de coupe et de réduction} {
+    \node[circle, draw=accentclair, line width=1pt, fill=nuit, text=white, minimum size=21pt, inner sep=0pt,
+          font=\policegrasse\fontsize{9}{9}\selectfont] (n\k) at (e\k) {\k};
+    \node[anchor=west, inner sep=0pt, text=white!88!nuit, font=\policemoyenne\fontsize{11.5}{14}\selectfont]
+      at ([xshift=11pt]n\k.east) {\t};
+  }
+  % auteur
+  \node[anchor=south west, inner sep=0pt, text width=10.5cm]
+    at ([xshift=2.1cm, yshift=2.3cm]current page.south west)
+    {\raggedright{\sffamily\bfseries\fontsize{15}{19}\selectfont\color{white}\auteurs}\par\vspace{6pt}
+     {\sffamily\fontsize{10}{14.5}\selectfont\color{white!78!nuit}\formation\\\equipe{} · \referent}\par
+     \vspace{12pt}
+     {\color{white!25!nuit}\rule{10.5cm}{0.5pt}}\par\vspace{7pt}
+     {\sffamily\fontsize{8.6}{11}\selectfont\color{white!58!nuit}Prototype de recherche, non validé cliniquement ·
+      \dateversion}\par};
+\end{tikzpicture}
+\end{titlepage}
+
+\pagenumbering{roman}
+\setcounter{page}{2}
+
+% --------------------------------------------------------------------------------------------------- résumé
+\chapter*{Résumé}
+\addcontentsline{toc}{chapter}{Résumé}
+\markboth{Résumé}{}
+
+Quand le fémur ou le tibia d'un chien pousse de travers, le chirurgien peut couper l'os, le redresser et le fixer :
+c'est une \emph{ostéotomie correctrice}. Pour savoir où couper et de combien redresser, il applique la méthode CORA
+de Paley, en traçant aujourd'hui des lignes à la main sur deux radiographies. Cette préparation est longue, et une
+radiographie montre mal la torsion de l'os.
+
+CT-CORA3D fait toute cette chaîne avec un logiciel, à partir du scanner de la patte. Il lit les images DICOM, isole
+chaque os en 3D, lui donne un nom, en fabrique un fichier 3D étanche, puis trouve tout seul une trentaine de repères
+anatomiques sur le fémur et le tibia. Il mesure les angles articulaires, calcule en 3D le CORA, l'angle vrai de la
+déformité et la correction, y compris la torsion. Il choisit ensuite une stratégie chirurgicale (coin d'ouverture ou
+de fermeture, niveau de la coupe, charnière, broches) et explique chaque choix. Enfin, il construit deux pièces
+prêtes à imprimer : un guide de coupe moulé sur l'os, dont les fentes guident la scie et les manchons les broches, et
+un guide de réduction qui tient les fragments dans la position corrigée prévue pendant la fixation. Le tout tient dans
+une application de bureau à deux onglets, pour Mac et Windows.
+
+Nous avons testé le logiciel sur des déformités simulées dont nous connaissions la réponse : l'angle de la déformité
+est retrouvé à moins d'un centième de degré, et plusieurs campagnes de simulation (606 stratégies, puis près de
+1\,800 guides) passent tous les contrôles automatiques. Il reste à imprimer les guides, à les essayer sur des os
+imprimés et à comparer nos planifications à celles d'un chirurgien sur de vrais patients.
+
+Ce document explique tout le projet, de A à Z : les notions médicales, l'état de l'art, chaque calcul, chaque fichier
+du code, les tests et les limites.
+
+\section*{Abstract}
+\emph{CT-CORA3D turns a computed tomography scan of a dog's hind limb into a planned corrective osteotomy and a
+3D-printable, patient-specific cutting guide. The pipeline reads DICOM series, segments and names each bone, builds
+watertight meshes, detects about thirty anatomical landmarks on the femur and tibia, applies Paley's CORA method in
+three dimensions (true deformity angle, oblique plane, angular correction axis, derotation), chooses an opening or
+closing wedge with explicit criteria, and designs the guides by implicit modelling and exact Boolean operations: a
+two-part cutting guide with saw slots and pin sleeves, and a reduction guide that holds the planned correction. On simulated
+deformities, the deformity angle is recovered within 0.01°, and hundreds of simulated guides pass all automatic
+checks. Clinical validation remains to be done.}
+
+% --------------------------------------------------------------------------------------------------- guide de lecture
+\chapter*{Comment lire ce document}
+\addcontentsline{toc}{chapter}{Comment lire ce document}
+\markboth{Comment lire ce document}{}
+
+\begin{chapeau}
+Ce dossier est long, parce qu'il veut tout expliquer. Il n'est pas nécessaire de tout lire. Chaque chapitre commence
+par un court paragraphe comme celui-ci, qui dit ce qu'il contient, et se termine souvent par un encadré
+\emph{À retenir}.
+\end{chapeau}
+
+\section*{Par où commencer}
+
+\begin{tcbraster}[raster columns=2, raster equal height, raster column skip=10pt, raster row skip=10pt,
+  raster before skip=0.5em, raster after skip=0.7em]
+\begin{carte}{\faUserMd}{Chirurgien vétérinaire}
+\cref{chap:notions,chap:etat} (notions, état de l'art), \cref{sec:strategie} (stratégie chirurgicale),
+\cref{sec:protocole} (mode opératoire) et \cref{chap:limites} (limites).
+\end{carte}
+\begin{carte}{\faChalkboardTeacher}{Enseignant, membre du jury}
+Le résumé, \cref{chap:intro,chap:etat}, \cref{chap:validation} (résultats) et \cref{chap:limites}.
+\end{carte}
+\begin{carte}{\faUserGraduate}{Étudiant qui reprend le projet}
+Tout, dans l'ordre ; puis l'\cref{ann:code}, qui décrit le code fichier par fichier.
+\end{carte}
+\begin{carte}{\faLaptopCode}{Développeur pressé}
+\cref{chap:chaine} (vue d'ensemble), \cref{chap:application} (application), \cref{ann:code} et
+\cref{ann:commandes} (commandes).
+\end{carte}
+\end{tcbraster}
+
+Sur le bord droit des pages, un onglet donne le numéro du chapitre (en bleu) ou la lettre de l'annexe (en orange).
+Dans la version PDF, chaque renvoi (chapitre, figure, équation, référence) est un lien cliquable.
+
+\section*{Les encadrés}
+
+\begin{aretenir}
+L'idée principale d'une section, en quelques lignes.
+\end{aretenir}
+\begin{danslecode}
+Le fichier et la fonction qui font ce qui vient d'être expliqué, par exemple \fichier{etape2_segmentation.py},
+fonction \code{croissance()}. Les chemins sont relatifs au dossier \fichier{CT-CORA3D/}.
+\end{danslecode}
+\begin{exemple}
+Un calcul fait avec des nombres, souvent ceux du lévrier du projet.
+\end{exemple}
+\begin{attention}
+Un piège, une limite, ou une erreur que nous avons faite puis corrigée.
+\end{attention}
+\begin{pourquoi}
+La raison d'un choix de conception, quand plusieurs solutions étaient possibles.
+\end{pourquoi}
+Les formules les plus importantes sont encadrées en orange, comme celle-ci :
+\begin{equation*}
+  \tcbhighmath{\tan^2\theta = \tan^2 F + \tan^2 S.}
+\end{equation*}
+
+\section*{Notations}
+
+Les vecteurs sont en gras ($\vb{u}$, $\vb{v}$), les points en majuscules ($C$, $H$), les matrices en gras
+majuscule ($\mt{R}$). Les longueurs sont en millimètres et les angles en degrés, sauf dans les formules de rotation
+(radians). Le produit scalaire est noté $\vb{a}\cdot\vb{b}$ et le produit vectoriel $\vb{a}\times\vb{b}$. Les noms
+de fichiers sont écrits \fichier{comme_ceci.py}, les noms de fonctions \code{comme_cela()} et les libellés de
+l'interface \ui{entre guillemets}.
+
+\begin{table}[H]
+\centering\small
+\begin{tabularx}{\linewidth}{L{2.6cm}Y}
+\toprule
+\titrecol{Symbole} & \titrecol{Signification} \\
+\midrule
+$X$, $Y$, $Z$ & repère de l'os : $X$ latéral, $Y$ proximal (vers le haut de l'os), $Z$ caudal (vers l'arrière) \\
+$\vb{u}$, $\vb{v}$ & directions des axes des segments proximal et distal, orientées vers distal \\
+$C$ & le CORA (centre de rotation de l'angulation) \\
+$\theta$ & angle vrai de la déformité (en 3D) \\
+$F$, $S$ & composantes frontale (vue de face) et sagittale (vue de profil) de la déformité \\
+$\vb{k}$ & axe de correction (ACA) ; $\vb{b}$ : normale du plan bissecteur ; $\vb{c}$ : bissectrice transverse \\
+$H$ & la charnière ; $h$ : sa profondeur dans la corticale ; $D$ : distance de la charnière à la corticale d'entrée \\
+$\mt{R}$, $\mt{T}$ & rotation $3\times3$, transformation rigide $4\times4$ (rotation et translation) \\
+$d(\vb{x})$ & distance signée d'un point à la surface de l'os (négative dans l'os) \\
+$j$, $e$, $g$ & jeu entre l'os et le guide, épaisseur de la coque, hauteur de guidage des fentes \\
+HU & unité Hounsfield (densité vue par le scanner) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\tabledesmatieres
+
+\clearpage
+\pagenumbering{arabic}
+
+% =================================================================================================================
+\partie{Le problème et ce que l'on sait}{Pourquoi un os de chien pousse de travers, comment le chirurgien le
+corrige aujourd'hui, et ce que disent les publications utiles au projet.}
+\input{chapitres/01_introduction}
+\input{chapitres/02_notions}
+\input{chapitres/03_etat_de_l_art}
+
+\partie{Du scanner au guide : les méthodes et les calculs}{Chaque étape du logiciel, dans l'ordre : lire le
+scanner, séparer et nommer les os, fabriquer les surfaces, trouver les repères, planifier la correction en 3D, puis
+construire le guide de coupe. Chaque calcul est expliqué et démontré.}
+\input{chapitres/04_chaine}
+\input{chapitres/05_lecture}
+\input{chapitres/06_segmentation}
+\input{chapitres/07_identification}
+\input{chapitres/08_maillage}
+\input{chapitres/09_reperes}
+\input{chapitres/10_planification}
+\input{chapitres/11_guides}
+
+\partie{Le logiciel, les tests et la suite}{Comment les calculs deviennent une application de bureau, comment nous
+avons vérifié les résultats, et ce qu'il reste à faire avant un usage clinique.}
+\input{chapitres/12_application}
+\input{chapitres/13_validation}
+\input{chapitres/14_limites}
+
+\clearpage                       % la dernière page du chapitre 14 garde son onglet
+\appendix
+\annexetrue
+\partieannexes{Le code fichier par fichier, tous les paramètres, le format de la prescription, un glossaire, les
+commandes utiles et la bibliographie.}
+\input{chapitres/A_code}
+\input{chapitres/B_parametres}
+\input{chapitres/C_prescription}
+\input{chapitres/D_glossaire}
+\input{chapitres/E_commandes}
+\renewcommand{\etiquettesansnumero}{Références}
+\input{chapitres/bibliographie}
+
+\end{document}
