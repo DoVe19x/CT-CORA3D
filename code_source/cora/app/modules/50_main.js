@@ -302,8 +302,7 @@ function majJournalGuide() {
   const el = $('#guide-journal');
   if (el) el.textContent = S.guide.journal.length ? S.guide.journal.join('\n') : 'Démarrage…';
 }
-// Envoie la prescription et l'os planifié au serveur, qui construit le guide de coupe (et son verrou de réduction, ou un
-// guide de réduction séparé)
+// Envoie la prescription et l'os planifié au serveur, qui construit le guide de coupe et le guide de réduction
 // (code_source/etape7_guide.py) dans le fil de calcul ; suit le calcul, puis charge les maillages pour la vue 3D.
 async function construireGuide() {
   const Gd = S.guide;
@@ -335,8 +334,8 @@ async function construireGuide() {
     if (!dossier) throw new Error('le serveur n\'a pas renvoyé de dossier de résultats');
     const info = await lireJSON(`/api/cora/guide?dossier=${encodeURIComponent(dossier)}`);
     const meshes = {};
-    const liste = [['proximal', 'guide_coupe_proximal.bin'], ['distal', 'guide_coupe_distal.bin'], ['coin', 'guide_coupe_coin.bin'], ['ponts', 'guide_coupe_ponts.bin'],
-      ['reduction', 'guide_reduction.bin'], ['verrou_proximal', 'verrou_proximal.bin'], ['verrou_distal', 'verrou_distal.bin'], ['verrou_broches', 'verrou_broches.bin']];
+    const liste = [['proximal', 'guide_coupe_proximal.bin'], ['distal', 'guide_coupe_distal.bin'], ['ponts', 'guide_coupe_ponts.bin'],
+      ['reduction', 'guide_reduction.bin']];
     for (const [k, n] of liste) {
       if (info.disponibles.includes(n)) meshes[k] = await lireMaillage(fichierGuide(dossier, n));
     }
@@ -699,9 +698,7 @@ function renderLegend() {
   if (st.id === 'cas' && PLAN.reel) keys.unshift('reperes');
   if (st.coupe && !PLAN.osteoPossible) keys = keys.filter((k) => !['hinge', 'cut', 'wedge', 'gap', 'pin', 'face', 'bis'].includes(k));
   if (st.id === 'guide' && guidePret()) {
-    const I = S.guide.info || {}, verrou = !!I.verrou_reduction?.construit, coin = !!I.guide_coupe?.piece_du_coin;
-    keys = S.guide.vue === 'reduction' ? (verrou ? ['gprox', 'gdist', 'gverrou', 'pin'] : ['gred', 'pin'])
-      : ['gprox', 'gdist', ...(coin ? ['gcoin'] : []), 'gponts', 'pin', 'cut'];
+    keys = S.guide.vue === 'reduction' ? ['gred', 'pin'] : ['gprox', 'gdist', 'gponts', 'pin', 'cut'];
   }
   L.replaceChildren(...keys.map((k) => {
     const [c, t, forme] = LEG[k];
@@ -932,7 +929,7 @@ function renderHelp() {
       li('En 3D : <b>angle vrai θ</b> (tan²θ = tan²F + tan²S), plan de la déformité (φ), plan bissecteur, <b>ACA oblique</b> (orientation ψ).'),
       li('<b>Règle 1</b> : ostéotomie au CORA, coin de fermeture (charnière concave, 2 traits ⊥ aux axes) ou d\'ouverture (charnière convexe, 1 trait bissecteur). Même angle θ dans les deux cas.'),
       li('Correction (avec dérotation si la torsion sort de la normale), contrôle dans les deux plans, puis prescription : fentes, charnière, broches de réduction (2 + 2, 1 + 1 ou 1 + 2), parallèles après correction.'),
-      li('<b>Guides imprimables</b> (étape 12, application CT-CORA3D) : guide de coupe moulé sur l\'os (moitiés reliées par des ponts sécables, butée de profondeur, verrou de réduction intégré « 2 en 1 » ou guide de réduction séparé), construit et contrôlé par <code>etape7_guide.py</code> ; STL à télécharger.')),
+      li('<b>Guides imprimables</b> (étape 12, application CT-CORA3D) : guide de coupe moulé sur l\'os (deux moitiés reliées par des ponts sécables) et guide de réduction, construits et contrôlés par <code>etape7_guide.py</code> ; STL à télécharger.')),
     h('h3', {}, 'Stratégie chirurgicale (panneau « 2 · Stratégie et guide »)'),
     h('ul', {},
       li('<b>Préréglages cliniques</b> : 17 déformités prêtes à l\'emploi, avec leur contexte et leur référence.'),

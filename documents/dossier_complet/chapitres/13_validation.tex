@@ -1,0 +1,176 @@
+\chapter{Tests et validation}
+\label{chap:validation}
+
+\begin{chapeau}
+Comment savoir si le logiciel donne le bon résultat ? Sans patient, nous avons testé sur des cas dont nous
+connaissions la réponse : des déformités imposées à des os sains, un faux scanner de forme connue, et des campagnes de
+centaines de cas contrôlés automatiquement. Ce chapitre présente la démarche et les résultats.
+\end{chapeau}
+
+\section{Trois niveaux de validation}
+
+\fig{niveaux_validation.pdf}{Les trois niveaux de validation et leur état en novembre 2026.}{fig:niveaux}
+
+Le niveau 1 vérifie que les calculs sont \textbf{justes} ; le niveau 2 qu'ils sont \textbf{robustes} ; le niveau 3, à
+venir, qu'ils sont \textbf{utiles} au bloc opératoire. Les deux premiers niveaux ne disent rien de l'erreur finale
+d'une vraie opération : elle viendra surtout des repères sur un os malade, de l'impression, de la pose du guide et du
+geste du chirurgien.
+
+\section{Les tests automatiques}
+
+Le projet contient des tests qui se relancent en une commande (\cref{ann:commandes}).
+
+\begin{table}[htbp]
+\centering\small
+\caption{Les tests automatiques du projet.}
+\label{tab:tests}
+\begin{tabularx}{\linewidth}{L{4.4cm}Y}
+\toprule
+\titrecol{Test} & \titrecol{Ce qu'il vérifie} \\
+\midrule
+\fichier{tests/test_chaine.py} & lecture et segmentation d'un faux scanner DICOM de forme connue : 14 contrôles (environ 3~s) \\
+\fichier{tests/test_reperes.py} & repères sur l'os fictif posé au hasard et sur les os du lévrier : 40 contrôles (environ 13~s) \\
+\fichier{tests/test_guide.py} & guides sur un os coudé synthétique (fermeture, ouverture avec dérotation, os voisin et cartilage) et sur les os du lévrier (environ 25~s) \\
+\fichier{cora/tests/test_cas.mjs} & planification sur l'os fictif : 12 cas, 252 variantes et la torsion \\
+\fichier{cora/tests/test_reel.mjs} & planification sur les os segmentés : tels quels, puis 6 déformités de test chacun \\
+\fichier{tests/campagne_strategie.mjs} & 606 stratégies simulées, 9 règles \\
+\fichier{tests/campagne_export.mjs} + \fichier{campagne_guides.py} & centaines de guides construits puis contrôlés « avec l'œil du chirurgien » \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Le faux scanner}
+
+Le test \fichier{test_chaine.py} écrit en DICOM un fantôme dont on connaît tout : deux « os » en forme de capsule
+(cylindre de 7~mm de rayon à bouts hémisphériques), bout à bout, séparés par un interligne de 1,5~mm et inclinés de
+15\degre ; une corticale de 1,5~mm à 1300~HU, une moelle et des tissus mous à 40~HU, une table de scanner et un cylindre
+de calibration ; un flou gaussien de 0,5~mm et un bruit de 40~HU. Les fichiers sont mélangés pour vérifier que le tri ne
+dépend pas des noms. Le test vérifie la géométrie, la séparation des deux os, le rejet du fantôme de calibration,
+l'étanchéité des maillages et la position de la surface (\cref{sec:demi-hauteur}).
+
+\section{La segmentation}
+
+\begin{itemize}
+  \item \textbf{Position de la surface} (faux scanner) : biais de $+0{,}60$~mm avec le seul seuil, $+0{,}16$~mm après
+  l'affinage à demi-hauteur ; objectif : moins de 0,5~mm.
+  \item \textbf{Sensibilité au seuil} (lévrier, ± 50~HU) : 0,1 à 0,2~mm en moyenne, moins de 0,5~mm pour 95~\% des
+  points (\cref{tab:sensibilite}).
+  \item \textbf{Identification} : sur les trois scanners du lévrier, le fémur, le tibia, la fibula, la rotule, les
+  fabelles, le talus, le calcanéus, le tarse, les métatarses, les phalanges et le bassin sont reconnus ; les maillages
+  des os seuls sont étanches, de caractéristique d'Euler 2.
+\end{itemize}
+
+\section{Les repères}
+
+Sur l'os fictif posé dans quatre positions au hasard (deux en miroir), le côté est reconnu 8 fois sur 8, les repères
+sont à moins de 1~mm des repères exacts et identiques d'une pose à l'autre, et les angles de face diffèrent de moins de
+1,3\degre{} de ceux du modèle. Sur le lévrier, les os coupés par le champ sont refusés et tous les angles des os
+complets sont dans les normes (\cref{tab:normales-levrier}).
+
+\section{La planification}
+
+\begin{itemize}
+  \item \textbf{Os fictif, 264 déformités} : l'angle de la déformité est retrouvé avec une erreur maximale de
+  0,0065\degre.
+  \item \textbf{Os du lévrier avec déformités de test} (référence : l'os avant la déformité) : erreur inférieure à
+  0,001\degre ; après la correction simulée, les angles reviennent à ceux de l'os sain et une torsion de 15\degre{} est
+  corrigée à 0,01\degre{} près ; les broches sont parallèles après la correction.
+  \item \textbf{Référence « valeurs normales »} : l'écart naturel du lévrier à la moyenne publiée se retrouve dans la
+  planification (plusieurs degrés). Ce n'est pas une erreur de calcul : quand c'est possible, il vaut mieux comparer au
+  membre opposé du même chien.
+\end{itemize}
+
+\subsection{La campagne de stratégie}
+\label{sec:campagne-strategie}
+
+La campagne de stratégie (19/10/2026) planifie 606 cas : les 17 préréglages et leurs variantes (configurations de
+broches, trait déplacé de ± 15~mm, charnière à 0,5 et 6~mm, chien en croissance) et 300 déformités tirées au hasard.
+Pour chaque cas, les deux coins sont planifiés et contrôlés par 9 règles écrites à l'avance (\cref{tab:regles-r}).
+
+\begin{table}[htbp]
+\centering\small
+\caption{Les 9 règles de la campagne de stratégie : 606 cas sur 606 sans erreur.}
+\label{tab:regles-r}
+\begin{tabularx}{\linewidth}{lYr}
+\toprule
+& \titrecol{Règle} & \titrecol{Erreurs} \\
+\midrule
+R1 & le guide n'est jamais du côté de la charnière & 0 \\
+R2 & la charnière n'est dite conservée que si elle peut l'être (face du coin, règle 1, pas de dérotation, pont ≤ 3~mm) & 0 \\
+R3 & la face d'appui est à 60\degre{} au plus de la face du coin, sinon l'abord non usuel est signalé & 0 \\
+R4 & le coin recommandé est réalisable dès qu'un des deux l'est & 0 \\
+R5 & le nombre et la disposition des broches sont ceux demandés & 0 \\
+R6 & les broches sont parallèles après la correction & 0 \\
+R7 & l'angle et la translation résiduels sont nuls & 0 \\
+R8 & le niveau du trait et la profondeur de charnière demandés sont respectés & 0 \\
+R9 & les angles après la correction sont ceux de l'os sain & 0 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Les coins recommandés suivent la pratique publiée : tibia en valgus → fermeture (84 cas) et tibia en varus → ouverture
+(69 cas), avec l'accès comme critère décisif ; fémur → fermeture, avec la stabilité comme critère décisif.
+
+\section{Les guides}
+
+\subsection{La première campagne : un outil pour progresser}
+
+La première campagne (14/10/2026) a construit et contrôlé des guides sur l'os fictif, avec ses os voisins et son
+cartilage. Au début, seulement 46 cas sur 480 étaient sans erreur. Chaque type d'erreur a été corrigé dans le code, puis
+la campagne a été relancée sur 640 cas, dont 320 tirés au hasard avec une graine jamais utilisée pendant le
+développement : 640 sur 640 sans erreur (\cref{fig:campagne-guides}).
+
+\fig{campagne_guides.png}{Les erreurs trouvées puis corrigées pendant la première campagne de guides.}{fig:campagne-guides}
+
+Mesures après correction (minimum / médiane / maximum) : jeu guide--os 0,29 / 0,30 / 0,32~mm ; appui du guide 960 /
+1470 / 2534~mm² ; guide à au moins 1~mm des os voisins et 1,5~mm du cartilage ; angles après la correction à
+0,016\degre{} près ; broches parallèles à $2 \times 10^{-6}$ degré près.
+
+\subsection{Les campagnes des guides v3 et du guide simplifié}
+
+Après l'ajout d'une butée de profondeur, d'un verrou de réduction et de l'interdiction de l'espace entre les os, une
+campagne (22/10/2026) a porté sur 520 cas : 320 cas « coins », où chaque paramètre est à ses valeurs extrêmes, et 200
+cas tirés au hasard. Résultat : 520 sur 520 sans erreur. Le guide a ensuite été simplifié (06/11/2026, butée graduée
+et verrou retirés, \cref{chap:guides}), et la même campagne a été relancée sur le nouveau guide : \textbf{520 sur 520
+sans erreur} (\cref{tab:v3}).
+
+\begin{table}[htbp]
+\centering\small
+\caption{La campagne du guide simplifié (06/11/2026). « Pas de guide » : coins que la planification déclare non
+réalisables (elle conseille l'autre coin), construits quand même pour éprouver le programme ; le refus est le
+comportement voulu.}
+\label{tab:v3}
+\begin{tabular}{lrr}
+\toprule
+& \titrecol{Coins (320)} & \titrecol{Hasard (200)} \\
+\midrule
+guide de coupe et guide de réduction construits & 266 & 159 \\
+pas de guide : coin forcé, fibula sur le trajet de la lame & 54 & 41 \\
+jeu guide--os mesuré & 0,296 à 0,327~mm & 0,298 à 0,324~mm \\
+durée par guide (min / médiane / max) & 9 / 15 / 25~s & 10 / 15 / 23~s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Sur les os du lévrier}
+
+Avec des déformités de test, les guides du fémur (coin de fermeture, torsion de test de 15\degre) et du tibia (coins de
+fermeture et d'ouverture) sont construits sans alerte, avec un jeu de 0,31 à 0,33~mm, deux moitiés retirables et un
+guide de réduction, en 10 à 16~s.
+
+\section{La précision comparée}
+
+\fig{precision.png}{L'erreur de notre calcul comparée à l'objectif du projet et aux résultats publiés.}{fig:precision}
+
+L'erreur de calcul est si petite qu'elle ne se voit pas sur le graphique (\cref{fig:precision}). Les repères
+automatiques (1,3\degre{} au plus de face sur l'os fictif) restent sous l'objectif de 2\degre. L'essentiel de l'erreur
+d'une vraie opération viendra d'ailleurs.
+
+\begin{aretenir}
+\begin{itemize}
+  \item Les calculs sont exacts à quelques millièmes de degré sur les cas simulés.
+  \item Plus de 2 300 cas (stratégies et guides) passent tous les contrôles écrits à l'avance.
+  \item Les campagnes ont surtout servi à \textbf{trouver des erreurs} : 434 cas sur 480 en avaient au départ.
+  \item Rien n'a encore été imprimé ni essayé sur un os, et aucun vrai cas n'a été planifié : c'est le niveau 3.
+\end{itemize}
+\end{aretenir}

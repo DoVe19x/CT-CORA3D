@@ -1,0 +1,121 @@
+\chapter{Tous les paramètres}
+\label{ann:parametres}
+
+\begin{chapeau}
+Les réglages du programme sont tous dans \fichier{code_source/parametres.py}, chacun avec son origine. Les dimensions
+du guide peuvent en plus être changées pour un cas dans l'application (panneau \ui{Guide générique : dimensions}),
+dans les bornes indiquées ; une valeur changée est signalée dans \fichier{guide.json}.
+\end{chapeau}
+
+\section{Segmentation et maillage (étapes 1 à 5)}
+
+{\footnotesize\renewcommand{\arraystretch}{1.2}
+\begin{longtable}{L{6.5cm}rL{6.1cm}}
+\toprule
+\titrecol{Paramètre} & \titrecol{Valeur} & \titrecol{Signification et origine} \\
+\midrule
+\endhead
+\code{EPAISSEUR_MAX_MM} & 1,0~mm & coupes plus épaisses : avertissement (document de cadrage) \\
+\code{TOLERANCE_ESPACEMENT} & 5~\% & écart toléré entre deux intervalles de coupes \\
+\code{TOLERANCE_ORIENTATION} & $10^{-3}$ & orientations identiques à $10^{-3}$ près \\
+\code{SIGMA_LISSAGE_MM} & 0,35~mm & flou gaussien avant seuillage (bruit divisé par deux) \\
+\code{SEUIL_OS_HU} & 226~HU & masque osseux (seuil « Bone (CT) » de Mimics) \\
+\code{MARGE_RECADRAGE_MM} & 6~mm & marge autour des os denses \\
+\code{SEUIL_GRAINE_DEPART_HU} & 500~HU & premier palier du seuil qui monte \\
+\code{SEUIL_GRAINE_MAX_HU} & 1500~HU & dernier palier \\
+\code{PAS_SEUIL_HU} & 100~HU & pas entre deux paliers \\
+\code{VOLUME_MIN_MORCEAU_MM3} & 300~mm³ & taille minimale d'un morceau pour devenir une graine \\
+\code{PERSISTANCE_HU} & 200~HU & le morceau doit exister encore 200~HU plus haut\ldots \\
+\code{VOLUME_PERSISTANCE_MM3} & 50~mm³ & \ldots avec au moins ce volume \\
+\code{VOLUME_MIN_GRAINE_MM3} & 30~mm³ & bloc dense plus petit : pas de graine \\
+\code{VOLUME_MIN_SEGMENT_MM3} & 50~mm³ & segment plus petit : rattaché à son voisin \\
+\code{RAPPORT_CONTACT_FUSION} & 3 & seuil du critère $c^*$ (coupure ≈ 5, articulation ≤ 2,1) \\
+\code{LONGUEUR_OS_LONG_MM}, \code{ALLONGEMENT_OS_LONG} & 50~mm, 3 & définition d'un os long \\
+\code{ALLONGEMENT_COMPACT} & 3,5 & os compact (rotule, tarse) \\
+\code{VOLUME_MIN_NOMME_MM3} & 200~mm³ & en dessous, jamais nommé automatiquement \\
+\code{CV_MAX_OBJET}, \code{FRACTION_SPONGIEUX_MAX_OBJET} & 0,2, 8~\% & objet non osseux : homogène, sans os spongieux \\
+\code{CAVITE_MAX_OBJET} & 5~\% & \ldots et sans cavité \\
+\code{RAYON_VALLEE_MM}, \code{PROFONDEUR_VALLEE_HU} & 1~mm, 250~HU & chapeau haut-de-forme de la hanche \\
+\code{HU_MIN_VALLEE} & 150~HU & écarte les cloisons graisseuses \\
+\code{RAYON_RECHERCHE_TETE_MM} & 35~mm & recherche autour du contact fémur--bassin \\
+\code{RAYON_TETE_MM} & 4 à 20~mm & rayon plausible d'une tête de fémur \\
+\code{TOLERANCE_SPHERE_MM} & 0,6~mm & distance d'un inlier à la sphère \\
+\code{COUVERTURE_MIN_SPHERE}, \code{INLIERS_MIN_SPHERE} & 40~\%, 150 & validation de la sphère (lévrier : 68~\%, 2055) \\
+\code{MARGE_SPHERE_MM} & 1~mm & graines fémur et bassin de part et d'autre de la sphère \\
+\code{FRACTION_MAX_SESAMOIDE}, \code{CSTAR_MAX_SESAMOIDE} & 5~\%, 1,5 & fabelles détachées du fémur \\
+\code{PAS_TRANCHES_MM} & 2~mm & tranches pour trouver la fibula \\
+\code{AIRE_MIN_FIBULA_MM2}, \code{RAPPORT_AIRE_FIBULA_MAX} & 3~mm², 0,2 & petite tache de la fibula \\
+\code{SERIE_MIN_FIBULA}, \code{SAUT_MAX_FIBULA_MM} & 15~\%, 3~mm & suivi de la tache d'une tranche à l'autre \\
+\code{RAYON_GRAINE_MM} & 2,5~mm & boule autour d'un point de l'utilisateur \\
+\code{RAYON_FERMETURE_MM} & 1~mm & fermeture avant remplissage \\
+\code{SIGMA_MAILLAGE_MM} & 0,3~mm & flou du masque avant marching cubes \\
+\code{ITERATIONS_LISSAGE}, \code{BANDE_PASSANTE_LISSAGE} & 20, 0,05 & lissage à fenêtre sinc \\
+\code{TRIANGLES_MAX}, \code{REDUCTION_MAX} & 150\,000, 75~\% & décimation \\
+\code{AFFINAGE_DEMI_HAUTEUR} & oui & affinage du bord à demi-hauteur \\
+\code{PROFIL_INTERIEUR_MM}, \code{PROFIL_EXTERIEUR_MM} & 2,5, 2~mm & étendue du profil le long de la normale \\
+\code{CONTRASTE_MIN_HU}, \code{DEPLACEMENT_MAX_MM} & 300~HU, 1,5~mm & validité de l'affinage \\
+\code{LISSAGE_DEPLACEMENT} & 5 & passes de lissage des déplacements \\
+\code{SYSTEME_COORDONNEES} & LPS & repère des STL (comme 3D Slicer) \\
+\code{VARIATION_SEUIL_HU}, \code{ECART_SURFACE_CIBLE_MM} & 50~HU, 0,5~mm & contrôle de sensibilité au seuil \\
+\code{CORA_COUVERCLE_MIN_MM2} & 80~mm² & couvercle plan : extrémité coupée par le champ \\
+\bottomrule
+\end{longtable}
+}
+
+\section{Le guide générique (étape 7)}
+
+{\small\renewcommand{\arraystretch}{1.2}
+\begin{longtable}{lL{6.4cm}rr}
+\toprule
+\titrecol{Symbole} & \titrecol{Dimension} & \titrecol{Défaut} & \titrecol{Bornes} \\
+\midrule
+\endhead
+$j$ & jeu entre l'os et la coque & 0,3~mm & 0,1 à 1 \\
+$e$ & épaisseur de la coque & 3~mm & 1,5 à 6 \\
+$\alpha$ & demi-ouverture de la coque autour de la face d'appui & 75\degre & 30 à 120 \\
+$m$ & coque au-delà des broches extrêmes & 8~mm & 3 à 25 \\
+$\delta$ & dépouille (pose et retrait sans contre-dépouille) & 5\degre & 1 à 15 \\
+$r$ & rayon des congés & 0,8~mm & 0 à 2 \\
+$e_{\min}$ & épaisseur minimale imprimable & 1,2~mm & 0,6 à 3 \\
+$g$ & hauteur de guidage au-dessus de la coque & 10~mm & 4 à 25 \\
+$p$ & paroi des tours et des manchons & 2~mm & 1,2 à 4 \\
+$s$ & épaisseur de la lame de scie & 0,6~mm & 0,3 à 1,5 \\
+$j_s$ & jeu de la fente & 0,2~mm & 0,05 à 0,6 \\
+$\varnothing_b$ & diamètre des broches & 1,6~mm & 1 à 3,2 \\
+$j_b$ & jeu du manchon & 0,2~mm & 0,05 à 0,6 \\
+$h_p$ & hauteur des ponts sécables & 5~mm & 2 à 10 \\
+$c$ & chanfreins d'entrée & 0,5~mm & 0 à 1,5 \\
+$e_b$ & écart préféré entre les deux broches d'un fragment & 10~mm & 6,5 à 20 \\
+$k_d$ & distance broche--coupe préférée (× largeur de l'os) & 1,2 & 0,5 à 3 \\
+$j_v$ & distance minimale aux os voisins & 1~mm & 0,5 à 4 \\
+$m_c$ & écart supplémentaire de la coque au cartilage & 1~mm & 0,5 à 5 \\
+$e_r$ & guide de réduction : distance de la barre à l'os & 4~mm & 2 à 15 \\
+$l_r$ & guide de réduction : longueur des manchons & 12~mm & 6 à 25 \\
+$t_b$ & guide de réduction : épaisseur de la barre & 6~mm & 3 à 12 \\
+\bottomrule
+\end{longtable}
+}
+
+\section{Autres réglages de l'étape 7}
+
+\begin{itemize}
+  \item \code{GUIDE_PAS_MM} = 0,3~mm : pas de la grille ; \code{GRILLE_MAX_NOEUDS} = 12 millions (au-delà, le pas
+  grandit) ;
+  \item \code{DISTANCE_MIN_ARTICULATION_MM} = 10~mm : la coque et les broches restent loin des extrémités de l'os ;
+  \item \code{DENSITE_IMPRESSION_G_CM3} = 1,01 : polyamide PA12, pour estimer la masse des pièces ;
+  \item dans \fichier{etape7_guide.py} : \code{COMPENSATION_MM} = 0,04~mm, \code{FROTTEMENT_MM3} = 0,5~mm³,
+  \code{TOL_OMBRE_MM} = 0,5~mm.
+\end{itemize}
+
+\enlargethispage{2\baselineskip}      % la fin de la liste tient sur cette page
+\section{Réglages de la planification (\texorpdfstring{\fichier{cora_simple.js}}{cora\_simple.js})}
+
+\begin{itemize}[itemsep=0pt]
+  \item \code{CHARNIERE_RETRAIT} = 2~mm, \code{PONT_MAX} = 3~mm, \code{CHARNIERE_OUVERTURE_MAX} = 3~mm ;
+  \item \code{THETA_MIN} = 0,5\degre{} (en dessous, pas de CORA) ; \code{DEROTATION_MIN} = 1\degre ;
+  \item \code{MARGE_COUPE_CARTILAGE} = 5~mm, \code{MARGE_BROCHE_CARTILAGE} = 3~mm, \code{MARGE_BROCHE_VOISIN} = 2~mm ;
+  \item \code{ANGLE_ENTREE_MAX} = 50\degre{} (entrée d'une broche), \code{ANGLE_ENTREE_COIN_MAX} = 60\degre{} (face
+  d'appui) ;
+  \item \code{FRAGMENT_MIN_MM} = 25~mm, \code{MARGE_TUBEROSITE_MM} = 8~mm, \code{MARGE_EPICONDYLE_MM} = 6~mm ;
+  \code{OUVERTURE_MAX_FRAC} = 40~\% de la largeur de l'os ; \code{RETRAIT_DERIVE_MAX} = 0,03.
+\end{itemize}

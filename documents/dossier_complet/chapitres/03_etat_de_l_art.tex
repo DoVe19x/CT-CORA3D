@@ -1,0 +1,229 @@
+\chapter{L'état de l'art}
+\label{chap:etat}
+
+\begin{chapeau}
+Ce chapitre résume ce qui est publié et utile au projet : la méthode CORA, les valeurs normales du chien, la mesure de
+la torsion, les guides imprimés, la segmentation des os et l'ostéotomie en dôme. Il se termine par la liste des
+décisions que nous en avons tirées.
+\end{chapeau}
+
+\section{La méthode CORA de Paley}
+\label{sec:cora-paley}
+
+\subsection{Le principe}
+
+La méthode de Paley \cite{paley2002} part d'une idée simple : un os déformé à un seul apex est fait de deux segments
+droits. Chaque segment a son axe. On construit chaque axe à partir de la ligne articulaire de son extrémité et de
+l'angle articulaire \emph{normal} : par exemple, l'axe du segment proximal du tibia est la droite qui fait l'angle
+mMPTA normal (environ 93\degre{}) avec la ligne du plateau tibial. Les deux axes se croisent en un point : le
+\textbf{CORA}, pour \emph{center of rotation of angulation}. L'angle entre les axes est l'angle de la déformité
+$\theta$ (\cref{fig:methode-cora}).
+
+\fig[0.8]{methode_cora.png}{Principe de la méthode CORA : (a) les axes des deux segments se croisent au CORA et font
+l'angle $\theta$ ; (b) en coupant au CORA et en redressant autour de ce point, les deux axes sont de nouveau
+alignés.}{fig:methode-cora}
+
+\subsection{L'axe de correction et la bissectrice}
+
+Redresser l'os, c'est faire tourner le segment distal de l'angle $\theta$ autour d'un axe perpendiculaire au plan de
+la déformité : l'\textbf{axe de correction de l'angulation}, ou ACA. Paley montre que l'ACA doit se trouver sur la
+\textbf{bissectrice transverse} du CORA, la droite qui partage en deux l'angle entre les axes, dans le plan de la
+déformité. C'est la seule façon de réaligner les axes sans translation. La position de l'ACA le long de la bissectrice
+choisit le type de coin :
+\begin{itemize}
+  \item ACA sur la corticale concave : \textbf{coin de fermeture} (l'os raccourcit) ;
+  \item ACA sur la corticale convexe : \textbf{coin d'ouverture} (l'os s'allonge) ;
+  \item ACA au milieu de l'os : \textbf{coin neutre} (une moitié se ferme, l'autre s'ouvre ; la longueur change peu).
+\end{itemize}
+
+\subsection{Les règles d'ostéotomie}
+
+Paley énonce trois règles, selon l'endroit de la coupe par rapport au CORA :
+\begin{itemize}
+  \item \textbf{règle 1} : la coupe et l'ACA passent par le CORA. Les axes sont réalignés, sans translation ;
+  \item \textbf{règle 2} : la coupe est faite à un autre niveau, mais l'ACA reste au CORA. Les axes sont réalignés,
+  et le fragment distal glisse le long de la coupe : c'est une \emph{translation à l'ostéotomie} ;
+  \item \textbf{règle 3} : la coupe et l'ACA sont loin du CORA. L'angle est corrigé, mais les axes restent décalés :
+  il reste une translation de l'axe, à éviter.
+\end{itemize}
+On utilise la règle 2 quand on ne peut pas couper au CORA, par exemple parce qu'il est trop près de l'articulation.
+Notre logiciel applique la règle 1 par défaut et passe à la règle 2 si le trait de coupe serait trop près du
+cartilage (\cref{sec:regle2}).
+
+\subsection{Le plan oblique et l'angle vrai}
+\label{sec:oblique}
+
+Une déformité réelle est rarement pure. Le plus souvent, elle a une composante de face $F$ et une composante de profil
+$S$ : elle se trouve dans un plan \emph{oblique}. L'angle vrai n'est pas la somme des deux, et corriger les deux vues
+l'une après l'autre reviendrait à mal corriger. Quand l'axe proximal est vertical, Paley donne
+\begin{equation}
+  \tan^2\theta = \tan^2 F + \tan^2 S,
+  \qquad
+  \tan\varphi = \frac{\abs{\tan S}}{\abs{\tan F}},
+  \label{eq:oblique}
+\end{equation}
+où $\varphi$ est l'orientation du plan de la déformité par rapport au plan frontal \cite{paley2002,qatu2024}. Pour
+$F = 15\degre$ et $S = 10\degre$, on trouve $\theta = 17{,}8\degre$, et non 25\degre. Une seule ostéotomie oblique
+corrige alors les deux composantes à la fois \cite{kim2017}. La démonstration est donnée à la \cref{sec:angle-vrai}.
+
+\section{Les valeurs normales chez le chien}
+\label{sec:normales}
+
+Les valeurs normales des angles articulaires viennent de radiographies de chiens sains, surtout de grandes races
+(\cref{tab:normales}). Deux points comptent :
+\begin{itemize}
+  \item \textbf{la race compte}. L'aLDFA normal va de 94 à 98\degre{} selon la race \cite{tomlinson2007} ; l'équipe
+  Vezzoni retient 94 ± 3,3\degre{} (berger allemand) comme borne de normalité \cite{vezzoni2022}. Une étude au
+  scanner compare six races \cite{bruhschwein2023r} ;
+  \item \textbf{la définition compte}. Ces valeurs sont mesurées sur des radiographies, avec des repères placés par un
+  observateur. Un logiciel qui mesure en 3D avec ses propres repères ne trouve pas exactement le même angle sur le même
+  os. Nous corrigeons cet écart de définition (\cref{sec:calibration}).
+\end{itemize}
+
+\begin{table}[htbp]
+\centering\small
+\caption{Valeurs normales publiées (moyenne ± écart-type) utilisées par le logiciel. En gras : la référence par
+défaut (travaux de l'équipe Vezzoni, sinon la littérature).}
+\label{tab:normales}
+\begin{tabularx}{\linewidth}{lL{2.6cm}Y}
+\toprule
+\titrecol{Angle} & \titrecol{Valeur} & \titrecol{Source} \\
+\midrule
+aLPFA & 103 ± 6,4\degre & Tomlinson 2007, Labrador \cite{tomlinson2007} \\
+aLDFA & \textbf{94 ± 3,3\degre} & Vezzoni 2022 (valeur du berger allemand de Tomlinson 2007) \cite{vezzoni2022} \\
+ & 97 ± 3,2\degre & Tomlinson 2007, Labrador \cite{tomlinson2007} \\
+aCdDFA & 90,5 ± 6,3\degre & Kara 2018, scanner 3D, définition voisine \cite{kara2018} \\
+mMPTA & \textbf{93,3 ± 1,78\degre} & Olsen, Vezzoni 2016 (= Dismukes 2007) \cite{olsen2016,dismukes2007} \\
+mMDTA & 96,0 ± 2,7\degre & Dismukes 2007 \cite{dismukes2007} \\
+mCaPTA & \textbf{63,7 ± 2,6\degre} & Guénégo, Vezzoni 2021 : 90\degre{} − pente du plateau (26,3\degre) \cite{guenego2021} \\
+mCrDTA & 81,6 ± 3,2\degre & Dismukes 2008, radiographie de profil \cite{dismukes2008s} \\
+valgus tibial & 11,8 ± 3,1\degre & cité par IMAIOS \cite{imaios} \\
+pente du plateau (TPA) & 22,5\degre & lévrier sain, « à considérer comme normal » \cite{wilke2002} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Mesurer la torsion}
+\label{sec:etat-torsion}
+
+La torsion est l'angle, autour de l'axe long de l'os, entre un axe transverse proximal et un axe transverse distal.
+Au fémur, on parle d'\emph{antéversion} : l'angle entre l'axe du col et la ligne qui passe derrière les condyles.
+
+\begin{itemize}
+  \item \textbf{La radiographie ne suffit pas}. Elle ne distingue pas une torsion de l'os d'une simple rotation du
+  membre sur la table \cite{apelt2005,aper2005}, et une rotation du fémur change à elle seule l'aLDFA mesuré
+  \cite{miles2016}.
+  \item \textbf{Le scanner mesure la torsion} \cite{dudley2006,mostafa2014}. Al Aiyan et al. trouvent une
+  antéversion de 31 ± 5\degre{} chez 58 chiens de races moyennes et grandes \cite{alaiyan2021}. Brühschwein et al.
+  proposent un repère 3D centré sur l'os, exact sur un modèle de torsion \cite{bruhschwein2023f}, et l'appliquent au
+  tibia \cite{bruhschwein2023t}.
+  \item \textbf{Seuils} : Longo et al. planifient des ostéotomies de dérotation en 3D et donnent des seuils de torsion
+  anormale \cite{longo2022}.
+  \item \textbf{Au bloc}, contrôler la rotation à l'œil ou à la radioscopie est imprécis : 4 à 9\degre{} d'erreur
+  moyenne dans une étude sur cadavre \cite{ivanov2024} ; les signes radiographiques classiques ont leurs limites
+  \cite{krettek1998,fang2015}.
+\end{itemize}
+
+\begin{attention}[title={Les conventions de signe varient}]
+Selon les articles, une même torsion est dite « interne » ou « externe », et son signe change. Le logiciel suit les
+Méthodes de Longo 2022 pour le tibia ($-$ = interne, $+$ = externe ; normale vers $-4\degre$, anormale en dessous de
+$-10\degre$ ou au-dessus de $+2\degre$) et l'antéversion d'Al Aiyan 2021 pour le fémur ($+$ = col dirigé vers
+crânial ; normale 31 ± 5\degre). Le résumé de l'article de Longo inverse les deux mots : il faut lire les Méthodes.
+\end{attention}
+
+\section{Planification virtuelle et guides imprimés}
+\label{sec:etat-guides}
+
+Plusieurs équipes ont publié des corrections planifiées sur ordinateur et réalisées avec des guides imprimés en 3D
+(\cref{tab:guides}). Ces résultats portent sur toute la chaîne : préparation, guide et geste chirurgical.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Guides imprimés chez le chien : ce qui est publié.}
+\label{tab:guides}
+\begin{tabularx}{\linewidth}{L{2.6cm}L{3.2cm}Y}
+\toprule
+\titrecol{Étude} & \titrecol{Os, système} & \titrecol{Résultat} \\
+\midrule
+Worth 2019 \cite{worth2019} & avant-bras ; guides de coupe seuls & 1 membre sur 7 réopéré pour une rotation mal corrigée \\
+Hall 2019 \cite{hall2019} & fémur distal (luxation de rotule) ; coupe + réduction & torsion à 1,7 ± 2,1\degre{} de la cible \\
+Carwardine 2021 \cite{carwardine2021} & avant-bras ; coupe, repositionnement, plaques en titane & plaque sur mesure, trous percés à travers le guide \\
+De Armond 2022 \cite{dearmond2022} & avant-bras, 1 ou 2 apex ; coupe + réduction & plus de 90~\% des paramètres à moins de 5\degre{} et 5~mm \\
+Jeon 2023 \cite{jeon2023} & tibia de petites races & erreurs de 1,8 (profil), 2,3 (face) et 2,6\degre{} (torsion) \\
+Bright 2024 \cite{bright2024} & tibia du teckel (pes varus) & moins de 2\degre{} et 1~mm dans tous les plans \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Deux leçons en ressortent. D'abord, un guide de coupe seul contrôle mal la rotation ; il faut un moyen de
+\textbf{remettre les fragments à la bonne place} après la coupe : un guide de réduction qui s'enfile sur des broches,
+ou une plaque sur mesure. Ensuite, l'erreur finale est de l'ordre de \textbf{2\degre} : c'est l'objectif à viser, et
+l'erreur du calcul doit être bien plus petite.
+
+\section{Le choix du coin dans la pratique}
+\label{sec:etat-coin}
+
+Les publications donnent des stratégies types :
+\begin{itemize}
+  \item \textbf{pes varus du teckel} : coin d'ouverture médial au CORA, en gardant la corticale latérale comme
+  charnière \cite{petazzoni2012} ;
+  \item \textbf{varus du fémur distal} (luxation médiale de la rotule) : coin de fermeture latéral ; l'aLDFA passe de
+  107,6 à 94,1\degre{} \cite{brower2017} ;
+  \item \textbf{valgus du tibia proximal} : coin de fermeture médial associé à une TPLO ; le mMPTA passe de 101 à
+  92,8\degre{} \cite{vezzoni2020} ;
+  \item \textbf{pente du plateau tibial} : coin de fermeture crânial (CCWO), dont l'angle est relié à la pente
+  \cite{guenego2021,guenego2025}. Un coin d'ouverture modifie facilement la pente : 1~mm d'erreur d'ouverture en avant
+  change la pente d'environ 2\degre{} \cite{noyes2005,ducat2012}.
+\end{itemize}
+
+\section{La segmentation des os au scanner}
+\label{sec:etat-segmentation}
+
+Segmenter, c'est décider pour chaque voxel à quel os il appartient. Trois familles de méthodes sont utiles ici :
+\begin{itemize}
+  \item le \textbf{seuillage} : on garde les voxels au-dessus d'une valeur. Le seuil « Bone (CT) » du logiciel
+  Mimics, 226~HU, est très utilisé en planification 3D. Mais à ce seuil, les os d'une articulation se touchent (volume
+  partiel) et forment un seul bloc ;
+  \item la \textbf{croissance de région} : on part d'un point (une graine) et on ajoute les voxels voisins qui
+  ressemblent ;
+  \item la \textbf{ligne de partage des eaux} (\emph{watershed}) \cite{meyer1994} : on voit l'image comme un relief
+  et on le remplit d'eau depuis des sources ; les frontières sont là où deux eaux se rencontrent.
+\end{itemize}
+Le logiciel libre 3D Slicer \cite{fedorov2012} offre ces outils à la main. La surface 3D est ensuite extraite par
+l'algorithme des \emph{marching cubes} \cite{lorensen1987}. Notre méthode (\cref{chap:segmentation}) combine un seuil
+qui monte pour trouver une graine par os, puis une croissance de région compétitive.
+
+\section{L'ostéotomie en dôme}
+\label{sec:dome}
+
+Quand on ne peut pas couper au CORA et qu'on veut éviter la translation de la règle 2, on peut faire une coupe
+courbe, un cylindre centré sur le CORA : les fragments tournent l'un sur l'autre le long de cette coupe, sans
+translation, en restant en contact. Elle est décrite au radius du chien, pour une ou deux déformités
+\cite{fox2006}.
+
+\begin{pourquoi}
+Nous ne proposons pas le dôme : (1) il faut une lame courbe de rayon fixe et un guide qui fasse tourner la lame autour
+d'un pivot, plus difficile à imprimer et à contrôler qu'une fente plane ; (2) un dôme cylindrique ne tourne qu'autour
+de son axe : il corrige l'angle mais pas la torsion ; (3) au fémur distal et au tibia, le CORA est le plus souvent dans
+une zone où la règle 1 est possible.
+\end{pourquoi}
+
+\section{Ce que nous en retenons}
+\label{sec:retenu}
+
+\begin{aretenir}[title={Les décisions du projet, tirées de l'état de l'art}]
+\begin{enumerate}
+  \item Partir du \textbf{scanner}, pour avoir la forme 3D et la torsion (\cref{chap:lecture}).
+  \item Trouver les \textbf{repères automatiquement}, avec les définitions des articles, et corriger l'écart entre
+  la mesure 2D publiée et notre mesure 3D (\cref{chap:reperes}).
+  \item Faire la méthode CORA \textbf{en 3D} : un seul coin oblique, l'ACA sur la bissectrice, la règle 1 par défaut
+  (\cref{chap:planification}).
+  \item Corriger la \textbf{torsion} par une dérotation, avec les définitions publiées au scanner.
+  \item Choisir le coin et la voie d'abord par des \textbf{règles explicites}, conformes aux pratiques publiées
+  (\cref{sec:strategie}).
+  \item Ne pas se contenter d'un guide de coupe : prévoir un \textbf{moyen de réduction} qui contrôle la rotation
+  (guide de réduction, \cref{chap:guides}).
+  \item Viser une erreur de calcul très inférieure aux \textbf{2\degre} publiés, et le vérifier sur des cas simulés
+  (\cref{chap:validation}).
+\end{enumerate}
+\end{aretenir}

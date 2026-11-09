@@ -194,19 +194,14 @@ export const PARAMS_GUIDE = [
   { cle: 'broche_mm', sym: 'Øb', nom: 'Diamètre des broches', def: 1.6, min: 1, max: 3.2, pas: 0.1, unite: 'mm', groupe: 'Fentes et manchons', inst: 'broche' },
   { cle: 'jeu_broche_mm', sym: 'jb', nom: 'Jeu du manchon', def: 0.2, min: 0.05, max: 0.6, pas: 0.05, unite: 'mm', groupe: 'Fentes et manchons', inst: 'jeuBroche' },
   { cle: 'pont_mm', sym: 'hp', nom: 'Hauteur des ponts sécables', def: 5, min: 2, max: 10, pas: 0.5, unite: 'mm', groupe: 'Fentes et manchons' },
-  { cle: 'chanfrein_mm', sym: 'c', nom: 'Chanfreins d\'entrée (fentes, manchons, trous de verrouillage)', def: 0.5, min: 0, max: 1.5, pas: 0.1, unite: 'mm', groupe: 'Fentes et manchons' },
-  { cle: 'profondeur_lame_mm', sym: 'pl', nom: 'Profondeur de lame, du haut des tours à la butée (0 = automatique, arrondie aux 5 mm ; ou longueur utile de la lame)', def: 0, min: 0, max: 80, pas: 5, unite: 'mm', groupe: 'Butée de profondeur' },
-  { cle: 'depassement_mm', sym: 'dl', nom: 'Coupe complète : dépassement de la corticale opposée', def: 1, min: 0, max: 3, pas: 0.5, unite: 'mm', groupe: 'Butée de profondeur' },
+  { cle: 'chanfrein_mm', sym: 'c', nom: 'Chanfreins d\'entrée (fentes, manchons)', def: 0.5, min: 0, max: 1.5, pas: 0.1, unite: 'mm', groupe: 'Fentes et manchons' },
   { cle: 'ecart_broches_mm', sym: 'eb', nom: 'Écart préféré entre deux broches d\'un fragment', def: 10, min: 6.5, max: 20, pas: 0.5, unite: 'mm', groupe: 'Broches (planification)', plan: true, inst: 'ecartBroches' },
   { cle: 'facteur_distance_broches', sym: 'kd', nom: 'Distance broche–coupe préférée (× largeur de l\'os)', def: 1.2, min: 0.5, max: 3, pas: 0.1, unite: '×', groupe: 'Broches (planification)', plan: true, inst: 'facteurBroches' },
   { cle: 'jeu_voisin_mm', sym: 'jv', nom: 'Distance minimale aux os voisins', def: 1, min: 0.5, max: 4, pas: 0.5, unite: 'mm', groupe: 'Voisins et cartilage' },
   { cle: 'marge_cartilage_mm', sym: 'mc', nom: 'Écart supplémentaire de la coque au cartilage', def: 1, min: 0.5, max: 5, pas: 0.5, unite: 'mm', groupe: 'Voisins et cartilage' },
-  { cle: 'verrou', sym: 'V', nom: 'Verrou de réduction intégré aux moitiés (1) ou guide de réduction séparé (0)', def: 1, min: 0, max: 1, pas: 1, unite: '', groupe: 'Verrou de réduction (« 2 en 1 »)' },
-  { cle: 'jeu_verrou_mm', sym: 'jo', nom: 'Écart entre les deux oreilles superposées du verrou', def: 0.6, min: 0.3, max: 1.5, pas: 0.1, unite: 'mm', groupe: 'Verrou de réduction (« 2 en 1 »)' },
-  { cle: 'oreille_mm', sym: 'eo', nom: 'Épaisseur de chaque oreille du verrou', def: 3, min: 2, max: 5, pas: 0.5, unite: 'mm', groupe: 'Verrou de réduction (« 2 en 1 »)' },
-  { cle: 'reduction_ecart_mm', sym: 'er', nom: 'Guide de réduction : distance de la barre à l\'os', def: 4, min: 2, max: 15, pas: 0.5, unite: 'mm', groupe: 'Guide de réduction séparé (V = 0)' },
-  { cle: 'reduction_manchon_mm', sym: 'lr', nom: 'Guide de réduction : longueur des manchons', def: 12, min: 6, max: 25, pas: 1, unite: 'mm', groupe: 'Guide de réduction séparé (V = 0)' },
-  { cle: 'reduction_barre_mm', sym: 'tb', nom: 'Guide de réduction : épaisseur de la barre', def: 6, min: 3, max: 12, pas: 0.5, unite: 'mm', groupe: 'Guide de réduction séparé (V = 0)' },
+  { cle: 'reduction_ecart_mm', sym: 'er', nom: 'Guide de réduction : distance de la barre à l\'os', def: 4, min: 2, max: 15, pas: 0.5, unite: 'mm', groupe: 'Guide de réduction' },
+  { cle: 'reduction_manchon_mm', sym: 'lr', nom: 'Guide de réduction : longueur des manchons', def: 12, min: 6, max: 25, pas: 1, unite: 'mm', groupe: 'Guide de réduction' },
+  { cle: 'reduction_barre_mm', sym: 'tb', nom: 'Guide de réduction : épaisseur de la barre', def: 6, min: 3, max: 12, pas: 0.5, unite: 'mm', groupe: 'Guide de réduction' },
 ];
 const INSTRUMENT_DEFAUT = { ...INSTRUMENT };
 // Applique (pour une planification) les dimensions choisies du guide générique qui comptent pour la planification ;
@@ -822,8 +817,8 @@ function manchonLibre(ev, d, tours, hauteur) {
 }
 // Configurations de broches de réduction : nombre de broches par fragment et disposition imposée.
 //   2+2 : 2 par fragment (le guide de réduction bloque les 6 degrés de liberté de chaque fragment) ;
-//   1+1 : 1 par fragment (un fragment peut tourner autour de sa propre broche : seules les butées du guide de réduction
-//         sur l'os s'y opposent) ;
+//   1+1 : 1 par fragment (un fragment peut tourner autour de sa propre broche : seuls les manchons du guide de
+//         réduction, au contact de l'os, s'y opposent) ;
 //   1+2 : 1 proximale (fragment long, tenu par le membre) + 2 distales côte à côte, au même niveau (« horizontales »).
 export const CONFIG_BROCHES = {
   '2+2': { prox: 2, dist: 2, nom: '2 par fragment (4 broches)' },

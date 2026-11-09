@@ -1,0 +1,478 @@
+\chapter{La planification CORA en 3D}
+\label{chap:planification}
+
+\begin{chapeau}
+C'est le cœur du projet. À partir de l'os et de ses repères, la planification construit les axes des deux segments,
+trouve le CORA et l'angle vrai, place la charnière et les traits de coupe, calcule la correction (avec la dérotation),
+place les broches, choisit la voie d'abord et le type de coin, puis écrit la prescription. Tout est calculé dans le
+fichier JavaScript \fichier{code_source/cora/app/cora_simple.js} (fonction \code{planifier()}), qui ne fait aucun
+dessin : il peut être testé seul, sous Node.
+\end{chapeau}
+
+\section{Les axes des deux segments}
+\label{sec:axes}
+
+L'os déformé est vu comme deux segments droits. Il faut l'axe de chacun. Paley le construit à partir de la ligne
+articulaire de l'extrémité et de l'angle articulaire \emph{normal} \cite{paley2002}. Le logiciel offre deux
+références.
+
+\subsection{Référence « os sain »}
+
+Si l'on dispose d'un os sain du même animal (le membre controlatéral), ou de l'os avant une déformité de test, on
+mémorise la position de son axe par rapport à ses articulations, puis on la reporte sur l'os déformé. Pour une
+articulation, on construit un repère local avec ses deux lignes articulaires :
+\begin{equation}
+  \vb{e}_1 = \frac{\vb{J}_F}{\norm{\vb{J}_F}}, \qquad
+  \vb{e}_3 = \frac{\vb{J}_S - (\vb{J}_S\cdot\vb{e}_1)\,\vb{e}_1}{\norm{\ldots}}, \qquad
+  \vb{e}_2 = \vb{e}_3 \times \vb{e}_1,
+\end{equation}
+où $\vb{J}_F$ est la ligne articulaire de face (de médial à latéral) et $\vb{J}_S$ celle de profil (de crânial à
+caudal). L'axe sain s'écrit dans ce repère local ; sur l'os déformé, on reconstruit le même repère local avec ses
+propres lignes articulaires et on y replace l'axe. C'est l'équivalent 3D de « ligne articulaire + angle normal ».
+
+\subsection{Référence « valeurs normales » (méthode de Paley)}
+
+Sans os sain, on construit l'axe dans chaque vue. Dans la vue de face, on tourne la direction de la ligne articulaire
+de l'angle normal, dans un sens puis dans l'autre, et on garde la direction qui va vers distal et qui est la plus
+proche de la verticale. On fait de même de profil. On obtient deux directions 2D, $\vb{d}_F = (d_{F,x}, d_{F,y})$ de
+face et $\vb{d}_S = (d_{S,z}, d_{S,y})$ de profil, qu'on combine en une direction 3D dont elles sont les projections :
+\begin{equation}
+  \vb{d} = \frac{\bigl(d_{F,x}/\abs{d_{F,y}},\ -1,\ d_{S,z}/\abs{d_{S,y}}\bigr)}{\norm{\ldots}}.
+  \label{eq:dir3d}
+\end{equation}
+Au tibia, les axes passent par l'éminence (segment proximal) et par le centre distal (segment distal). Au fémur, l'axe
+proximal est l'axe anatomique mesuré ; l'axe distal a la direction donnée par les lignes articulaires distales, et sa
+position est fixée de face par l'os fictif (il coupe la ligne des condyles au même endroit que l'axe sain), et de
+profil par la règle « une seule angulation » : le CORA de profil est au même niveau que le CORA de face.
+
+\begin{pourquoi}
+\textbf{Pourquoi cette règle de profil au fémur ?} Le fémur du chien est arqué vers l'avant : chez le lévrier, les
+condyles sont 33~mm en arrière de l'axe proximal. Un gabarit de profil tiré d'un autre os serait donc faux d'un chien à
+l'autre. Pour une déformité à un seul apex, les CORA de face et de profil sont au même niveau : c'est une hypothèse
+plus sûre.
+\end{pourquoi}
+
+\section{Le CORA en 3D}
+\label{sec:cora3d}
+
+\subsection{Deux droites qui ne se coupent pas}
+
+En 3D, deux axes mesurés ne se coupent presque jamais exactement : ils passent l'un à côté de l'autre. On cherche le
+point où ils sont le plus proches. Soient l'axe proximal $\vb{p} + s\,\vb{u}$ et l'axe distal $\vb{q} + t\,\vb{v}$
+(\cref{fig:perp-commune}). On minimise
+\begin{equation}
+  f(s, t) = \norm{\vb{w}_0 + s\,\vb{u} - t\,\vb{v}}^2, \qquad \vb{w}_0 = \vb{p} - \vb{q}.
+\end{equation}
+En annulant les dérivées par rapport à $s$ et à $t$, on obtient un système $2 \times 2$. Avec $a = \vb{u}\cdot\vb{u}$,
+$b = \vb{u}\cdot\vb{v}$, $c = \vb{v}\cdot\vb{v}$, $d = \vb{u}\cdot\vb{w}_0$ et $e = \vb{v}\cdot\vb{w}_0$ :
+\begin{equation}
+  \tcbhighmath{s^* = \frac{b\,e - c\,d}{a\,c - b^2}, \qquad t^* = \frac{a\,e - b\,d}{a\,c - b^2}.}
+  \label{eq:perp}
+\end{equation}
+Les points $P_p = \vb{p} + s^*\vb{u}$ et $P_d = \vb{q} + t^*\vb{v}$ sont les pieds de la \emph{perpendiculaire
+commune}. Le CORA est leur milieu, $C = (P_p + P_d)/2$, et $\delta = \norm{P_p - P_d}$ dit de combien les axes se
+ratent. Si $a\,c - b^2 \approx 0$, les axes sont parallèles : il n'y a pas d'angulation.
+
+\fig{perpendiculaire_commune.pdf}{Le CORA en 3D : le milieu de la perpendiculaire commune aux deux
+axes.}{fig:perp-commune}
+
+\subsection{Quand il n'y a pas de CORA}
+
+Si l'angle entre les axes est inférieur à 0,5\degre, ou si le CORA tombe hors de l'os (au-delà de 4 à 96~\% de sa
+longueur), il n'y a pas d'ostéotomie au CORA possible. C'est le cas des os sains du lévrier : le logiciel l'indique
+(« pas de correction indiquée ») au lieu de proposer une coupe absurde.
+
+\section{L'angle vrai et le plan de la déformité}
+\label{sec:angle-vrai}
+
+L'angle vrai est simplement l'angle entre les deux directions :
+\begin{equation}
+  \theta = \arccos(\vb{u}\cdot\vb{v}).
+\end{equation}
+Les composantes $F$ et $S$ sont les angles orientés entre les projections de $\vb{u}$ et $\vb{v}$ dans chaque vue. De
+face, $F < 0$ indique un varus (le bas part vers médial) ; de profil, $S > 0$ un procurvatum.
+
+\textbf{Démonstration de $\tan^2\theta = \tan^2 F + \tan^2 S$.} Prenons l'axe proximal vertical,
+$\vb{u} = (0, -1, 0)$. Une direction distale dont les angles projetés valent $F$ de face et $S$ de profil a pour
+vecteur directeur $\vb{v} \propto (\pm\tan F,\ -1,\ \pm\tan S)$ : de face, on ne voit que $(\pm\tan F, -1)$, qui fait
+bien l'angle $F$ avec la verticale ; de profil, $(\pm\tan S, -1)$. Alors
+\begin{equation}
+  \tcbhighmath{\cos\theta = \frac{\vb{u}\cdot\vb{v}}{\norm{\vb{v}}} = \frac{1}{\sqrt{1 + \tan^2 F + \tan^2 S}}
+  \quad\Longrightarrow\quad
+  \tan^2\theta = \frac{1}{\cos^2\theta} - 1 = \tan^2 F + \tan^2 S.}
+\end{equation}
+Le logiciel n'a pas besoin de cette formule, puisqu'il calcule $\theta$ directement en 3D ; elle sert de contrôle et
+d'explication (\cref{fig:angle-vrai}). L'orientation du plan de la déformité par rapport au plan frontal est
+$\varphi = \arctan\bigl(\abs{\tan S}/\abs{\tan F}\bigr)$.
+
+\fig{angle_vrai.pdf}{À gauche, les projections $F$ et $S$ et l'angle vrai $\theta$. À droite, l'angle vrai en
+fonction de $F$ pour plusieurs valeurs de $S$ : il est toujours inférieur à la somme $F + S$ (en tirets).}{fig:angle-vrai}
+
+\section{La bissectrice, l'ACA et la rotation}
+\label{sec:bissectrice}
+
+Les deux axes définissent le plan de la déformité. Trois directions servent ensuite (\cref{fig:bissectrice}a) :
+\begin{equation}
+  \vb{n}_{\text{ACA}} = \frac{\vb{u}\times\vb{v}}{\norm{\vb{u}\times\vb{v}}}, \qquad
+  \vb{b} = \frac{\vb{u} + \vb{v}}{\norm{\vb{u} + \vb{v}}}, \qquad
+  \vb{c} = \frac{\vb{u} - \vb{v}}{\norm{\vb{u} - \vb{v}}}.
+\end{equation}
+$\vb{n}_{\text{ACA}}$ est perpendiculaire au plan de la déformité : c'est la direction de l'axe de correction.
+$\vb{b}$ est la normale du \emph{plan bissecteur}, qui partage l'angle entre les segments. $\vb{c}$ est la
+\emph{bissectrice transverse}, dans le plan de la déformité, dirigée vers le côté convexe. Le logiciel coupe l'os par
+le plan bissecteur passant par le CORA : il en tire la largeur de l'os le long de $\vb{c}$ (distances aux corticales
+convexe et concave) et sa profondeur le long de l'ACA.
+
+\subsection{La formule de Rodrigues}
+
+La correction fait tourner le segment distal d'un angle $\theta$ autour de l'axe unitaire
+$\vb{k} = (\vb{v}\times\vb{u})/\norm{\vb{v}\times\vb{u}}$, qui amène $\vb{v}$ sur $\vb{u}$. La matrice de rotation
+d'angle $\alpha$ autour de $\vb{k}$ est donnée par la formule de Rodrigues \cite{rodrigues1840} :
+\begin{equation}
+  \tcbhighmath{\mt{R}(\vb{k}, \alpha) = \mt{I} + \sin\alpha\,[\vb{k}]_\times + (1 - \cos\alpha)\,[\vb{k}]_\times^2,
+  \qquad
+  [\vb{k}]_\times = \begin{pmatrix} 0 & -k_z & k_y \\ k_z & 0 & -k_x \\ -k_y & k_x & 0 \end{pmatrix}.}
+  \label{eq:rodrigues}
+\end{equation}
+Une rotation autour d'une droite qui passe par le point $Q$ envoie $\vb{x}$ sur
+$\mt{R}(\vb{x} - Q) + Q$ : c'est une transformation rigide $\mt{T} = (\mt{R}, \vb{t})$ avec $\vb{t} = Q - \mt{R}Q$.
+Deux transformations se composent par $\mt{T}_A \circ \mt{T}_B = (\mt{R}_A\mt{R}_B,\ \mt{R}_A\vb{t}_B + \vb{t}_A)$, et
+l'inverse est $(\mt{R}^{\mathsf T}, -\mt{R}^{\mathsf T}\vb{t})$.
+
+\section{L'ostéotomie : charnière, traits et coin}
+\label{sec:traits}
+
+\subsection{La charnière}
+
+La charnière $H$ est placée sur la bissectrice transverse, au niveau du CORA, à une profondeur $h$ (2~mm par défaut)
+à l'intérieur de la corticale opposée au coin :
+\begin{equation}
+  H = P_c + \sigma\,(\ell - h)\,\vb{c},
+  \qquad
+  \begin{cases}
+    \sigma = -1,\ \ell = \text{distance à la corticale concave} & \text{coin de fermeture,} \\
+    \sigma = +1,\ \ell = \text{distance à la corticale convexe} & \text{coin d'ouverture,}
+  \end{cases}
+\end{equation}
+où $P_c$ est le centre de la section. La lame entre de l'autre côté : par la corticale convexe pour une fermeture, par
+la corticale concave pour une ouverture. On note $D = \text{largeur} - h$ la distance de la charnière à la corticale
+d'entrée.
+
+\begin{pourquoi}
+\textbf{Pourquoi 2~mm ?} À cet endroit, la charnière est l'ACA de Paley : aucune translation. Et il reste un pont d'os
+cortical assez fin pour plier sans casser (au plus 3~mm), qui garde les fragments en contact. Au-delà de 3~mm, le pont
+ne plie plus : l'ostéotomie devient complète et le coin devient \emph{mixte} (une partie se ferme, l'autre s'ouvre).
+\end{pourquoi}
+
+\subsection{Les traits de coupe}
+
+\begin{itemize}
+  \item \textbf{Coin de fermeture} : deux plans passant par $H$, de normales $\vb{u}$ et $\vb{v}$ (l'un est
+  perpendiculaire à l'axe proximal, l'autre à l'axe distal). Le coin d'os entre les deux est retiré.
+  \item \textbf{Coin d'ouverture} : un seul plan passant par $H$, de normale $\vb{b}$ (le plan bissecteur).
+\end{itemize}
+
+\fig{bissectrice_coins.pdf}{(a) Le plan de la déformité : axes, CORA, bissectrice transverse. (b) Le coin de fermeture
+et sa base. (c) Le coin d'ouverture et l'écart qu'il crée.}{fig:bissectrice}
+
+\subsection{La taille du coin}
+
+\textbf{Fermeture.} Prenons un point à la distance $D$ de $H$ le long de $\vb{c}$, et mesurons l'écart entre les deux
+plans le long de $\vb{b}$. Un point $H + D\,\vb{c} + w\,\vb{b}$ est sur le plan de normale $\vb{u}$ si
+$D\,(\vb{c}\cdot\vb{u}) + w\,(\vb{b}\cdot\vb{u}) = 0$. Or $\vb{c}\cdot\vb{u} = \sin(\theta/2)$ et
+$\vb{b}\cdot\vb{u} = \cos(\theta/2)$, d'où $w = -D\tan(\theta/2)$ ; de même $w = +D\tan(\theta/2)$ pour le plan de
+normale $\vb{v}$. La base du coin, à la corticale d'entrée, vaut donc
+\begin{equation}
+  \tcbhighmath{\text{base}_{\text{fermeture}} = 2\,D\,\tan(\theta/2).}
+\end{equation}
+
+\textbf{Ouverture.} Un point de la face coupée, à la distance $D$ de la charnière, décrit un arc de cercle d'angle
+$\theta$ : la corde de cet arc est l'ouverture
+\begin{equation}
+  \tcbhighmath{\text{ouverture} = 2\,D\,\sin(\theta/2).}
+\end{equation}
+
+\begin{exemple}
+Tibia de 16~mm de large, charnière à 2~mm, $\theta = 20\degre$ : $D \approx 14$~mm, base du coin de fermeture
+$2 \times 14 \times \tan 10\degre \approx 4{,}9$~mm, ouverture $2 \times 14 \times \sin 10\degre \approx 4{,}9$~mm. Pour un
+petit angle, les deux sont proches. Il faut au moins 1,5~mm de matière entre les deux fentes du guide : un coin de
+fermeture trop fin est déconseillé (\cref{sec:choix-coin}).
+\end{exemple}
+
+\subsection{Rester loin du cartilage}
+
+Un trait de coupe doit rester à au moins 5~mm du cartilage articulaire, et un coin de fermeture ne doit pas en
+emporter. Si le CORA est trop près de l'articulation (par exemple dans la trochlée du fémur), le logiciel déplace la
+coupe vers la diaphyse, millimètre par millimètre, jusqu'à 35~\% de la longueur de l'os : c'est la règle 2.
+
+\section{La règle 2 : couper ailleurs qu'au CORA}
+\label{sec:regle2}
+
+Quand la coupe est déplacée de $z$~mm le long de l'os, la charnière $H$ n'est plus sur la bissectrice du CORA. Paley
+impose alors que l'\textbf{ACA reste sur la bissectrice} : sinon les axes ne seraient pas réalignés (règle 3).
+
+\textbf{Pourquoi tout point de la bissectrice convient.} Soit $Q = C + \lambda\,\vb{c}$ un point de la bissectrice et
+$\mt{R}$ la rotation d'angle $\theta$ qui amène $\vb{v}$ sur $\vb{u}$. Elle envoie la direction distale sur
+$\vb{u}$ ; il reste à vérifier que l'axe distal tombe sur l'axe proximal. Le point $C$, commun aux deux axes, va en
+$C' = C + \lambda\,(\vb{c} - \mt{R}\vb{c})$. Dans le plan de la déformité, $\vb{v}$ est $\vb{u}$ tourné de $-\theta$
+et $\mt{R}\vb{u}$ est $\vb{u}$ tourné de $+\theta$, donc $\vb{v} + \mt{R}\vb{u} = 2\cos\theta\,\vb{u}$. Comme
+$\vb{c} \propto \vb{u} - \vb{v}$ et $\mt{R}\vb{c} \propto \mt{R}\vb{u} - \vb{u}$ :
+\begin{equation}
+  \vb{c} - \mt{R}\vb{c} \propto 2\vb{u} - (\vb{v} + \mt{R}\vb{u}) = 2(1 - \cos\theta)\,\vb{u}.
+\end{equation}
+$C'$ est donc sur l'axe proximal, et l'axe distal corrigé est confondu avec lui, quel que soit $\lambda$.
+
+\textbf{Le bon point.} Parmi ces points, le logiciel prend celui qui garde les faces de l'ostéotomie en contact : la
+charnière doit rester sur le plan de la face proximale (de normale $\vb{n}_F$ : $\vb{u}$ en fermeture, $\vb{b}$ en
+ouverture). La condition $(\mt{R}(H - Q) + Q - H)\cdot\vb{n}_F = 0$ donne
+\begin{equation}
+  \lambda = \frac{\bigl((\mt{R} - \mt{I})(H - C)\bigr)\cdot\vb{n}_F}{\bigl((\mt{R} - \mt{I})\,\vb{c}\bigr)\cdot\vb{n}_F}.
+\end{equation}
+Le fragment distal glisse alors le long de la coupe : c'est la \textbf{translation à l'ostéotomie}, mesurée par
+$\norm{\mt{T}(H) - H}$ (\cref{fig:regle2}). Au-delà de 50~\% de la largeur de l'os, le contact osseux devient
+insuffisant : le logiciel le signale comme bloquant.
+
+\fig{regle2.pdf}{Règle 1 et règle 2 (coin d'ouverture). En coupant 22~mm sous le CORA, les axes sont toujours
+réalignés, mais le fragment distal (en bleu) glisse le long de la coupe.}{fig:regle2}
+
+\section{La dérotation}
+\label{sec:derotation}
+
+Si la torsion doit être corrigée, le fragment distal tourne en plus autour de son axe, d'un angle $\alpha$. La
+\textbf{cible} dépend de la référence : la torsion de l'os sain, ou, avec les valeurs normales, la valeur moyenne
+publiée seulement si la torsion sort des seuils. La décision se prend sur la torsion \emph{après} la seule correction
+angulaire : une angulation pure incline un peu les axes transverses et crée quelques dixièmes de degré de « fausse
+torsion », que la correction annule.
+
+La dérotation tourne autour d'un axe que la correction garde aligné :
+\begin{itemize}
+  \item \textbf{fermeture} : autour de l'axe distal, \emph{avant} la fermeture, $\mt{T} = \mt{T}_{\text{angle}} \circ
+  \mt{R}_\alpha$ ; la face distale, perpendiculaire à cet axe, tourne dans son plan ;
+  \item \textbf{ouverture} : autour de l'axe réaligné (l'axe proximal), \emph{après} l'ouverture,
+  $\mt{T} = \mt{R}_\alpha \circ \mt{T}_{\text{angle}}$.
+\end{itemize}
+
+L'angle $\alpha$ est cherché par la \textbf{méthode de la sécante} \cite{press2007}, pour que la torsion mesurée après
+la correction, $\tau(\alpha)$, égale la cible $\tau^*$. Avec $f(\alpha) = \tau(\alpha) - \tau^*$ :
+\begin{equation}
+  \alpha_{n+1} = \alpha_n - f(\alpha_n)\,\frac{\alpha_n - \alpha_{n-1}}{f(\alpha_n) - f(\alpha_{n-1})}.
+\end{equation}
+Comme $\tau$ dépend presque linéairement de $\alpha$, deux ou trois itérations suffisent (au plus six, arrêt à
+0,001\degre). On ne dérote pas en dessous de 1\degre. Une dérotation impose une ostéotomie complète : une charnière
+corticale ne peut pas tourner sur elle-même.
+
+\section{Les broches}
+\label{sec:broches}
+
+Les broches relient la planification au geste : elles fixent le guide, puis servent de repère pour la correction et
+de support pour la réduction. Leur direction et leur position sont calculées ici.
+
+\subsection{L'astuce de l'inverse}
+
+Les broches ont quatre rôles : fixer le guide de coupe, porter la correction, tenir la réduction et bloquer la
+rotation. L'astuce est de forer les broches distales avec l'\textbf{inverse de la correction}. Si $\vb{d}$ est la
+direction des broches proximales et $\mt{R}_T$ la rotation de la correction complète (angle et dérotation), les
+broches distales sont forées selon
+\begin{equation}
+  \vb{d}_{\text{dist}} = \mt{R}_T^{-1}\,\vb{d}
+  \quad\Longrightarrow\quad
+  \text{après correction : } \mt{R}_T\,\vb{d}_{\text{dist}} = \vb{d}.
+\end{equation}
+Après la correction, \textbf{toutes les broches sont parallèles}, et seulement si la correction est la bonne. Le
+chirurgien a un repère visuel immédiat, et le guide de réduction (\cref{sec:reduction}) peut s'y enfiler.
+
+\fig{broches.pdf}{Les broches distales, forées avec l'inverse de la correction, deviennent parallèles aux broches
+proximales quand la correction est exacte.}{fig:broches}
+
+\subsection{Où placer les broches}
+
+Le logiciel cherche une position pour chaque broche dans un grand nombre de possibilités, et garde la première qui
+respecte toutes les règles :
+\begin{itemize}
+  \item \textbf{position le long de l'os} : à une distance de la coupe de 1,2 fois la largeur locale de l'os si la
+  place le permet, sinon plus près, jamais contre la tour de fente ;
+  \item \textbf{deux broches par fragment} (configuration 2 + 2 par défaut) : l'une derrière l'autre (écart de 10, 8 puis
+  6,5~mm) ou côte à côte au même niveau (6,5 à 9~mm) si le fragment est court ; décalage possible de 2 à 4~mm de la
+  ligne centrale ;
+  \item \textbf{direction} : vers l'os depuis la face d'appui du guide, tournée autour de l'os d'un angle $\beta$ de
+  0 à $\pm 45\degre$ (par pas de 5\degre), puis inclinée le long de l'os de $\gamma = \pm 10$ ou $\pm 20\degre$ si le
+  retrait du guide l'exige ;
+  \item \textbf{hauteur des manchons} : 15~mm, raccourcis à 10 puis 8~mm si un manchon heurte la tour de fente.
+\end{itemize}
+
+\begin{table}[htbp]
+\centering\small
+\caption{Les règles qu'une broche doit respecter.}
+\label{tab:regles-broches}
+\begin{tabularx}{\linewidth}{L{4.4cm}Y}
+\toprule
+\titrecol{Règle} & \titrecol{Valeur} \\
+\midrule
+traverser l'os (bicorticale) & au moins 5~mm d'os le long de la broche \\
+rester loin des plans de coupe & 2~mm de pont osseux, du bon côté ; pointe hors du trajet de la lame de l'autre trait \\
+rester loin du cartilage & 3~mm de l'axe de la broche ; manchon jamais posé sur le cartilage \\
+éviter les os voisins & 2~mm de l'axe, jusqu'à 8~mm au-delà de la corticale opposée (un forage un peu trop long n'embroche pas la fibula) \\
+entrer franchement dans la corticale & moins de 50\degre{} entre la broche et la normale à l'os (sinon la mèche glisse) \\
+laisser sortir le guide & une des deux moitiés doit s'éloigner de l'autre en sortant (dérive inférieure à 0,03, environ 2\degre) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Deux autres configurations existent : \textbf{1 + 1} (une broche par fragment ; chaque fragment peut alors tourner
+autour de sa broche) et \textbf{1 + 2} (une proximale, deux distales côte à côte, utile pour un fragment distal court).
+
+\begin{danslecode}
+\code{placerBroches()}, \code{evaluerBroche()} et \code{manchonLibre()}. La recherche évalue des milliers de
+positions ; chaque contrôle parcourait tous les sommets de l'os, du cartilage et des voisins (environ 40~s sur un fémur).
+Les points sont maintenant rangés une fois dans une grille de cellules de 1,5~mm, et une requête n'examine que les
+cellules utiles, avec le même test point par point : mêmes résultats, beaucoup plus vite (\code{grille()},
+\code{parcourirLeLong()}).
+\end{danslecode}
+
+\section{Où poser le guide : la voie d'abord}
+\label{sec:abord}
+
+La lame entre toujours du côté \textbf{opposé à la charnière}, par la \emph{face du coin} : convexe en fermeture,
+concave en ouverture. Le guide se pose sur cette face. Mais elle doit être accessible par une voie d'abord habituelle
+(\cref{tab:abords}).
+
+\begin{table}[htbp]
+\centering\small
+\caption{Les secteurs où le guide peut être posé (choix raisonnés du projet, à valider avec un chirurgien).}
+\label{tab:abords}
+\begin{tabularx}{\linewidth}{lL{3.2cm}Y}
+\toprule
+\titrecol{Os} & \titrecol{Abord (demi-ouverture)} & \titrecol{Structures à protéger} \\
+\midrule
+fémur & latéral (± 60\degre) & nerf sciatique en arrière du fémur ; vaste latéral et biceps fémoral \\
+ & médial (± 45\degre) & artère et veine fémorales, nerf saphène ; artère génienne descendante \\
+tibia & médial (± 60\degre) & veine et artère saphènes, nerf saphène ; derrière l'os, artères poplitée et tibiale crâniale \\
+ & latéral (± 30\degre) & muscles tibial crânial et extenseurs ; artère tibiale crâniale et nerf fibulaire \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Le logiciel cherche, dans chaque secteur, la direction la plus proche de la face du coin, par pas de 5\degre, telle
+qu'aucun os voisin ne soit sur le trajet de la lame. Trois cas :
+\begin{itemize}
+  \item la face du coin est accessible : le guide s'y pose et la charnière peut être conservée ;
+  \item une face accessible est à moins de 60\degre{} de la face du coin : le guide s'y pose, mais l'ostéotomie
+  devient complète ;
+  \item sinon, la lame entrerait du côté de la charnière : ce coin est déclaré \textbf{non réalisable par un abord
+  usuel}, et l'autre type de coin est recommandé. Si en plus un os voisin (en général la fibula) est sur le trajet de
+  la lame, \textbf{aucun guide n'est construit} : il occuperait l'espace entre les deux os, où l'on ne peut ni le
+  glisser, ni le fixer, ni couper.
+\end{itemize}
+
+\section{La stratégie chirurgicale}
+\label{sec:strategie}
+
+\subsection{Les contraintes au niveau de la coupe}
+
+Pour chaque coin, le logiciel liste ce qui pourrait empêcher de couper à ce niveau, par gravité (bloquant, attention,
+information) :
+\begin{itemize}
+  \item cartilage et capsule articulaire : au moins 5~mm du trait ;
+  \item tubérosité tibiale (insertion du ligament de la rotule) : au moins 8~mm ;
+  \item épicondyles du fémur (origine des ligaments collatéraux) : au moins 6~mm ;
+  \item physes d'un chien en croissance (zones approchées en fraction de la longueur) ;
+  \item place pour la fixation : au moins 25~mm d'os de chaque côté (plaque à trois vis et broches) ;
+  \item consolidation : rapide en métaphyse, plus lente en diaphyse et au tiers distal du tibia ;
+  \item translation de la règle 2 (attention au-delà de 25~\% de la largeur, bloquant au-delà de 50~\%) ;
+  \item structures à protéger pendant l'abord (\cref{tab:abords}).
+\end{itemize}
+
+\subsection{Ouverture ou fermeture ?}
+\label{sec:choix-coin}
+
+Le logiciel compare les deux coins critère par critère, dans un ordre fixé. Le premier critère qui les départage
+décide ; tous restent affichés à l'écran (\cref{fig:choix-coin}) :
+\begin{enumerate}
+  \item \textbf{accès} : la lame entre par un abord usuel, du côté opposé à la charnière ;
+  \item \textbf{charnière conservée} (stabilité, pas de translation) ;
+  \item \textbf{règle 1} plutôt que règle 2 ;
+  \item un coin de fermeture \textbf{assez épais} pour deux fentes (au moins 1,5~mm de matière entre elles) ;
+  \item une \textbf{ouverture raisonnable} (au plus 40~\% de la largeur de l'os ; au-delà, greffe et consolidation
+  longue) ;
+  \item la \textbf{longueur} : si le membre opéré est plus court (ou plus long) que l'autre d'au moins 3~mm, le coin qui
+  compense le mieux (la fermeture raccourcit, l'ouverture allonge) ;
+  \item à défaut, la \textbf{fermeture} : surfaces d'os en contact, stabilité immédiate, pas de greffe.
+\end{enumerate}
+
+\fig[0.92]{choix_du_coin.pdf}{Comment le logiciel choisit entre le coin de fermeture et le coin
+d'ouverture.}{fig:choix-coin}
+
+\begin{exemple}
+Sur 606 cas simulés (\cref{sec:campagne-strategie}), les choix suivent la pratique publiée : au tibia, un valgus se
+corrige par fermeture et un varus par ouverture (le critère décisif est l'accès : la face médiale du tibia) ; au fémur,
+la fermeture domine (critère de stabilité) \cite{petazzoni2012,brower2017}.
+\end{exemple}
+
+\section{La prescription}
+
+La planification se termine par un fichier \fichier{prescription.json} (format v2.2), qui contient tout ce que l'étape
+7 doit savoir : la déformité, la stratégie, la charnière, les plans de coupe et leur profondeur, la correction (matrice
+$4 \times 4$ et dérotation), les broches et leur position après correction, la face d'appui, les contraintes et les
+alertes. Il est décrit en détail à l'\cref{ann:prescription}. Pour un os segmenté, il contient aussi la matrice qui
+ramène le repère de l'os à celui du scanner : le guide peut ainsi être superposé au STL de l'os dans 3D Slicer.
+
+\section{Les déformités simulées}
+\label{sec:deformite-simulee}
+
+Pour tester la méthode, on impose à un os sain une déformité connue (fonction \code{makeDeformity()}). L'apex $A$ est
+placé à une fraction choisie de la longueur. La direction distale est
+\begin{equation}
+  \vb{v}_0 = \frac{(-s_F\tan F,\ -1,\ s_S\tan S)}{\norm{\ldots}},
+\end{equation}
+avec $s_F = +1$ en varus, $-1$ en valgus, et $s_S = +1$ en procurvatum, $-1$ en recurvatum : ainsi, les angles projetés
+valent \emph{exactement} $F$ et $S$. Le segment distal tourne de $\theta = \arccos(\vb{u}_0\cdot\vb{v}_0)$ autour de
+$\vb{n} = \vb{u}_0\times\vb{v}_0$ passant par l'apex, après une éventuelle torsion $\tau$ autour de l'axe sain. Pour
+éviter une cassure, la rotation est appliquée progressivement dans une zone de transition de largeur $w$ autour de
+l'apex, avec le poids
+\begin{equation}
+  \omega(t) = t^2\,(3 - 2t), \qquad t = \clamp\!\left(\frac{y_A + w/2 - y}{w},\ 0,\ 1\right),
+\end{equation}
+où $y$ est la hauteur du point. Les 17 \textbf{préréglages cliniques} de l'application (valgus proximal du tibia, pes
+varus du teckel, varus du fémur distal de la luxation de la rotule\ldots) sont des déformités de ce type, avec leur
+contexte et leur traitement publié.
+
+\section{Les 13 étapes à l'écran}
+
+Dans l'application, la planification est découpée en 13 étapes. Chacune montre l'os en 3D, avec un texte qui
+explique ce qui se passe et ses sources (\cref{tab:13etapes}, \cref{fig:capture-angle-vrai}).
+
+\begin{table}[htbp]
+\centering\small
+\caption{Les 13 étapes de l'onglet \ui{Planification CORA}.}
+\label{tab:13etapes}
+\begin{tabularx}{\linewidth}{rL{4cm}Y}
+\toprule
+& \titrecol{Étape} & \titrecol{Ce qu'elle montre} \\
+\midrule
+1 & Le cas & l'os, ses repères, son côté, le dépistage des angles (± 2 écarts-types) \\
+2 & Face : lignes articulaires & les lignes d'orientation articulaire de face \\
+3 & Face : angles articulaires & l'axe et les angles de face, comparés aux normes \\
+4 & Face : axes et CORA & les axes des segments et le CORA de face \\
+5 & Profil : lignes et angles & les lignes articulaires et les angles de profil \\
+6 & Profil : axes et CORA & les axes et le CORA de profil \\
+7 & Angle vrai (3D) & l'angle vrai et le plan oblique de la déformité \\
+8 & Bissectrice et ACA & le plan bissecteur et l'axe de correction \\
+9 & Angle et traits de coupe & la charnière, les plans de coupe, le coin \\
+10 & Correction & la correction animée, avec la dérotation et les broches \\
+11 & Contrôle & les angles après correction, dans les deux plans \\
+12 & Guides de coupe & la prescription, la construction des guides, les contrôles, les fichiers \\
+13 & Et la torsion ? & la torsion mesurée, et pourquoi la radiographie ne suffit pas \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\fig{capture_angle_vrai.png}{L'étape 7 de l'application : un tibia avec 15\degre{} de varus et 10\degre{} de
+procurvatum. La déformité est dans un plan oblique (en rose) et l'angle vrai vaut 17,8\degre.}{fig:capture-angle-vrai}
+
+\begin{danslecode}
+\fichier{code_source/cora/app/cora_simple.js} : \code{reference()} et \code{axesNormales()} (les deux références),
+\code{coraPerpCommune()} (\cref{eq:perp}), \code{planifier()} (tout le calcul), \code{M3.axisAngle()} (Rodrigues),
+\code{RT.aboutAxis()} et \code{RT.compose()}, \code{choisirAbord()}, \code{contraintesCoupe()},
+\code{recommanderCoin()}, \code{placerBroches()}, \code{mesuresTorsion()}, \code{makeDeformity()},
+\code{prescription()}. L'interface des 13 étapes est dans \fichier{code_source/cora/app/modules/40_etapes.js}.
+\end{danslecode}

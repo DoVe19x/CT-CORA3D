@@ -1,0 +1,84 @@
+\chapter{Limites, sécurité et suite du projet}
+\label{chap:limites}
+
+\begin{chapeau}
+Ce chapitre dit ce que le logiciel ne fait pas encore, ce qu'il faut surveiller avec les données, et ce qu'il reste à
+faire. Il se termine par la conclusion du projet.
+\end{chapeau}
+
+\section{Les limites}
+
+\begin{itemize}
+  \item \textbf{Un seul chien, et il est sain.} Les déformités sont simulées. Un os très déformé, un implant, un cal
+  vicieux ou un petit chien pourraient tromper la détection des repères. Les repères doivent toujours être vérifiés à
+  l'écran (étape 1 de l'onglet CORA, ou \fichier{cora_<os>.png}).
+  \item \textbf{Les angles de profil} reposent sur des lignes articulaires courtes (20 à 30~mm) : ils sont sensibles à
+  quelques degrés.
+  \item \textbf{Les valeurs normales} sont publiées surtout pour quelques races (Labrador, berger allemand, golden
+  retriever, rottweiler) et mesurées sur radiographie ; pour le lévrier, seule la pente du plateau tibial a une
+  référence propre. Le meilleur témoin reste le membre opposé.
+  \item \textbf{Un seul apex}, et au fémur seulement les déformités distales (\cref{sec:hypotheses}).
+  \item \textbf{Seulement des coupes planes} : pas d'ostéotomie en dôme (\cref{sec:dome}).
+  \item \textbf{Les cartilages et les physes} d'un os segmenté sont approchés par des fractions de la longueur de l'os ;
+  les os voisins ne sont évités que s'ils ont été segmentés.
+  \item \textbf{Les voies d'abord et les marges} (cartilage 3 à 5~mm, os voisins 1 à 2~mm, entrée des broches à
+  50\degre{} au plus\ldots) sont des choix raisonnés, à valider avec un chirurgien.
+  \item \textbf{Les tissus mous et la plaque} ne sont pas modélisés : une broche peut gêner la plaque, et l'abord doit
+  dégager toute la zone d'appui du guide.
+  \item \textbf{Les guides n'ont pas été imprimés.} Les jeux de 0,2~mm des fentes et des manchons doivent être réglés
+  sur de petites pièces de test (coupons) ; la tenue à la stérilisation reste à vérifier (matériau conseillé : polyamide
+  PA12 fritté au laser, ou résine stérilisable).
+  \item \textbf{L'application autonome Windows} n'a pas encore été construite ; le lanceur Windows de développement,
+  lui, a été essayé.
+\end{itemize}
+
+\section{La sécurité et les données}
+\label{sec:securite}
+
+\begin{itemize}
+  \item \textbf{Tout reste sur l'ordinateur.} Le serveur n'écoute que \code{127.0.0.1} et l'application n'envoie rien
+  sur Internet.
+  \item \textbf{Les en-têtes DICOM contiennent des noms.} Le nom de l'animal, parfois celui du propriétaire, et un
+  identifiant sont recopiés dans \fichier{rapport.md}, \fichier{rapport.json} et le journal. Les résultats d'exemple du
+  dépôt GitHub en contiennent : il faut les rendre anonymes avant de partager le dépôt plus largement (supprimer ces
+  fichiers ne suffit pas, ils restent dans l'historique Git).
+  \item \textbf{Le serveur ne vérifie pas l'origine des demandes.} Une page web ouverte sur le même ordinateur pourrait,
+  en théorie, lui envoyer une commande. Il faudrait un jeton tiré au hasard au démarrage et un contrôle de l'origine.
+  \item \textbf{OneDrive} copie le projet sur les serveurs de l'école : c'est acceptable pour les données d'exemple ;
+  pour de vrais cas cliniques, il faut l'accord de l'établissement, ou un dossier non synchronisé.
+  \item \textbf{Les fichiers à imprimer} (STL) ne contiennent que la forme des pièces, aucune donnée sur l'animal.
+\end{itemize}
+
+\begin{attention}[title={Un prototype de recherche}]
+CT-CORA3D n'est pas un dispositif médical. Il ne doit pas servir sur un animal sans validation de chaque planification
+par le chirurgien.
+\end{attention}
+
+\section{La suite du projet}
+
+\begin{enumerate}
+  \item \textbf{Imprimer et essayer.} D'abord des coupons de fentes et de manchons pour régler les jeux, puis des
+  guides sur des os imprimés ; mesurer l'erreur finale (angle, torsion, translation) par scanner de l'os corrigé.
+  \item \textbf{Vrais cas.} Obtenir les scanners complets de chiens opérés, rendus anonymes (\cref{sec:topogramme}), et
+  comparer nos planifications à celles du chirurgien.
+  \item \textbf{Robustesse.} D'autres scanners et d'autres races ; le membre opposé comme référence quand il est
+  scanné ; des os vraiment déformés.
+  \item \textbf{Nouvelles fonctions.} Une plaque sur mesure dont les trous de vis sont percés à travers le guide
+  \cite{carwardine2021} ; les déformités à deux apex ; l'application autonome pour Windows.
+  \item \textbf{Sécurité.} Jeton et contrôle d'origine sur le serveur ; ne plus recopier les noms dans les rapports ;
+  signature de l'application avant de la diffuser.
+\end{enumerate}
+
+\section{Conclusion}
+
+CT-CORA3D relie, dans une seule application, le scanner d'une patte de chien à un guide de coupe prêt à imprimer. Chaque
+étape s'appuie sur une méthode publiée ou sur un calcul simple et vérifiable : la matrice DICOM, une segmentation par
+seuil montant et croissance de région, des repères trouvés comme le ferait le chirurgien avec sa règle, la méthode CORA
+de Paley faite en 3D, une stratégie choisie par des règles écrites, et un guide modélisé par des champs de distance puis
+découpé par des opérations exactes. Sur des cas simulés, le calcul est exact à quelques millièmes de degré, et plus de
+1\,800 cas passent tous les contrôles.
+
+Les campagnes de simulation ont été l'outil le plus utile du projet : elles ont trouvé des centaines d'erreurs que
+personne n'aurait vues sur un seul cas. Mais elles ont aussi montré leur limite : un guide « valide » sur le papier peut
+être impossible à poser, et c'est le regard du chirurgien qui l'a révélé. La prochaine étape n'est donc plus seulement
+informatique : il faut imprimer, essayer, et comparer avec le chirurgien sur de vrais patients.

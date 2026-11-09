@@ -4,7 +4,8 @@
 # lancée par creer_app_autonome.sh (macOS) ou creer_app_windows.bat (Windows), qui fixent CTCORA3D_CONSTRUCTION
 # (dossier de travail, hors OneDrive).
 # Contenu : Python, les bibliothèques (numpy, scipy, SimpleITK, VTK, pyvista, trimesh, manifold3d, matplotlib, pydicom,
-# pywebview), le programme (application/ et code_source/) et ses données (interface, icône, calibration des repères).
+# pywebview), le programme (application/ et code_source/) et ses données (interface, icône, calibration des repères,
+# logo de l'ECAM des plans 2D).
 # Rien n'est écrit dans l'application à l'usage : voir parametres.py pour les dossiers.
 import json
 import os
@@ -30,6 +31,7 @@ donnees = [
     (str(APPLI / "interface"), "application/interface"),
     (str(APPLI / "icone"), "application/icone"),
     (str(CODE / "calibration_reperes.json"), "."),
+    (str(CODE / "logo_ecam.png"), "."),                   # logo du cartouche des plans 2D (dessin_guide.py)
     (str(TRAVAIL / "construction.json"), "."),
 ]
 donnees += collect_data_files("trimesh") + collect_data_files("pyvista")

@@ -20,10 +20,7 @@ const LEG = {
   trans: ['--c-trans', 'Axes transverses (torsion 3D)'], width: ['--c-cut', 'Largeur projetée (radiographie)'],
   gprox: ['#2f6db5', 'Guide de coupe : moitié proximale'], gdist: ['#23a08f', 'Guide de coupe : moitié distale'],
   gponts: ['#e8822b', 'Ponts sécables'], gred: ['#8e44ad', 'Guide de réduction (os corrigé)'],
-  gcoin: ['#d9b43a', 'Guide de coupe : pièce du coin'], gverrou: ['#c0392b', 'Broches de verrouillage (verrou de réduction)'],
 };
-// réduction : verrou intégré aux moitiés du guide de coupe (« 2 en 1 », paramètre V = 1, par défaut) ou guide séparé (V = 0)
-const verrouIntegre = () => (S.guideParams?.verrou ?? 1) >= 0.5;
 
 // ------------------------------------------------------------ petits outils --
 const para = (html) => h('p', { html });
@@ -662,9 +659,9 @@ const ETAPES = [
         para('Regardez l\'axe distal (vert) : il vient se superposer à l\'axe proximal (violet), dans les deux plans à la fois.'),
         Math.abs(O.derotation) >= DEROTATION_MIN
           ? boite('warn', 'Dérotation', para(`La torsion mesurée (${P.torsion.publiee ? 'définition publiée' : 'définition du modèle'}) passe de ${deg(P.torsion.avant)} avant correction à ${deg(O.torsionApresAngle)} après la seule correction angulaire, pour une cible de ${deg(O.torsionCible)} : le fragment distal tourne en plus de <b>${deg(O.derotation)}</b> autour de son axe long (${ctx.kind === 'fermeture' ? 'avant de refermer le coin' : 'après l\'ouverture'}). Torsion finale : ${deg(O.torsionApres)}.`),
-            para(`Une dérotation impose une ostéotomie <b>complète</b> (la charnière corticale ne peut pas tourner) : c'est ${verrouIntegre() ? 'le <b>verrou de réduction</b> (les deux moitiés du guide de coupe verrouillées l\'une à l\'autre)' : 'le guide de réduction'} qui fixe alors la position des fragments.`))
+            para(`Une dérotation impose une ostéotomie <b>complète</b> (la charnière corticale ne peut pas tourner) : c'est le <b>guide de réduction</b> qui fixe alors la position des fragments.`))
           : null,
-        para(`Les <b>broches de réduction</b> (${(CONFIG_BROCHES[O.configBroches] || CONFIG_BROCHES['2+2']).nom}) ont été forées avec un angle de ${deg(O.angleBroches)} entre les fragments : à la fin de la correction, elles sont toutes <b>parallèles</b>, et ${verrouIntegre() ? 'les deux moitiés du guide de coupe, remises dessus, se verrouillent l\'une à l\'autre' : 'le guide de réduction s\'y enfile'} (étape 12).`),
+        para(`Les <b>broches de réduction</b> (${(CONFIG_BROCHES[O.configBroches] || CONFIG_BROCHES['2+2']).nom}) ont été forées avec un angle de ${deg(O.angleBroches)} entre les fragments : à la fin de la correction, elles sont toutes <b>parallèles</b>, et le guide de réduction s'y enfile (étape 12).`),
         h('table', { class: 't' }, h('tbody', {},
           h('tr', {}, h('td', {}, 'Angle restant entre les axes'), h('td', { class: 'hi', id: 'live-angle' }, deg(P.theta))),
           h('tr', {}, h('td', {}, 'Angle entre les paires de broches'), h('td', { class: 'hi', id: 'live-pins' }, deg(O.angleBroches))),
@@ -731,7 +728,7 @@ const ETAPES = [
       if (!O) return [boiteSansOsteo(P)];
       return [
         boiteExercice(P),
-        para('Tout ce qui précède se résume en quelques nombres que le <b>guide de coupe</b> doit matérialiser. Il s\'emboîte sur la surface de l\'os (empreinte tirée du CT) et ne peut se poser qu\'à un seul endroit ; il porte les fentes de scie et les manchons des broches. ' + (verrouIntegre() ? 'Après la coupe, ses deux moitiés, remises sur leurs broches, se <b>verrouillent</b> l\'une à l\'autre (verrou de réduction intégré, « 2 en 1 ») : elles imposent la position finale des fragments.' : 'Un second guide, le <b>guide de réduction</b>, impose ensuite la position finale des fragments.')),
+        para('Tout ce qui précède se résume en quelques nombres que le <b>guide de coupe</b> doit matérialiser. Il s\'emboîte sur la surface de l\'os (empreinte tirée du CT) et ne peut se poser qu\'à un seul endroit ; il porte les fentes de scie et les manchons des broches. Un second guide, le <b>guide de réduction</b>, impose ensuite la position finale des fragments.'),
         tablePrescription(P, O, ctx.kind),
         boiteStrategie(P, O, ctx.kind),
         ...boiteGuide3D(P, O, ctx),
@@ -809,13 +806,13 @@ function boiteBroches(P, O) {
       h('li', { html: '<b>Fixer le guide de coupe</b> sur l\'os pendant la coupe : il ne peut ni glisser ni basculer.' }),
       h('li', { html: '<b>Mémoriser la correction</b> : les broches distales sont forées avec l\'inverse de la correction (angle + dérotation). Quand les fragments sont à la position planifiée, toutes les broches deviennent <b>parallèles</b> : un repère visible immédiatement.' }),
       h('li', { html: '<b>Manipuler les fragments</b> : elles servent de poignées pendant la réduction.' }),
-      h('li', { html: verrouIntegre() ? '<b>Verrouiller</b> : les deux moitiés du guide de coupe, remises sur leurs broches parallèles, sont reliées par deux broches de verrouillage qui n\'entrent que dans la position planifiée ; l\'ensemble tient la position pendant la pose de la plaque.' : '<b>Porter le guide de réduction</b> : il s\'enfile sur les broches parallèles jusqu\'au contact de l\'os et tient la position pendant la pose de la plaque.' }),
+      h('li', { html: '<b>Porter le guide de réduction</b> : il s\'enfile sur les broches parallèles jusqu\'au contact de l\'os et tient la position pendant la pose de la plaque.' }),
       h('li', { html: '<b>Retirer le guide de coupe</b> : après la coupe des ponts, chaque moitié glisse le long de ses broches.' })),
     para(`<b>Configuration choisie : ${cfg.nom}.</b> ${O.configBroches === '1+1'
-      ? 'Une broche par fragment : un fragment peut encore tourner autour de sa propre broche sans que le parallélisme change ; seuls les appuis sur l\'os (moitiés du guide ou butées du guide de réduction) s\'y opposent (moins sûr pour la torsion).'
+      ? 'Une broche par fragment : un fragment peut encore tourner autour de sa propre broche sans que le parallélisme change ; seuls les manchons du guide de réduction, au contact de l\'os, s\'y opposent (moins sûr pour la torsion).'
       : O.configBroches === '1+2'
         ? 'Le fragment distal (plus court, plus mobile, celui qui porte la dérotation) est tenu par deux broches côte à côte au même niveau (« horizontales ») : ses 6 degrés de liberté sont bloqués ; le fragment proximal, tenu par le membre, n\'en a qu\'une.'
-        : 'Deux broches par fragment : un fragment ne peut plus tourner autour d\'une broche ; la réduction (verrou intégré ou guide de réduction) bloque les 6 degrés de liberté de chaque fragment.'} Choix dans le panneau de gauche.`));
+        : 'Deux broches par fragment : un fragment ne peut plus tourner autour d\'une broche ; le guide de réduction bloque les 6 degrés de liberté de chaque fragment.'} Choix dans le panneau de gauche.`));
 }
 // Comment fonctionne la dérotation ? (étape 10)
 function boiteDerotation(P, O, kind) {
@@ -885,7 +882,7 @@ function boiteGuide3D(P, O, ctx) {
   }
   if (Gd.etat === 'calcul') {
     return [boite('def', 'Construction des guides en cours',
-      para(`Distance à l'os sur une grille de 0,3 mm, coque moulée sans contre-dépouille, fentes et trous exacts, butée de profondeur, ${verrouIntegre() ? 'verrou de réduction' : 'guide de réduction'}, contrôles (≈ 30 s)…`),
+      para(`Distance à l'os sur une grille de 0,3 mm, coque moulée sans contre-dépouille, fentes et trous exacts, guide de réduction, contrôles (≈ 30 s)…`),
       h('pre', { class: 'journal', id: 'guide-journal', 'aria-live': 'polite' }, Gd.journal.length ? Gd.journal.join('\n') : 'Démarrage…'))];
   }
   // face du coin derrière un os voisin (fibula…) : un guide y occuperait l'espace entre les deux os, où l'on ne peut ni
@@ -900,15 +897,14 @@ function boiteGuide3D(P, O, ctx) {
     return [boite('ok', 'Construire les guides imprimables',
       para(`Pour <b>cet os</b> et ce ${kindNom[ctx.kind]}, le programme construit :`),
       h('ul', {},
-        h('li', { html: `le <b>guide de coupe</b> : coque moulée sur l'os (jeu ${fr(ctx.guideParams.jeu_mm ?? 0.3, 2)} mm, épaisseur ${fr(ctx.guideParams.epaisseur_coque_mm ?? 3, 1)} mm, sans contre-dépouille), ${O.plans.length === 2 ? 'deux fentes' : 'une fente'} de scie dans les plans prescrits, ${(O.brochesReduction || O.broches).length} manchons de broches ; <b>butée de profondeur</b> : le haut des tours est à la même distance de la butée de chaque fente (une seule graduation de lame, gravée sur les tours) ; ${O.plans.length === 2 && verrouIntegre() ? 'trois pièces (moitiés proximale et distale, pièce du coin) reliées par <b>4 ponts sécables</b>' : 'deux moitiés reliées par <b>2 ponts sécables</b>'}, pour que chaque moitié sorte le long de ses broches ; entrées chanfreinées, arêtes arrondies ;` }),
-        h('li', { html: verrouIntegre() ? 'le <b>verrou de réduction</b> intégré (« 2 en 1 ») : une oreille sur chaque moitié, de part et d\'autre du trait ; après la correction, les moitiés remises sur leurs broches ont leurs oreilles superposées, percées d\'un trou commun seulement dans la position planifiée (trait de scie compensé) ;' : `le <b>guide de réduction</b> séparé : ${(O.brochesReduction || O.broches).length} manchons parallèles, butées moulées sur l'os corrigé ;` }),
+        h('li', { html: `le <b>guide de coupe</b> : coque moulée sur l'os (jeu ${fr(ctx.guideParams.jeu_mm ?? 0.3, 2)} mm, épaisseur ${fr(ctx.guideParams.epaisseur_coque_mm ?? 3, 1)} mm, sans contre-dépouille), ${O.plans.length === 2 ? 'deux fentes' : 'une fente'} de scie dans les plans prescrits, ${(O.brochesReduction || O.broches).length} manchons de broches ; deux moitiés reliées par <b>2 ponts sécables</b>, pour que chaque moitié sorte le long de ses broches ; la profondeur de lame de chaque fente est donnée dans le mode opératoire ; entrées chanfreinées, arêtes arrondies ;` }),
+        h('li', { html: `le <b>guide de réduction</b> : ${(O.brochesReduction || O.broches).length} manchons parallèles qui s'enfilent sur les broches après la correction et s'appuient sur l'os corrigé ;` }),
         h('li', { html: 'les <b>plans 2D</b> : plan générique (cotes en symboles, tableau des paramètres) et plan coté de ce guide (vues orthogonales, échelle sur A3) ;' }),
-        h('li', {}, 'des contrôles indépendants : jeu mesuré, interpénétration, retrait de chaque pièce (lancer de rayons et balayage), étanchéité du STL, broche de verrouillage (passage et sensibilité à 1° et 0,3 mm).')),
+        h('li', {}, 'des contrôles indépendants : jeu mesuré, interpénétration, retrait de chaque moitié (lancer de rayons et balayage), étanchéité des STL.')),
       Gd.etat === 'erreur' ? boite('warn', 'Échec', para(Gd.erreur || 'erreur inconnue')) : null,
       h('button', { type: 'button', class: 'btn primary', onclick: () => ctx.construireGuide() }, Gd.etat === 'erreur' ? 'Réessayer' : 'Construire les guides 3D'))];
   }
-  const I = Gd.info, C = I.guide_coupe, R = I.guide_reduction, B = I.butee;
-  const VR = I.verrou_reduction && I.verrou_reduction.construit ? I.verrou_reduction : null;
+  const I = Gd.info, C = I.guide_coupe, R = I.guide_reduction;
   const NOMS_VOISINS = { fibula: 'fibula', patella: 'rotule', fabellae: 'fabelles' };
   const tag = (ok, oui = 'oui', non = 'non') => h('span', { class: `tag ${ok ? 'ok' : 'bad'}` }, ok ? oui : non);
   const ligne = (a, b) => h('tr', {}, h('td', {}, a), h('td', { class: 'hi' }, ...[b].flat()));
@@ -916,53 +912,40 @@ function boiteGuide3D(P, O, ctx) {
   const fichier = (n, txt) => (I.disponibles.includes(n) ? h('a', { class: 'btn petit', href: fichierGuide(Gd.dossier, n, true), download: n }, txt) : null);
   const vue = h('div', { class: 'seg', role: 'group', 'aria-label': 'Pièce affichée' },
     h('button', { type: 'button', 'aria-pressed': String(Gd.vue === 'coupe'), onclick: () => ctx.vueGuide('coupe') }, 'Guide de coupe'),
-    h('button', { type: 'button', 'aria-pressed': String(Gd.vue === 'reduction'), onclick: () => ctx.vueGuide('reduction') }, VR ? 'Après correction (verrou)' : 'Guide de réduction'));
+    h('button', { type: 'button', 'aria-pressed': String(Gd.vue === 'reduction'), onclick: () => ctx.vueGuide('reduction') }, 'Guide de réduction'));
   const out = [
     boite('ok', 'Guides imprimables construits', vue,
       para(Gd.vue === 'coupe'
-        ? `Guide de coupe sur l'os, avant la coupe : moitié proximale en bleu, moitié distale en vert${C.piece_du_coin ? ', pièce du coin en jaune' : ''}, ponts sécables en orange${VR ? ' ; les oreilles du verrou dépassent au bout des tours' : ''}.`
-        : VR ? 'Os corrigé (angle, dérotation, trait de scie compensé) : les deux moitiés sont remises sur leurs broches, oreilles superposées ; les broches de verrouillage (rouge) traversent les deux oreilles de chaque côté.'
-          : 'Os corrigé (angle et dérotation) : les 4 broches sont parallèles et le guide de réduction (violet) s\'y enfile jusqu\'au contact de l\'os.'),
+        ? 'Guide de coupe sur l\'os, avant la coupe : moitié proximale en bleu, moitié distale en vert, ponts sécables en orange.'
+        : 'Os corrigé (angle et dérotation) : les broches sont parallèles et le guide de réduction (violet) s\'y enfile jusqu\'au contact de l\'os.'),
       h('table', { class: 't compact enveloppe' }, h('caption', {}, 'Contrôles du guide de coupe'), h('tbody', {},
         ligne('Jeu minimal entre guide et os (mesuré)', [mm(C.jeu_minimal_mesure_mm, 2), ' ', tag(C.jeu_minimal_mesure_mm >= C.jeu_demande_mm - 0.05, `≥ ${fr(C.jeu_demande_mm)}`, 'trop proche')]),
         ligne('Interpénétration avec l\'os', `${fr(C.volume_interpenetration_mm3 ?? 0, 2)} mm³`),
         ligne('Surface d\'appui (jeu ≤ 0,45 mm)', `${fr(C.surface_appui_mm2, 0)} mm²`),
         ligne('STL étanche (relu)', tag(C.etanche_stl)),
-        ligne('Pièces après coupe des ponts', [String(C.moities_apres_coupe_des_ponts), ' ', tag(C.moities_apres_coupe_des_ponts === (C.pieces_attendues ?? 2), C.piece_du_coin ? 'P, coin, D' : 'oui')]),
+        ligne('Pièces après coupe des ponts', [String(C.moities_apres_coupe_des_ponts), ' ', tag(C.moities_apres_coupe_des_ponts === (C.pieces_attendues ?? 2), 'deux moitiés')]),
         ligne('Retrait sans heurter l\'os ni l\'autre moitié', Object.entries(C.retrait).map(([k, r]) => h('span', {}, `${k} `, tag(r.libre), ' '))),
-        ligne('Ordre de retrait', `${C.piece_du_coin ? 'pièce du coin, puis ' : ''}moitié ${C.ordre_retrait[0]}, puis ${C.ordre_retrait[1]}`),
-        B ? ligne('Butée de profondeur', `${mm(B.profondeur_lame_mm, 0)} pour toutes les fentes (graduation de la lame, gravée sur les tours${B.mode === 'imposée' ? ' ; valeur imposée' : ''})`) : null,
-        C.marquages?.length ? ligne('Marquages gravés', C.marquages.map((m_) => m_.texte).join(' · ')) : null,
+        ligne('Ordre de retrait', `moitié ${C.ordre_retrait[0]}, puis ${C.ordre_retrait[1]}`),
         C.appui_moities ? ligne('Appui de chaque moitié (seule sur ses broches)', Object.entries(C.appui_moities).map(([k, a]) => h('span', {}, `${k} ${fr(a.surface_mm2, 0)} mm² sur ${fr(a.couverture_deg, 0)}° `, tag(a.surface_mm2 >= 100), ' '))) : null,
         ...Object.entries(I.voisins_et_cartilage?.voisins || {}).map(([n, r]) => ligne(`Jeu entre guide et ${NOMS_VOISINS[n] || n}`, [r.distance_guide_mm === null ? 'loin' : mm(r.distance_guide_mm, 1), ' ', tag(r.distance_guide_mm === null || r.distance_guide_mm >= (I.parametres.jeu_voisin_mm ?? 1) - 0.1, `≥ ${fr(I.parametres.jeu_voisin_mm ?? 1)}`, 'trop proche')])),
         I.voisins_et_cartilage?.cartilage ? ligne('Distance entre guide et cartilage articulaire', I.voisins_et_cartilage.cartilage.distance_guide_mm === null
           ? ['loin (aucun cartilage près du guide) ', tag(true, 'hors du cartilage')]
           : [mm(I.voisins_et_cartilage.cartilage.distance_guide_mm, 1), ' ', tag(I.voisins_et_cartilage.cartilage.distance_guide_mm >= 1, 'hors du cartilage', 'sur le cartilage')]) : null,
         ligne('Distance entre broches et trajet de la lame', [mm(Math.min(...C.broches.map((b) => b.distance_trajet_lame_mm ?? 99)), 1), ' ', tag(C.broches.every((b) => (b.distance_trajet_lame_mm ?? 99) >= 0.3), 'libre', 'la lame touche une broche')]),
-        ...C.fentes.map((f) => ligne(`Fente ${f.plan}${f.role.startsWith('séparation') ? ' (séparation)' : ''}`, `${mm(f.largeur_mm)} × ${mm(f.longueur_mm, 0)} ; guidage ${mm(f.guidage_mm, 0)} (lame ± ${deg(f.inclinaison_max_lame_deg)}) ; lame enfoncée de ${mm(f.profondeur_lame_mm, 0)} depuis le haut de la tour (butée : ${f.butee ?? (O.charniereConservee ? 'charnière' : 'corticale opposée')})${f.chanfrein_entree_mm ? ` ; entrée chanfreinée ${mm(f.chanfrein_entree_mm, 1)}` : ''}`)),
+        ...C.fentes.map((f) => ligne(`Fente ${f.plan}${f.role.startsWith('séparation') ? ' (séparation)' : ''}`, `${mm(f.largeur_mm)} × ${mm(f.longueur_mm, 0)} ; guidage ${mm(f.guidage_mm, 0)} (lame ± ${deg(f.inclinaison_max_lame_deg)}) ; lame enfoncée de ${mm(f.profondeur_lame_mm, 1)} depuis le haut de la tour (jusqu'à la ${f.arret_lame ?? (O.charniereConservee ? 'charnière' : 'corticale opposée')})${f.chanfrein_entree_mm ? ` ; entrée chanfreinée ${mm(f.chanfrein_entree_mm, 1)}` : ''}`)),
         C.epaisseur_entre_fentes_mm !== null && C.epaisseur_entre_fentes_mm !== undefined ? ligne('Matière entre les deux fentes', mm(C.epaisseur_entre_fentes_mm)) : null,
         ligne('Broches : angle entre les paires', `${deg(C.angle_paires_broches_deg)} (parallélisme dans chaque paire : ${deg(Math.max(C.parallelisme_paire_proximale_deg, C.parallelisme_paire_distale_deg), 2)})`),
         ligne('Pièce (PA12)', `${fr(piece.masse_g, 1)} g · ${piece.dimensions_mm.map((x) => fr(x, 0)).join(' × ')} mm`))),
       R ? h('table', { class: 't compact enveloppe' }, h('caption', {}, 'Contrôles du guide de réduction'), h('tbody', {},
         ligne('Distance entre barre et os corrigé', [mm(R.distance_barre_os_mm), ' ', tag(R.distance_barre_os_mm >= R.ecart_demande_mm - 0.5, `≥ ${fr(R.ecart_demande_mm, 0)}`, 'trop proche')]),
-        ligne('Butées (jeu minimal)', mm(R.jeu_minimal_mesure_mm, 2)),
+        ligne('Jeu minimal avec l\'os corrigé', mm(R.jeu_minimal_mesure_mm, 2)),
         ligne('Manchons parallèles', deg(R.parallelisme_manchons_deg, 3)),
         ligne('Broches à laisser dépasser de l\'os', `≥ ${mm(R.longueur_broche_hors_os_min_mm, 0)}`),
-        ligne('STL étanche (relu)', tag(R.etanche_stl)))) : null,
-      VR ? h('table', { class: 't compact enveloppe' }, h('caption', {}, 'Contrôles du verrou de réduction (« 2 en 1 »)'), h('tbody', {},
-        ligne('Côtés du trait', `${VR.cotes.join(' et ')}${VR.deux_broches?.length ? ' (deux broches de verrouillage : l\'autre côté était impossible)' : ''} ; oreille ${VR.moitie_haute} au-dessus`),
-        ligne('Broche de verrouillage', [`Ø ${mm(VR.broche_verrouillage_mm, 1)} dans un trou de ${mm(VR.trou_mm, 2)}, guidée sur ${mm(VR.engagement_mm, 1)} `, tag(Object.values(VR.broche_passe).every(Boolean), 'passe', 'ne passe pas')]),
-        ligne('Erreurs qui bloquent la broche', Object.entries(VR.sensibilite).map(([k, v]) => h('span', {}, `${k} `, tag(v || k.includes('le long des broches'), v ? 'oui' : 'appui sur l\'os', 'non'), ' '))),
-        ligne('Tolérances', `${mm(VR.tolerances.laterale_mm, 1)} ; ${deg(VR.tolerances.angulaire_deg, 1)} d'inclinaison${VR.tolerances.rotation_axe_broches_deg != null ? ` ; ${deg(VR.tolerances.rotation_axe_broches_deg, 1)} autour des broches` : ''}`),
-        VR.tolerances.rotations_detectees_deg ? ligne('Plus petite rotation détectée (centre de l\'os)', Object.entries(VR.tolerances.rotations_detectees_deg).map(([k, v]) => `${deg(v, 2)} autour de ${k}`).join(' ; ')) : null,
-        ligne('Écart entre les moitiés après la correction', [mm(VR.ecart_moities_apres_mm, 2), ' ', tag(VR.ecart_moities_apres_mm >= 0.1, 'sans contact', 'contact')]),
-        ligne('Remise en place le long des broches', tag(VR.remise_en_place_libre, 'libre', 'bloquée')),
-        ligne('Moitiés laissées sur les broches pendant la correction', tag(VR.trajet_libre, 'possible', 'à retirer avant')),
-        ligne('Compensation du trait de scie (fermeture)', mm(VR.compensation_trait_scie_mm, 1)))) : null),
+        ligne('STL étanche (relu)', tag(R.etanche_stl)))) : null),
   ];
   out.push(I.alertes.length
     ? boite('warn', 'Alertes', h('ul', {}, I.alertes.map((a) => h('li', {}, a))))
-    : boite('ok', 'Aucune alerte', para(`Jeu respecté partout, pas d'interpénétration, retrait libre de chaque pièce, STL étanche${VR ? ', verrou contrôlé (la broche passe ; 1° ou 0,3 mm d\'erreur la bloque)' : ''}.`)));
+    : boite('ok', 'Aucune alerte', para(`Jeu respecté partout, pas d'interpénétration, retrait libre de chaque moitié, STL étanches.`)));
   if (I.disponibles.includes('plan_guide.png')) {
     out.push(boite('def', 'Plans 2D du guide',
       para('<b>Plan coté</b> de ce guide (vues orthogonales, cotes en mm, échelle indiquée sur A3) et <b>plan générique</b> (le modèle paramétrique : cotes en symboles, tableau des paramètres, formules des dimensions qui découlent de l\'os). Cliquez sur l\'image pour l\'agrandir.'),
@@ -991,7 +974,7 @@ function boiteBrochesTorsion(P, O) {
     h('ul', {},
       h('li', { html: 'avec <b>une broche par fragment</b>, on juge le parallélisme à l\'œil (quelques degrés de précision), et une rotation du fragment <b>autour de sa propre broche</b> ne change rien au parallélisme ;' }),
       h('li', { html: 'avec un <b>guide de coupe seul</b>, la rotation est l\'erreur qui reste : 1 membre sur 7 réopéré pour une rotation mal corrigée (Worth 2019).' })),
-    para(`<b>Ici</b> : ${(CONFIG_BROCHES[O.configBroches] || CONFIG_BROCHES['2+2']).nom}, forées à travers le guide de coupe ; les distales avec l'inverse de la correction${der ? ` (angle θ + dérotation de ${deg(O.derotation)})` : ''}. Après la correction, les ${(O.brochesReduction || O.broches).length} broches sont parallèles et ${verrouIntegre() ? 'les deux moitiés du guide de coupe, remises dessus, se <b>verrouillent</b> par deux broches qui ne passent que si les 6 degrés de liberté sont bons (une erreur de 1° ou de 0,3 mm les bloque)' : 'le <b>guide de réduction</b> s\'enfile jusqu\'au contact de l\'os : il n\'y parvient que si les 6 degrés de liberté sont bons'}${O.configBroches === '1+1' ? ' (avec une broche par fragment, la rotation autour de chaque broche n\'est tenue que par les appuis sur l\'os)' : ''}. La torsion est <b>contrôlée sans être mesurée</b>.`),
+    para(`<b>Ici</b> : ${(CONFIG_BROCHES[O.configBroches] || CONFIG_BROCHES['2+2']).nom}, forées à travers le guide de coupe ; les distales avec l'inverse de la correction${der ? ` (angle θ + dérotation de ${deg(O.derotation)})` : ''}. Après la correction, les ${(O.brochesReduction || O.broches).length} broches sont parallèles et le <b>guide de réduction</b> s'enfile jusqu'au contact de l'os : il n'y parvient que si les 6 degrés de liberté sont bons${O.configBroches === '1+1' ? ' (avec une broche par fragment, la rotation autour de chaque broche n\'est tenue que par les appuis sur l\'os)' : ''}. La torsion est <b>contrôlée sans être mesurée</b>.`),
     para('Avec des guides de réduction, les publications rapportent une torsion à 1,7 ± 2,1° de la cible (fémur, Hall 2019), 2,6 ± 1,3° dans le plan transverse (tibia, Jeon 2023), moins de 2° et 1 mm dans tous les plans (pes varus, Bright 2024), plus de 90 % des paramètres à ≤ 5° (De Armond 2022).'),
     para('<b>Sans broches</b> : une <b>plaque sur mesure</b> (imprimée en titane : Carwardine 2021) dont les trous de vis sont percés à travers le guide de coupe avant l\'ostéotomie impose la position une fois vissée ; des <b>repères de rotation</b> tracés de part et d\'autre du trait (décalés de la valeur prévue après dérotation) ; un contrôle peropératoire (fluoroscopie, scanner) ou la navigation. La plaque sur mesure n\'est pas proposée par l\'application ; le guide de réduction reste le plus simple à vérifier.'),
     sources('worth19', 'hall19', 'jeon23', 'bright24', 'dearmond22', 'carwardine21'));

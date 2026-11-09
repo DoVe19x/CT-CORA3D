@@ -1,0 +1,170 @@
+\chapter{Étape 3 — Donner un nom à chaque os}
+\label{chap:identification}
+
+\begin{chapeau}
+Après la segmentation, chaque os a un numéro. Cette étape lui donne un nom (fémur, tibia, fibula, rotule\ldots) avec
+des règles anatomiques simples, et corrige trois erreurs typiques de la segmentation : la tête du fémur collée au
+bassin, la fibula collée au tibia et les fabelles collées au fémur.
+\end{chapeau}
+
+\section{Décrire chaque segment}
+
+Pour chaque segment, le logiciel calcule des descripteurs : son volume, sa densité moyenne, ses contacts avec ses
+voisins, s'il touche le bord du champ du scanner, et surtout sa \textbf{forme} par une analyse en composantes
+principales.
+
+\subsection{L'analyse en composantes principales}
+\label{sec:acp}
+
+Soient $\vb{p}_1, \ldots, \vb{p}_N$ les centres des voxels du segment (en mm) et $\vb{c}$ leur moyenne. On forme la
+matrice $\mt{X}$ ($N \times 3$) des points centrés, de lignes $\vb{p}_i - \vb{c}$, et on la décompose en valeurs
+singulières :
+\begin{equation}
+  \mt{X} = \mt{U}\,\boldsymbol{\Sigma}\,\mt{V}^{\mathsf T}.
+\end{equation}
+Les colonnes $\vb{v}_1, \vb{v}_2, \vb{v}_3$ de $\mt{V}$ sont les directions principales : $\vb{v}_1$ est la
+direction dans laquelle l'objet est le plus étendu. Ce sont aussi les vecteurs propres de la matrice de covariance
+$\mt{X}^{\mathsf T}\mt{X}/N$. On projette les points sur chaque direction, $t_{ik} = (\vb{p}_i - \vb{c})\cdot\vb{v}_k$,
+et on prend comme longueur $L_k$ l'écart entre le 1\textsuperscript{er} et le 99\textsuperscript{e} centile (ce qui
+ignore quelques voxels isolés). L'\textbf{allongement} est $L_1 / L_2$ : un os long a un allongement supérieur à 3,
+un os compact (rotule, os du tarse) inférieur à 3,5.
+
+\subsection{Densité et objets non osseux}
+
+Un fantôme de calibration ou une tige posée sur la table peut ressembler à un os. On le reconnaît à son intérieur :
+mesuré sur les voxels intérieurs (le segment érodé de deux voxels, pour ignorer les bords flous), il est homogène
+(coefficient de variation des HU inférieur à 0,2), presque sans os spongieux (moins de 8~\% de voxels sous 600~HU) et
+\emph{sans cavité} à remplir. Un os, lui, a toujours un canal médullaire ou de l'os spongieux : remplir le fémur du
+lévrier augmente son volume de 29~\%.
+
+\section{Les règles, de la plus sûre à la moins sûre}
+
+\begin{table}[htbp]
+\centering\small
+\caption{Les règles d'identification, dans l'ordre où elles sont appliquées.}
+\label{tab:regles-os}
+\begin{tabularx}{\linewidth}{rL{2.6cm}Y}
+\toprule
+& \titrecol{Os} & \titrecol{Règle} \\
+\midrule
+1 & objet non osseux & intérieur homogène et dense, et aucune cavité à remplir \\
+2 & tibia, fibula & un os long fin (allongement $\geq 6$), parallèle (moins de 20\degre) et qui recouvre au moins la moitié de la longueur touche un gros os long \\
+3 & fémur, bassin & une sphère (la tête du fémur) est trouvée au contact d'un gros voisin (\cref{sec:tete}) \\
+4 & genou & le gros os au contact de l'extrémité la plus large du tibia (le plateau) est le fémur, et inversement \\
+5 & fibula collée & sur des tranches du tibia, une petite tache séparée est suivie sur au moins 15~\% de la longueur (\cref{sec:fibula}) \\
+6 & métatarses & au moins trois os longs, fins, parallèles et voisins \\
+7 & tibia (pied seul) & le gros os au-dessus du tarse, si aucune autre règle ne l'a trouvé \\
+8 & talus, calcanéus, tarse & os compacts reliés au bout du tibia : le talus a le plus grand contact avec le tibia, le calcanéus est le plus long \\
+9 & phalanges & au-delà des métatarses \\
+10 & rotule, fabelles & petits os compacts au contact du fémur ; le plus gros est la rotule \\
+11 & bassin & gros os reliés à l'acétabulum par de larges contacts \\
+12 & points de l'utilisateur & renommer un segment, ou le séparer s'il contient des points de plusieurs noms \\
+13 & côtés & deux fémurs ou deux tibias : suffixe \code{_gauche} ou \code{_droit} selon $x$ (LPS) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Chaque nom est accompagné de sa \textbf{raison}, écrite en clair dans le rapport, par exemple « os long longé par un os
+long fin et parallèle (fibula, segment 7) ». L'utilisateur peut ainsi vérifier pourquoi le logiciel a décidé.
+
+\section{La tête du fémur}
+\label{sec:tete}
+
+La hanche est l'articulation la plus serrée : sur ce scanner, la tête du fémur touche l'acétabulum jusqu'à 1100~HU,
+alors qu'elle se détache déjà du col vers 900~HU. Aucun seuil ne la rend au fémur. Mais l'interligne reste visible :
+c'est une ligne sombre de 1 à 2 voxels, entre deux zones denses.
+
+\subsection{Révéler l'interligne}
+
+Une \emph{fermeture morphologique} en niveaux de gris, par une boule de rayon $\rho = 1$~mm, remplace chaque valeur par
+le minimum des maxima voisins : elle « bouche » les vallées étroites. La différence entre l'image fermée et l'image
+de départ, appelée \emph{chapeau haut-de-forme noir} (\emph{black top-hat}),
+\begin{equation}
+  V(\vb{x}) = (I \bullet B_\rho)(\vb{x}) - I(\vb{x}),
+\end{equation}
+est grande exactement dans les vallées plus étroites que la boule. On garde les voxels où $V > 250$~HU, où l'image
+dépasse 150~HU (pour écarter les cloisons de graisse entre les muscles), près du contact fémur--bassin.
+
+\subsection{Ajuster une sphère par RANSAC}
+
+Ces points dessinent une portion de sphère, mêlée à d'autres vallées. On cherche la sphère par la méthode
+\textbf{RANSAC} \cite{fischler1981} (\cref{fig:ransac}) :
+\begin{enumerate}
+  \item tirer 4 points au hasard et calculer la sphère qui passe par eux ;
+  \item garder cette sphère seulement si son rayon est plausible (4 à 20~mm, d'un chien miniature à un chien géant) ;
+  \item compter les points à moins de 0,6~mm de la sphère (les \emph{inliers}) ;
+  \item recommencer 4000 fois et garder la sphère qui a le plus d'inliers ;
+  \item l'affiner par moindres carrés sur ses inliers (trois fois).
+\end{enumerate}
+
+\fig[0.9]{ransac_cercle.pdf}{Le principe de RANSAC, montré en 2D avec un cercle : un essai au hasard est soutenu par
+peu de points ; le meilleur essai, affiné, retrouve la courbe malgré les points parasites.}{fig:ransac}
+
+\textbf{La sphère par les moindres carrés.} Un point $\vb{p}$ est sur la sphère de centre $\vb{c}$ et de rayon $r$
+si $\norm{\vb{p} - \vb{c}}^2 = r^2$. En développant :
+\begin{equation}
+  \tcbhighmath{\norm{\vb{p}}^2 = 2\,\vb{c}\cdot\vb{p} + s, \qquad s = r^2 - \norm{\vb{c}}^2.}
+  \label{eq:sphere}
+\end{equation}
+Cette équation est \emph{linéaire} en $(\vb{c}, s)$. Avec 4 points, c'est un système $4 \times 4$ ; avec $N$ points,
+on résout au sens des moindres carrés le système $[\,2\vb{p}_i^{\mathsf T}\ \ 1\,]\,(\vb{c}, s)^{\mathsf T} =
+\norm{\vb{p}_i}^2$, puis $r = \sqrt{s + \norm{\vb{c}}^2}$.
+
+\begin{exemple}[title={Exemple chiffré : combien d'essais ?}]
+Si une fraction $w$ des points candidats est sur la sphère, la probabilité qu'un tirage de 4 points ne contienne que
+des bons points est $w^4$. Pour trouver au moins un bon tirage avec une probabilité $P$, il faut
+$n = \ln(1 - P) / \ln(1 - w^4)$ essais. Avec $w = 0{,}3$ et $P = 0{,}999$ : $n \approx 850$. Les 4000 essais du
+logiciel laissent une large marge.
+\end{exemple}
+
+\subsection{Vérifier la sphère, puis séparer}
+
+Une vraie tête de fémur est couverte de points dans beaucoup de directions. On mesure la \textbf{couverture} : la
+fraction de 200 directions réparties régulièrement sur la sphère (directions de Fibonacci,
+$\phi_g = \arccos(1 - 2g/200)$, $\lambda_g = \pi(1 + \sqrt5)\,g$) qui ont un inlier à moins de 25\degre. La sphère est
+acceptée si elle a au moins 150 inliers et une couverture d'au moins 40~\%.
+
+La zone fémur + bassin est alors redistribuée par une nouvelle croissance de région : graine « fémur » à l'intérieur de
+la sphère (rayon $- 1$~mm), graine « bassin » au-delà (rayon $+ 1$~mm). La frontière tombe dans l'interligne. Le centre
+et le rayon sont écrits dans \fichier{reperes_auto.mrk.json}, au format Markups de 3D Slicer.
+
+\begin{exemple}
+Lévrier : sphère de rayon 12,6~mm, soutenue par 2055 points, couverture 68~\%.
+\end{exemple}
+
+\section{La fibula collée au tibia}
+\label{sec:fibula}
+
+Aux deux bouts de la jambe, la fibula touche le tibia ; au milieu, elle en est séparée. Le logiciel coupe le segment
+« tibia » en tranches de 2~mm perpendiculaires à son axe principal. Sur chaque tranche remplie, il cherche une petite
+tache séparée : au moins 3~mm² et moins de 20~\% de l'aire du tibia (sur le lévrier : 17~mm² contre 300~mm²). Il garde
+la plus longue suite de tranches où la tache existe et se déplace de moins de 3~mm d'une tranche à l'autre. Si cette
+suite couvre au moins 15~\% de la longueur (45~\% sur le lévrier), les taches servent de graine « fibula », les grandes
+de graine « tibia », et une croissance de région redistribue le segment. Un garde-fou annule la séparation si la
+fibula obtenue est invraisemblable (moins de 2~\% ou plus de 25~\% du volume du tibia, ou moins de 40~\% de sa longueur).
+
+\section{Les fabelles et les autres corrections}
+
+\begin{itemize}
+  \item \textbf{Fabelles.} Trop petites pour avoir leur graine, elles restent collées au fémur. Le fémur est
+  re-segmenté avec des graines trois fois plus fines ; seuls les petits morceaux compacts et peu en contact
+  ($c^* < 1{,}5$, moins de 5~\% du fémur) deviennent des fabelles. Sur le lévrier : 0,43~cm³.
+  \item \textbf{Talus soudé à un rayon du pied.} Un segment allongé qui touche la jambe n'est pas un métatarse pur (un
+  métatarse ne touche jamais le tibia) : il est re-découpé finement.
+  \item \textbf{Morceaux détachés.} Un os nommé doit être d'un seul tenant : un morceau détaché est rendu à l'os dont
+  il a été coupé s'il le touche sur une section entière ($c^* \geq 3$), sinon il devient un segment à part.
+\end{itemize}
+
+\section{Les corrections de l'utilisateur}
+
+Dans l'onglet \ui{Segmentation CT}, l'utilisateur peut \ui{Renommer} un segment ou le \ui{Séparer} en cliquant des
+points sur les coupes. Chaque point porte un nom ; il est enregistré dans \fichier{resultats/<série>/graines.json} et
+réappliqué à chaque calcul. Si un segment contient des points de plusieurs noms, une croissance de région part de
+boules de 2,5~mm autour des points et redistribue le segment, une étiquette par nom.
+
+\begin{danslecode}
+\fichier{code_source/etape3_identification.py} : \code{decrire()} (descripteurs, ACP), \code{identifier()} (les
+13 règles, dans l'ordre), \code{tete_femorale()} et \code{ajuster_sphere()} (chapeau haut-de-forme, RANSAC, couverture),
+\code{separer_fibula()}, \code{points_par_etiquette()} et \code{separer_par_points()} (points de l'utilisateur),
+\code{nettoyer_morceaux()}, \code{nommer_cotes()}.
+\end{danslecode}

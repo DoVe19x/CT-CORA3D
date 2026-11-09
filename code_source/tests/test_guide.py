@@ -4,13 +4,13 @@ test_guide.py — vérifie la construction des guides imprimables (etape7_guide.
 1. Os coudé synthétique (deux cylindres de 8 mm de rayon, coudés de 15° en varus, épiphyses sphériques) avec des
    prescriptions écrites à la main, comme les produit l'onglet CORA (format v2.2) : coin de fermeture, puis coin
    d'ouverture avec une dérotation de 12°. On vérifie : aucune alerte ; STL étanche ; jeu ≥ 0,3 mm et aucune
-   interpénétration ; 3 pièces après la coupe des ponts en fermeture (moitiés proximale et distale, pièce du coin), 2 en
-   ouverture, chacune retirable sans heurter l'os ni l'autre ; fentes vides sur toute leur largeur (0,8 mm) et dans le
-   bon plan, parois présentes de part et d'autre, entrée chanfreinée ; trous de broche vides et coaxiaux aux broches
-   prescrites ; butée de profondeur : le haut de chaque tour (mesuré par lancer de rayon sur le STL) est à la même
-   distance D (multiple de 5 mm) de la butée de sa fente ; marquages gravés ; verrou de réduction intégré, contrôlé sur
-   les fichiers seuls (moitiés dans la position corrigée, axes des broches de verrouillage de guide.json) : la broche
-   passe dans les deux oreilles de chaque côté, et un décalage de 0,3 mm la bloque.
+   interpénétration ; 2 moitiés après la coupe des ponts, chacune retirable sans heurter l'os ni l'autre ; fentes vides
+   sur toute leur largeur (0,8 mm) et dans le bon plan, parois présentes de part et d'autre, entrée chanfreinée ; trous
+   de broche vides et coaxiaux aux broches prescrites ; haut de chaque tour (mesuré par lancer de rayon sur le STL) à la
+   hauteur de guidage g au-dessus de la coque, et profondeur de lame annoncée dans guide.json = distance mesurée du haut
+   de la tour à la charnière (ou à la corticale opposée) ; guide de réduction, contrôlé sur les fichiers seuls (STL et
+   broches après la correction de guide.json) : chaque broche passe dans son manchon, et un décalage de 0,3 mm la
+   bloque.
    Puis le coin de fermeture avec un os voisin (cylindre de 4 mm de rayon à 1,5 mm de l'os, qui empiète sur le secteur
    de la coque) et une bande de cartilage sous l'extrémité distale de la coque : jeu ≥ 1 mm au voisin, aucune
    interpénétration, coque hors du cartilage, aucune alerte.
@@ -157,17 +157,18 @@ def verifier_fentes_et_trous(pr, guide_stl, os_man):
              f"(≥ {min(m for _, m in pires):.0f} mm³)")
 
 
-def verifier_butee_et_chanfreins(pr, info, guide_stl, os_man):
-    """Butée de profondeur et entrée des fentes, sur le STL seul. Haut de chaque tour : lancer de rayon vertical (le long
-    de hh) sur la bande plate de part et d'autre de la fente, au milieu de sa longueur ; butée : la charnière, ou la
-    corticale opposée moins le dépassement (coupe complète). Entrée : au ras du haut, la fente est ouverte sur ws + 2c."""
+def verifier_profondeur_et_chanfreins(pr, info, guide_stl, os_man):
+    """Haut des tours et entrée des fentes, sur le STL seul. Haut de chaque tour : lancer de rayon vertical (le long de
+    hh) sur la bande plate de part et d'autre de la fente, au milieu de sa longueur. Il doit être à la hauteur de guidage
+    g au-dessus de la coque (os + j + e + g), et la profondeur de lame annoncée (guide.json) doit être la distance de ce
+    haut à la charnière, ou à la corticale opposée en coupe complète. Entrée : au ras du haut, la fente est ouverte sur
+    ws + 2c."""
     g = E7.vers_manifold(*E7.lire_maillage(guide_stl))
     ws, ch = P.GUIDE_LAME_MM + P.GUIDE_JEU_FENTE_MM, P.GUIDE_CHANFREIN_MM
     face, K = np.array(pr["guide"]["face_appui"]), np.array(pr["guide"]["centre_section"])
     H, kdir = np.array(pr["charniere"]["point"]), E7.unitaire(pr["charniere"]["direction"])
     poly = E7.polydata(*E7.depuis_manifold(os_man))
-    D = info["butee"]["profondeur_lame_mm"]
-    ecarts, ouvert, plein = [], [], []
+    ecarts_g, ecarts_d, ouvert, plein = [], [], [], []
     for i, pl in enumerate(pr["plans_coupe"]):
         p, n = np.array(pl["point"]), E7.unitaire(pl["normale"])
         ll = E7.unitaire(kdir - (kdir @ n) * n)                  # fente parallèle à la charnière
@@ -175,63 +176,55 @@ def verifier_butee_et_chanfreins(pr, info, guide_stl, os_man):
         hh = hh if hh @ face > 0 else -hh
         ll = np.cross(n, hh)
         sec = E7.section_os(poly, p, n, hh, ll, K)
-        prof = info["guide_coupe"]["fentes"][i]["profondeur"]
-        h_stop = sec["hmin"] - P.GUIDE_DEPASSEMENT_MM if prof == "complete" else float((H - p) @ hh)
+        f_ = info["guide_coupe"]["fentes"][i]
+        h_stop = sec["hmin"] if f_["profondeur"] == "complete" else float((H - p) @ hh)
+        h_top = sec["hmax"] + P.GUIDE_JEU_MM + P.GUIDE_EPAISSEUR_MM + P.GUIDE_GUIDAGE_MM
         lc = 0.5 * (sec["lmin"] + sec["lmax"])
         for cote in (-1, 1):
             q = p + cote * (ws / 2 + ch + 0.45) * n + lc * ll
             hits = g.ray_cast(tuple(q + 80 * hh), tuple(q - 10 * hh))
             if hits:
-                ecarts.append(abs(float((np.array(hits[0].position) - p) @ hh) - h_stop - D))
-        h_top = h_stop + D
+                haut = float((np.array(hits[0].position) - p) @ hh)
+                ecarts_g.append(abs(haut - h_top))
+                ecarts_d.append(abs(haut - h_stop - f_["profondeur_lame_mm"]))
         L = 0.5 * (sec["lmax"] - sec["lmin"])
         ouvert.append(float((g ^ E7.boite_m(p + (h_top - 0.06) * hh + lc * ll, (n, hh, ll), (ws / 2 + ch - 0.15, 0.05, L))).volume()))
         plein.append(float((g ^ E7.boite_m(p + (h_top - 0.3) * hh + lc * ll + (ws / 2 + ch + 0.5) * n, (n, hh, ll), (0.2, 0.2, L))).volume()))
-    verifier(info["butee"]["mode"] == "automatique" and abs(D / P.GUIDE_PAS_PROFONDEUR_MM - round(D / P.GUIDE_PAS_PROFONDEUR_MM)) < 1e-6
-             and len({f["profondeur_lame_mm"] for f in info["guide_coupe"]["fentes"]}) == 1,
-             f"butée : profondeur de lame {D:g} mm, multiple de {P.GUIDE_PAS_PROFONDEUR_MM:g} mm, la même pour toutes les fentes")
-    verifier(len(ecarts) == 2 * len(pr["plans_coupe"]) and max(ecarts) < 0.1,
-             f"haut des tours à D de la butée (lancer de rayon sur le STL : écart ≤ {max(ecarts or [99]):.3f} mm)")
+    verifier(len(ecarts_g) == 2 * len(pr["plans_coupe"]) and max(ecarts_g) < 0.1,
+             f"haut des tours à g = {P.GUIDE_GUIDAGE_MM:g} mm au-dessus de la coque (lancer de rayon sur le STL : écart ≤ "
+             f"{max(ecarts_g or [99]):.3f} mm)")
+    verifier(ecarts_d and max(ecarts_d) < 0.15,
+             "profondeur de lame annoncée = distance mesurée du haut de la tour à l'arrêt de la lame ("
+             + ", ".join(f"{f_['profondeur_lame_mm']:g} mm jusqu'à la {f_['arret_lame']}" for f_ in info["guide_coupe"]["fentes"])
+             + f" ; écart ≤ {max(ecarts_d or [99]):.3f} mm)")
     verifier(max(ouvert) < 1e-3 and min(plein) > 0.05,
              f"entrée des fentes chanfreinée : ouverte sur {ws + 2 * ch:.1f} mm au ras du haut ({max(ouvert):.4f} mm³ de matière), "
              "paroi pleine juste à côté")
 
 
-def verifier_verrou(info, dossier, decale=0.3):
-    """Verrou de réduction, sur les fichiers seuls : moitiés dans la position corrigée (verrou_*.bin) et axes des broches
-    de verrouillage (guide.json). La broche (Ø des broches, du fond du trou borgne à 20 mm au-dessus) ne touche aucune
-    matière ; décalée de 0,3 mm perpendiculairement à son axe (2 directions), elle bute sur une oreille."""
-    V = info["verrou_reduction"]
-    verifier(V["construit"] and len(V["cotes"]) == 2, f"verrou de réduction des deux côtés ({', '.join(V.get('cotes') or [])})"
-             + ("" if V["construit"] else f" — {V.get('raison')}"))
-    if not V["construit"]:
+def verifier_reduction(info, dossier, decale=0.3):
+    """Guide de réduction, sur les fichiers seuls : STL relu et broches après la correction (guide.json). Chaque broche
+    (rayon des broches, de 5 mm dans l'os à 40 mm au-dessus) ne touche aucune matière ; décalée de 0,3 mm
+    perpendiculairement à son axe (2 directions), elle bute sur son manchon."""
+    R = info["guide_reduction"]
+    verifier(R is not None and R["etanche_stl"] and R["parallelisme_manchons_deg"] < 0.01
+             and R["jeu_minimal_mesure_mm"] >= P.GUIDE_JEU_MM - 0.05,
+             "guide de réduction construit : STL étanche, manchons parallèles "
+             + (f"({R['parallelisme_manchons_deg']}°), jeu {R['jeu_minimal_mesure_mm']} mm avec l'os corrigé" if R else "(absent)"))
+    if R is None:
         return
-    moities = E7.vers_manifold(*E7.lire_maillage(dossier / "verrou_proximal.bin")) + \
-        E7.vers_manifold(*E7.lire_maillage(dossier / "verrou_distal.bin"))
+    red = E7.vers_manifold(*E7.lire_maillage(dossier / "guide_reduction.stl"))
     rp = P.GUIDE_BROCHE_MM / 2
     passe, bloque = [], []
-    for pt in V["points"]:
-        a, o = np.array(pt["axe_point"]), E7.unitaire(pt["direction"])
-        passe.append(float((moities ^ E7.cylindre_m(a, o, 0.05, 25.0, rp - 0.01, 64)).volume()))
+    for b in R["broches_apres_correction"]:
+        a, o = np.array(b["point_axe"]), -E7.unitaire(b["direction"])
+        passe.append(float((red ^ E7.cylindre_m(a, o, -5.0, 40.0, rp - 0.01, 64)).volume()))
         e1 = E7.perp([1.0, 0, 0] if abs(o[0]) < 0.9 else [0, 1.0, 0], o)
         for e in (e1, np.cross(o, e1)):
-            bloque.append(float((moities ^ E7.cylindre_m(a + decale * e, o, 0.05, 25.0, rp - 0.01, 64)).volume()))
+            bloque.append(float((red ^ E7.cylindre_m(a + decale * e, o, -5.0, 40.0, rp - 0.01, 64)).volume()))
     verifier(max(passe) < 1e-3 and min(bloque) > 1e-3,
-             f"broche de verrouillage : passe dans les oreilles ({max(passe):.4f} mm³ de matière), bloquée par un décalage de "
-             f"{decale} mm (≥ {min(bloque):.3f} mm³)")
-    sens = V["sensibilite"]
-    rot = [k for k in sens if k.startswith("rotation")]
-    tol = V["tolerances"]["rotations_detectees_deg"]
-    verifier(all(sens[k] for k in rot) and all(v_ for k, v_ in sens.items() if "le long des broches" not in k)
-             and max(tol.values()) <= E7.MARGE_VERROU * E7.TOL_VERROU_DEG,
-             "sensibilité : 1° de rotation (3 axes) et 0,3 mm de translation perpendiculaire aux broches bloquent la broche "
-             f"(test booléen, broche enfoncée jusqu'au fond) ; rotations détectées dès {', '.join(f'{v_}° ({k_})' for k_, v_ in tol.items())}")
-    # (laisser les moitiés sur leurs broches pendant la correction est une option du mode opératoire, proposée seulement
-    # si ce trajet est libre : il est rapporté, pas exigé)
-    verifier(V["remise_en_place_libre"] and V["ecart_moities_apres_mm"] >= 0.1 and (V["interpenetration_os_corrige_mm3"] or 0) <= 0.05,
-             f"moitiés remises en place sans se toucher (écart {V['ecart_moities_apres_mm']} mm), os corrigé respecté "
-             f"({V['interpenetration_os_corrige_mm3']} mm³) ; trajet de la correction moitiés en place : "
-             f"{'libre' if V['trajet_libre'] else 'non (les retirer avant)'}")
+             f"broches après la correction : chacune passe dans son manchon ({max(passe):.4f} mm³ de matière), bloquée par un "
+             f"décalage de {decale} mm (≥ {min(bloque):.3f} mm³)")
 
 
 def test_synthetique():
@@ -250,9 +243,8 @@ def test_synthetique():
         verifier(C["jeu_minimal_mesure_mm"] >= P.GUIDE_JEU_MM - 0.05 and (C["volume_interpenetration_mm3"] or 0) < 0.01,
                  f"jeu minimal {C['jeu_minimal_mesure_mm']} mm (demandé {P.GUIDE_JEU_MM}), interpénétration "
                  f"{C['volume_interpenetration_mm3']} mm³")
-        n_att = 3 if kind == "fermeture" else 2
-        verifier(C["moities_apres_coupe_des_ponts"] == n_att and all(x["libre"] for x in C["retrait"].values()),
-                 f"{n_att} pièces après la coupe des ponts, retrait libre ({', '.join(f'{k} {x['points_bloques']}/{x['points_testes']} bloqués, '
+        verifier(C["moities_apres_coupe_des_ponts"] == 2 and all(x["libre"] for x in C["retrait"].values()),
+                 f"2 moitiés après la coupe des ponts, retrait libre ({', '.join(f'{k} {x['points_bloques']}/{x['points_testes']} bloqués, '
                                                                                    f'{x['heurte_autre_moitie_mm3']} mm³' for k, x in C['retrait'].items())}), "
                  f"ordre : {' puis '.join(C['ordre_retrait'])}")
         attendu = "distale" if kind == "fermeture" else "proximale"
@@ -260,11 +252,9 @@ def test_synthetique():
         verifier(abs(C["angle_paires_broches_deg"] - E7.angle_deg(-np.array(pr["guide"]["face_appui"]),
                                                                    pr["broches_reduction"][2]["direction"])) < 0.01,
                  f"angle entre les paires de broches = celui de la prescription ({C['angle_paires_broches_deg']}°)")
-        verifier(len(C["marquages"]) == 2 and {m["texte"][0] for m in C["marquages"]} == {"P", "D"},
-                 f"marquages gravés : {', '.join(m['texte'] for m in C['marquages'])}")
         verifier_fentes_et_trous(pr, dossier / "guide_coupe.stl", os_man)
-        verifier_butee_et_chanfreins(pr, info, dossier / "guide_coupe.stl", os_man)
-        verifier_verrou(info, dossier)
+        verifier_profondeur_et_chanfreins(pr, info, dossier / "guide_coupe.stl", os_man)
+        verifier_reduction(info, dossier)
         shutil.rmtree(dossier, ignore_errors=True)
 
 
@@ -301,7 +291,7 @@ def test_voisin_cartilage():
              and min(a_["surface_mm2"] for a_ in C["appui_moities"].values()) >= 100,
              "STL étanche, retrait libre, appui de chaque moitié ≥ 100 mm² ("
              + ", ".join(f"{k} {a_['surface_mm2']:.0f} mm²" for k, a_ in C["appui_moities"].items()) + ")")
-    verifier_verrou(info, dossier)
+    verifier_reduction(info, dossier)
     shutil.rmtree(dossier, ignore_errors=True)
 
 
@@ -356,15 +346,14 @@ def test_reel():
                          f"{d.name} : guide refusé ({st['voisin_sur_lame']} sur le trajet de la lame) : « {str(exc)[:110]}… »")
             continue
         info = E7.generer(d / "prescription.json", d / "os.bin", d / "sortie", journal=lambda *_: None, image=False)
-        C, V = info["guide_coupe"], info["verrou_reduction"]
-        verifier(not info["alertes"] and C["etanche_stl"] and C["moities_apres_coupe_des_ponts"] == C["pieces_attendues"]
-                 and V["construit"],
+        C, R = info["guide_coupe"], info["guide_reduction"]
+        verifier(not info["alertes"] and C["etanche_stl"] and C["moities_apres_coupe_des_ponts"] == 2 and R is not None,
                  f"{d.name} ({time.time() - t0:.0f} s) : jeu {C['jeu_minimal_mesure_mm']} mm, appui {C['surface_appui_mm2']:.0f} mm², "
-                 f"{C['moities_apres_coupe_des_ponts']} pièces, profondeur de lame {info['butee']['profondeur_lame_mm']:g} mm, "
-                 f"verrou {', '.join(V.get('cotes') or []) or 'non construit'}"
+                 f"{C['moities_apres_coupe_des_ponts']} moitiés, profondeur de lame "
+                 + " et ".join(f"{f_['profondeur_lame_mm']:g} mm" for f_ in C["fentes"])
+                 + f", guide de réduction {'construit' if R else 'absent'}"
                  + (f" — alertes : {'; '.join(info['alertes'])}" if info["alertes"] else ""))
-        if V["construit"]:
-            verifier_verrou(info, d / "sortie")
+        verifier_reduction(info, d / "sortie")
     shutil.rmtree(tmp, ignore_errors=True)
 
 

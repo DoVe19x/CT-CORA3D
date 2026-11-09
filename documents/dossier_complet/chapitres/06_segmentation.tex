@@ -1,0 +1,145 @@
+\chapter{Étape 2 — Séparer les os}
+\label{chap:segmentation}
+
+\begin{chapeau}
+La segmentation décide, pour chaque voxel, à quel os il appartient. Le résultat est un tableau d'étiquettes : 0 pour
+« pas d'os », puis un numéro par os. Les noms (fémur, tibia\ldots) viennent à l'étape 3.
+\end{chapeau}
+
+\section{La difficulté : les os se touchent}
+
+Un simple seuil ne suffit pas. Au seuil de l'os (226~HU), tout le membre forme un seul bloc : dans chaque articulation,
+quelques voxels de volume partiel relient les deux os (\cref{fig:segmentation-principe}, image 2). Monter le seuil
+sépare les os, mais efface aussi l'os spongieux et les corticales fines. L'idée de la méthode est de se servir des
+deux seuils : un seuil \emph{haut} pour trouver une graine par os, puis le seuil \emph{bas} pour reconstruire chaque os
+en entier.
+
+\fig{segmentation_principe.png}{La segmentation sur une vraie coupe du genou du lévrier : (1) l'image du scanner ;
+(2) au seuil de 226~HU, les os se touchent ; (3) avec un seuil plus haut, il reste un noyau par os ; (4) chaque os
+grandit jusqu'à l'articulation. La figure est en 2D ; le logiciel travaille en 3D.}{fig:segmentation-principe}
+
+\section{Préparer le volume}
+
+\subsection{Recadrer}
+
+Le volume complet contient la table du scanner, l'air et les tissus mous. Le logiciel cherche d'abord la boîte qui
+contient les os denses ($\geq 500$~HU, morceaux d'au moins 30~mm³), en travaillant sur un volume deux fois plus petit
+dans chaque direction, puis l'agrandit de 6~mm. Toute la suite se fait dans cette boîte : la mémoire nécessaire est
+divisée par cinq environ.
+
+\subsection{Lisser}
+
+Le bruit (environ 49~HU) crée des voxels isolés au-dessus du seuil. On applique un flou gaussien de
+$\sigma = 0{,}35$~mm, c'est-à-dire on remplace chaque valeur par une moyenne pondérée de ses voisines :
+\begin{equation}
+  I_\sigma(\vb{x}) = \int I(\vb{y})\, \frac{1}{(2\pi\sigma^2)^{3/2}} \exp\!\left(-\frac{\norm{\vb{x}-\vb{y}}^2}{2\sigma^2}\right) \dd\vb{y}.
+\end{equation}
+Le $\sigma$ est donné en millimètres : le flou est le même dans les trois directions, même si les voxels ne sont pas
+cubiques. Ce lissage divise le bruit environ par deux sans effacer les interlignes articulaires (1~mm et plus).
+
+\subsection{Le masque osseux}
+
+Le masque osseux est l'ensemble $M = \{\vb{x} : I_\sigma(\vb{x}) \geq 226~\mathrm{HU}\}$. Ce seuil est celui que
+propose le logiciel Mimics pour l'os au scanner ; le document de cadrage du projet donnait 200 à 300~HU.
+
+\section{Une graine par os : le seuil qui monte}
+\label{sec:graines}
+
+On monte le seuil par paliers de 100~HU, de 500 à 1500~HU. À chaque palier, on regarde les \emph{composantes
+connexes} : les groupes de voxels au-dessus du seuil qui se touchent (par une face, une arête ou un coin : 26
+voisins). Quand un bloc se coupe en morceaux, c'est en général parce qu'une articulation, moins dense que l'os, vient
+de céder.
+
+Un bloc $B$ est coupé au palier $T$ quand, parmi les composantes de $B \cap \{I_\sigma \geq T\}$, au moins deux
+\begin{itemize}
+  \item sont assez grosses : au moins 300~mm³ ;
+  \item et \textbf{persistent} : elles gardent au moins 50~mm³ au palier $T + 200$~HU.
+\end{itemize}
+Chaque morceau retenu est alors examiné à son tour aux paliers suivants. C'est un arbre : le membre se coupe en
+segments, qui se recoupent en os. Les feuilles de l'arbre sont les graines.
+
+\begin{pourquoi}
+\textbf{Pourquoi la persistance ?} Un vrai os a une corticale dense, qui reste visible quand le seuil monte encore. Un
+fragment d'os spongieux, lui, disparaît vite : sans ce critère, l'épiphyse spongieuse d'un os pourrait devenir une
+graine à part.
+\end{pourquoi}
+
+\begin{exemple}
+Sur le lévrier, le genou se sépare dès 600~HU, la hanche vers 900~HU (la tête du fémur reste collée au bassin plus
+longtemps), et les os du tarse vers 1200 à 1400~HU.
+\end{exemple}
+
+\section{La croissance de région compétitive}
+\label{sec:croissance}
+
+Les graines grandissent ensuite toutes en même temps dans le masque osseux $M$. On utilise pour cela la
+\textbf{ligne de partage des eaux à partir de marqueurs} \cite{meyer1994}. Imaginons l'image comme un relief :
+\begin{equation}
+  R(\vb{x}) = \clamp\bigl(3000 - I_\sigma(\vb{x}),\ 0,\ 4500\bigr).
+\end{equation}
+Les zones denses sont des vallées, les interlignes (peu denses) des crêtes. Chaque graine est une source d'eau. L'eau
+monte : à chaque instant, on inonde le voxel le plus bas du relief (le plus dense) parmi ceux qui touchent une zone
+déjà inondée, et il prend la couleur de cette zone. Deux os qui grandissent se rencontrent donc là où la densité est
+la plus faible entre eux : dans l'interligne.
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[language=Python, title={Principe (pseudo-code)}]
+file = voisins des graines, classés par relief croissant
+tant que la file n'est pas vide :
+    x = le voxel de plus petit relief de la file
+    etiquette[x] = etiquette du voisin déjà inondé qui l'a atteint
+    ajouter à la file les voisins de x qui sont dans le masque et pas encore inondés
+\end{lstlisting}
+\end{minipage}
+
+Le « fond » (tout ce qui est hors du masque) est aussi une source : il empêche les os de déborder du masque. Le calcul
+est fait par la fonction \code{MorphologicalWatershedFromMarkers} de SimpleITK \cite{lowekamp2013}.
+
+\section{Recoller les morceaux d'un même os}
+\label{sec:cstar}
+
+À haut seuil, une épiphyse se détache parfois de la diaphyse, parce que la corticale de la métaphyse est fine : un
+même os donne alors deux graines. Mais ces deux morceaux se touchent sur \emph{toute la section} de l'os, alors que
+deux os voisins ne se touchent que sur une petite surface d'articulation. On mesure cela par un nombre sans
+dimension :
+\begin{equation}
+  \tcbhighmath{c^* = \frac{A_{\text{contact}}}{V_{\min}^{2/3}},}
+  \label{eq:cstar}
+\end{equation}
+où $A_{\text{contact}}$ est la surface de contact entre les deux morceaux (le nombre de faces de voxels qu'ils
+partagent, multiplié par l'aire d'une face) et $V_{\min}$ le volume du plus petit des deux.
+
+\begin{pourquoi}
+\textbf{Pourquoi la puissance 2/3 ?} Pour un objet de taille $L$, le volume varie comme $L^3$ et une section comme
+$L^2$, donc comme $V^{2/3}$. Le rapport $c^*$ ne dépend donc pas de la taille du chien : une coupure à travers un os
+donne toujours $c^*$ de l'ordre de quelques unités, quelle que soit la taille de l'os.
+\end{pourquoi}
+
+\fig{critere_contact.pdf}{Le critère $c^*$ mesuré sur le lévrier : les vraies articulations restent sous 2,1 ; un
+même os coupé en deux donne environ 5. Le seuil de recollage est fixé à 3.}{fig:critere-contact}
+
+Le recollage est glouton : on fusionne d'abord la paire de plus grand $c^*$, puis on met à jour la table des contacts
+sans tout recalculer, grâce à la relation exacte
+$A_{\text{contact}}(A \cup B, C) = A_{\text{contact}}(A, C) + A_{\text{contact}}(B, C)$. On recommence tant qu'une
+paire dépasse le seuil. Enfin, les segments de moins de 50~mm³ sont rattachés au voisin avec lequel ils ont le plus
+grand contact (ou supprimés s'ils sont isolés), et les étiquettes sont renumérotées par volume décroissant.
+
+\section{Résultat}
+
+\fig[0.82]{segmentation_resultat.png}{Les os segmentés automatiquement dans le scanner hanche--genou du
+lévrier.}{fig:segmentation-resultat}
+
+\begin{exemple}
+Série hanche--genou (728 coupes) : lissage 7~s, graines 10,5~s, croissance 15~s, recollage 5~s. Le fémur fait
+100,3~cm³. Pour les séries genou--cheville et pied, la segmentation prend 7 à 8~s (après recadrage).
+\end{exemple}
+
+\begin{danslecode}
+\fichier{code_source/etape2_segmentation.py} : \code{recadrage()}, \code{lisser()},
+\code{graines_automatiques()} (l'arbre des seuils, fonction interne \code{couper()}), \code{croissance()} (ligne de
+partage des eaux), \code{contacts()} (surfaces de contact), \code{fusionner_surdecoupages()} (critère $c^*$),
+\code{nettoyer()}, et \code{segmenter()} qui enchaîne le tout. Deux outils servent à l'étape 3 :
+\code{recroissance()} (nouvelle croissance dans une zone, avec des graines imposées) et \code{raffiner()} (graines plus
+fines dans un seul segment). Réglages : \code{SEUIL_OS_HU}, \code{SIGMA_LISSAGE_MM}, \code{SEUIL_GRAINE_*},
+\code{PERSISTANCE_HU}, \code{RAPPORT_CONTACT_FUSION}\ldots{} (\cref{ann:parametres}).
+\end{danslecode}

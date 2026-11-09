@@ -1,0 +1,239 @@
+\chapter{Les notions à connaître}
+\label{chap:notions}
+
+\begin{chapeau}
+Ce chapitre donne le vocabulaire utilisé partout ensuite : l'anatomie du membre pelvien, la façon de décrire une
+déformité, l'ostéotomie et ses outils, puis le scanner et le format DICOM. Un lecteur qui connaît déjà la chirurgie
+orthopédique vétérinaire peut passer directement à la \cref{sec:scanner}.
+\end{chapeau}
+
+\section{Le membre pelvien du chien}
+
+Le membre pelvien (la patte arrière) comprend, de haut en bas :
+\begin{itemize}
+  \item le \textbf{bassin}, dont la cavité (l'\emph{acétabulum}) reçoit la tête du fémur : c'est la hanche ;
+  \item le \textbf{fémur}, l'os de la cuisse. En haut, sa \emph{tête} sphérique, son \emph{col} et le \emph{grand
+  trochanter} ; en bas, deux \emph{condyles} séparés par l'\emph{échancrure intercondylaire}, et devant eux la
+  \emph{trochlée}, la gouttière où glisse la rotule ;
+  \item la \textbf{rotule} (\emph{patella}), petit os pris dans le tendon du quadriceps, et deux \textbf{fabelles},
+  petits os placés derrière les condyles, dans les tendons du muscle gastrocnémien ;
+  \item le \textbf{tibia}, l'os de la jambe. En haut, le \emph{plateau tibial} (deux surfaces articulaires séparées
+  par l'\emph{éminence intercondylaire}) et, devant, la \emph{tubérosité tibiale}, où s'attache le tendon de la
+  rotule ; en bas, la \emph{cochlée}, surface articulaire de la cheville, et la \emph{malléole médiale} ;
+  \item la \textbf{fibula}, os long et fin, le long du tibia, du côté latéral et un peu en arrière ; son extrémité
+  basse forme la \emph{malléole latérale} ;
+  \item le \textbf{tarse} (dont le \emph{talus} et le \emph{calcanéus}), les \textbf{métatarses} et les
+  \textbf{phalanges}.
+\end{itemize}
+
+Un os long a trois zones. La \emph{diaphyse} est le corps de l'os : un tube d'os dense, la \emph{corticale}, autour du
+\emph{canal médullaire}. Les \emph{épiphyses} sont les extrémités, faites d'os spongieux sous une fine corticale et
+recouvertes de \emph{cartilage articulaire}. Entre les deux, la \emph{métaphyse} s'élargit. Chez le jeune chien, la
+\emph{physe} (cartilage de croissance) sépare épiphyse et métaphyse ; une coupe à travers une physe ouverte arrête la
+croissance.
+
+\section{Les directions et les plans}
+\label{sec:directions}
+
+En anatomie vétérinaire, on ne dit pas « devant » et « derrière », mais :
+\begin{itemize}
+  \item \textbf{crânial} (vers la tête, l'avant du membre) et \textbf{caudal} (vers la queue, l'arrière) ;
+  \item \textbf{proximal} (vers le tronc, le haut de l'os) et \textbf{distal} (vers le pied, le bas de l'os) ;
+  \item \textbf{médial} (vers le plan de symétrie du corps, l'intérieur) et \textbf{latéral} (vers l'extérieur).
+\end{itemize}
+
+Trois plans servent à regarder un os :
+\begin{itemize}
+  \item le \textbf{plan frontal} : on regarde l'os de face (ou de dos), comme sur une radiographie
+  crânio-caudale ;
+  \item le \textbf{plan sagittal} : on regarde l'os de profil, comme sur une radiographie médio-latérale ;
+  \item le \textbf{plan transverse} : on regarde une coupe perpendiculaire à l'os, comme une coupe de scanner.
+\end{itemize}
+
+\begin{aretenir}
+Dans tout le logiciel, chaque os est exprimé dans \textbf{son propre repère} : $X$ latéral, $Y$ proximal, $Z$ caudal,
+en millimètres. Le plan frontal est donc le plan $(X, Y)$, le plan sagittal le plan $(Z, Y)$. Un membre gauche est
+transformé en son image dans un miroir, pour être traité exactement comme un membre droit
+(\cref{sec:repere-os}).
+\end{aretenir}
+
+\section{Décrire une déformité}
+\label{sec:deformite}
+
+\subsection{Les trois composantes}
+
+Une déformité angulaire se décrit dans les trois plans :
+\begin{itemize}
+  \item \textbf{de face} : le bas de l'os part vers l'intérieur (\emph{varus}) ou vers l'extérieur (\emph{valgus}) ;
+  \item \textbf{de profil} : le sommet de la courbure est en avant (\emph{procurvatum}) ou en arrière
+  (\emph{recurvatum}) ;
+  \item \textbf{en torsion} : le bas de l'os est tourné autour de l'axe de l'os par rapport au haut
+  (\emph{torsion interne} ou \emph{externe}).
+\end{itemize}
+
+Le point où l'os change de direction s'appelle l'\emph{apex}. Une déformité à un seul apex est dite
+\emph{uniapicale} ; un os tordu à deux endroits est \emph{biapical}. Ce projet traite les déformités uniapicales.
+
+\subsection{Lignes articulaires et axes}
+
+Pour mesurer une déformité, on trace deux sortes de lignes :
+\begin{itemize}
+  \item une \textbf{ligne d'orientation articulaire} (JOL, pour \emph{joint orientation line}) passe par deux repères
+  d'une articulation, par exemple les points les plus bas des deux condyles du fémur ;
+  \item l'\textbf{axe} d'un os ou d'un segment d'os. L'\emph{axe mécanique} relie les centres des deux articulations ;
+  l'\emph{axe anatomique} suit le milieu de la diaphyse. Au tibia du chien, on utilise l'axe mécanique ; au fémur,
+  l'axe anatomique \cite{tomlinson2007,dismukes2007}.
+\end{itemize}
+
+L'angle entre une ligne articulaire et l'axe est un \textbf{angle articulaire}. Son nom se lit lettre par lettre :
+\textbf{m} ou \textbf{a} (axe mécanique ou anatomique), \textbf{L} ou \textbf{M} (angle mesuré du côté latéral ou
+médial), \textbf{P} ou \textbf{D} (articulation proximale ou distale), \textbf{F} ou \textbf{T} (fémur ou tibia),
+\textbf{A} (angle). Dans le plan sagittal, \textbf{Cr} et \textbf{Ca} (ou \textbf{Cd}) indiquent crânial et caudal.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Les angles articulaires utilisés par le projet.}
+\label{tab:angles}
+\begin{tabularx}{\linewidth}{lL{1.6cm}Y}
+\toprule
+\titrecol{Angle} & \titrecol{Vue} & \titrecol{Définition} \\
+\midrule
+aLPFA & fémur, face & entre l'axe anatomique et la ligne centre de la tête -- sommet du grand trochanter (côté latéral) \\
+aLDFA & fémur, face & entre l'axe anatomique et la ligne des points distaux des condyles (côté latéral) \\
+aCdDFA & fémur, profil & entre l'axe anatomique et la ligne fond de la trochlée -- milieu des points caudaux des condyles \\
+mMPTA & tibia, face & entre l'axe mécanique et la ligne des centres des plateaux (côté médial) \\
+mMDTA & tibia, face & entre l'axe mécanique et la ligne des sillons de la cochlée (côté médial) \\
+mCaPTA & tibia, profil & entre l'axe mécanique et la ligne bords crânial -- caudal du plateau médial (côté caudal) \\
+mCrDTA & tibia, profil & entre l'axe mécanique et la ligne bords crânial -- caudal de la surface distale (côté crânial) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Chez un chien sain, ces angles ont des valeurs connues, publiées pour plusieurs races (\cref{sec:normales}). Un angle
+qui s'écarte de plus de deux écarts-types de la valeur normale signale une déformité. La \cref{fig:angles-reels}
+montre ces angles mesurés par le logiciel sur les os du lévrier.
+
+\section{L'ostéotomie correctrice}
+\label{sec:osteotomie}
+
+\subsection{Couper et redresser}
+
+Pour redresser l'os, le chirurgien coupe l'os à la scie, puis il fait tourner le morceau du bas (le fragment distal)
+jusqu'à ce que l'os soit droit. Deux façons de couper sont courantes (\cref{fig:coins}) :
+\begin{itemize}
+  \item le \textbf{coin de fermeture} : deux traits de scie retirent un petit coin d'os du côté bombé (convexe) ; on
+  referme l'os. Les deux surfaces d'os restent en contact, ce qui est stable, mais l'os raccourcit un peu ;
+  \item le \textbf{coin d'ouverture} : un seul trait de scie, du côté creux (concave) ; on ouvre l'os. Il s'allonge un
+  peu, mais il reste un espace vide qui doit se combler (parfois avec une greffe).
+\end{itemize}
+
+\fig[0.44]{coins_fermeture_ouverture.png}{Coin de fermeture et coin d'ouverture, avant et après la correction. La
+scie entre toujours du côté opposé à la charnière : c'est là que se pose le guide.}{fig:coins}
+
+Dans les deux cas, on peut garder un petit pont d'os intact de l'autre côté : la \textbf{charnière}. Les deux
+fragments tournent autour d'elle, comme autour d'une charnière de porte. La charnière apporte de la stabilité et
+évite que les fragments ne glissent l'un sur l'autre. Une coupe qui traverse tout l'os est une \emph{ostéotomie
+complète} : il faut alors tenir les fragments autrement, par exemple avec un guide de réduction.
+
+\subsection{Les outils}
+
+\begin{itemize}
+  \item La \textbf{scie oscillante} a une lame fine (environ 0,6~mm) ; chaque trait enlève l'épaisseur de la lame.
+  \item Les \textbf{broches de Kirschner} sont de fines tiges métalliques (ici 1,6~mm de diamètre) forées dans l'os.
+  Elles fixent un guide, matérialisent une direction ou tiennent un fragment.
+  \item La \textbf{plaque vissée} fixe définitivement les fragments ; chaque fragment doit recevoir au moins trois vis
+  qui traversent les deux corticales.
+\end{itemize}
+
+\subsection{Les voies d'abord}
+
+Pour atteindre l'os, le chirurgien ouvre la peau et écarte les muscles par une \emph{voie d'abord}. Toutes les faces
+de l'os ne sont pas accessibles :
+\begin{itemize}
+  \item au \textbf{fémur}, l'abord latéral est le plus courant ; l'abord médial sert au fémur distal. Le côté crânial
+  est occupé par le quadriceps et la rotule, le côté caudal par le nerf sciatique et les vaisseaux ;
+  \item au \textbf{tibia}, la face médiale est sous la peau, donc facile d'accès ; la face latérale est couverte par
+  les muscles crâniaux, et la fibula est derrière.
+\end{itemize}
+Le logiciel tient compte de ces contraintes pour décider où poser le guide (\cref{sec:abord}).
+
+\section{Le scanner et les images DICOM}
+\label{sec:scanner}
+
+\subsection{Le principe du scanner}
+
+Le scanner fait tourner un tube à rayons X autour de l'animal et mesure, sous des centaines d'angles, combien chaque
+rayon est atténué. Un calcul de reconstruction en déduit, pour chaque petit cube de l'espace (un \emph{voxel}), un
+coefficient d'atténuation $\mu$. On l'exprime en \textbf{unités Hounsfield} \cite{hounsfield1973} :
+\begin{equation}
+  \mathrm{HU} = 1000 \times \frac{\mu - \mu_{\text{eau}}}{\mu_{\text{eau}} - \mu_{\text{air}}}.
+  \label{eq:hu}
+\end{equation}
+L'eau vaut donc 0~HU et l'air $-1000$~HU. Plus un tissu est dense, plus sa valeur est grande (\cref{tab:hu}).
+
+\begin{table}[htbp]
+\centering\small
+\caption{Valeurs typiques au scanner (celles utilisées dans \fichier{parametres.py}).}
+\label{tab:hu}
+\begin{tabular}{lr}
+\toprule
+\titrecol{Tissu} & \titrecol{HU} \\
+\midrule
+air & $-1000$ \\
+graisse & environ $-100$ \\
+eau & 0 \\
+tissus mous (muscles) & 0 à 80 \\
+os spongieux & 250 à 700 \\
+os cortical & 1200 à 1500 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Trois défauts de l'image comptent pour la suite :
+\begin{itemize}
+  \item le \textbf{bruit} : deux voxels du même tissu n'ont pas exactement la même valeur. Dans les tissus mous du
+  lévrier, l'écart-type mesuré est d'environ 49~HU (noyau de reconstruction osseux « BONEPLUS ») ;
+  \item le \textbf{flou} : le scanner ne voit pas un bord net. Un bord d'os apparaît comme une transition progressive,
+  sur environ un millimètre. Ce flou suit à peu près une courbe en cloche (gaussienne) ;
+  \item l'\textbf{effet de volume partiel} : un voxel à cheval sur l'os et le tissu voisin prend une valeur
+  intermédiaire. Dans une articulation serrée, quelques voxels de valeur moyenne relient deux os.
+\end{itemize}
+
+\subsection{Le format DICOM}
+
+Un scanner est livré au format \textbf{DICOM} \cite{dicom}. Chaque coupe est un fichier qui contient l'image et un
+en-tête de métadonnées. Le logiciel utilise surtout :
+\begin{itemize}
+  \item \code{SeriesInstanceUID} : l'identifiant de la série (un examen peut contenir plusieurs séries) ;
+  \item \code{ImagePositionPatient} (IPP) : la position, en millimètres, du centre du premier pixel de la coupe ;
+  \item \code{ImageOrientationPatient} (IOP) : les directions des lignes et des colonnes de l'image ;
+  \item \code{PixelSpacing} : l'écart entre deux lignes et entre deux colonnes (mm) ;
+  \item \code{SliceThickness} : l'épaisseur de la coupe ;
+  \item \code{RescaleSlope} et \code{RescaleIntercept} : la règle qui transforme les valeurs stockées en HU.
+\end{itemize}
+
+Les positions sont données dans le \textbf{repère LPS} du patient : $x$ vers la gauche du patient
+(\emph{Left}), $y$ vers l'arrière (\emph{Posterior}), $z$ vers la tête (\emph{Superior}). C'est aussi le repère des
+fichiers produits par 3D Slicer \cite{fedorov2012}. Les scanners du lévrier comptent de 442 à 748 coupes de 0,625~mm.
+
+\subsection{Topogramme ou scanner : ce qu'il faut demander}
+\label{sec:topogramme}
+
+Avant l'examen, le scanner fait une image de repérage, le \textbf{topogramme} (ou \emph{scout}) : une seule image 2D,
+comme une radiographie, qui sert à choisir la zone à scanner. Elle ne suffit pas au logiciel, qui a besoin du
+\textbf{volume}, c'est-à-dire de toutes les coupes.
+
+\begin{attention}[title={Un cas vécu}]
+Le premier dossier clinique reçu (27/10/2026, déformité angulaire chez un chien de 12 mois) ne contenait qu'une
+image : le topogramme latéral, 512 × 512 pixels de 2~mm. À l'export, seule la première série avait été envoyée.
+Aucune planification n'est possible avec une seule projection : il faut redemander l'étude complète.
+\end{attention}
+
+\begin{aretenir}[title={Ce qu'il faut demander au vétérinaire}]
+\begin{itemize}
+  \item l'\textbf{étude complète} en DICOM, avec toutes ses séries (pas seulement la série sélectionnée à l'écran) ;
+  \item les \textbf{coupes axiales en reconstruction osseuse}, d'épaisseur 1~mm ou moins ;
+  \item si possible les \textbf{deux membres} : le membre sain sert de référence pour la correction ;
+  \item des fichiers \textbf{rendus anonymes} (sans nom de l'animal ni du propriétaire), et un dossier nommé par un code.
+\end{itemize}
+\end{aretenir}

@@ -5,8 +5,8 @@ CT-CORA3D réunit les deux applications du projet et les prolonge jusqu'aux piè
 * **Segmentation CT** (reprise de `../CT-scan/`) : DICOM → os segmentés → un STL étanche par os ;
 * **CORA 3D** (reprise de `../CORA3D/`) : planification d'ostéotomie par la méthode CORA ;
 * **nouveau** : repères automatiques de l'os détecté (étape 6), correction de la torsion par dérotation, et
-  **guide imprimable** (étape 7) : guide de coupe moulé sur l'os, « 2 en 1 » (butée de profondeur et verrou de
-  réduction intégré ; guide de réduction séparé en option).
+  **guides imprimables** (étape 7) : guide de coupe moulé sur l'os (deux moitiés reliées par des ponts sécables) et
+  guide de réduction.
 
 ```
 dossier DICOM du chirurgien ─► segmentation (étapes 1-5) ─► os détecté : le fémur OU le tibia complet
@@ -14,7 +14,7 @@ dossier DICOM du chirurgien ─► segmentation (étapes 1-5) ─► os détect�
      onglet 2 « Planification CORA » : os segmenté (CT)  ◄─────────┘        ou   os fictif (modèle)
           JOL, angles (comparés aux références), CORA, angle vrai θ, ACA, coupe, correction + dérotation, contrôle
                                                                    │
-                                     étape 12 : guide de coupe « 2 en 1 » (étape 7) ─► STL à imprimer
+                       étape 12 : guide de coupe + guide de réduction (étape 7) ─► STL à imprimer
 ```
 
 Les dossiers `CT-scan/` et `CORA3D/` ne sont pas modifiés. Les séries DICOM (≈ 1 Go) restent dans `CT-scan/` et sont
@@ -54,7 +54,7 @@ Windows (PyInstaller ne construit que pour le système sur lequel il tourne) : �
 
 | | Avant | Après |
 |---|---|---|
-| Guide complet (cas du tibia, fermeture, verrou, plans 2D) | 86,5 s | **23,5 s** |
+| Guide complet (cas du tibia, fermeture, verrou, plans 2D ; v3) | 86,5 s | **23,5 s** |
 | dont plans 2D | 49,8 s | 6,2 s |
 | Chargement des bibliothèques du serveur au démarrage | 2,1 s | 0,9 s |
 | Vérification de l'environnement par les lanceurs | 1,5 à 2,6 s | 0,02 s |
@@ -122,8 +122,8 @@ En haut, deux sources : **Os segmenté (CT)** et **Os fictif (modèle)**. Les 13
    « Race » dont le lévrier) ou **Os avant déformité** (avec une déformité de test : l'os réel non déformé joue le rôle
    du membre controlatéral ; la méthode retrouve alors exactement la déformité imposée).
 6. **Étapes 10 et 11** : correction animée et contrôle, **dérotation comprise** si la torsion sort de la normale.
-7. **Étape 12** : prescription, puis **« Construire les guides 3D »** (≈ 10 à 30 s) : guide de coupe affiché sur l'os
-   avant la coupe, puis ses moitiés verrouillées sur l'os corrigé ; contrôles, mode opératoire, téléchargement des STL. « Exporter la prescription (ZIP) »
+7. **Étape 12** : prescription, puis **« Construire les guides 3D »** (≈ 10 à 20 s) : guide de coupe affiché sur l'os
+   avant la coupe, puis le guide de réduction sur l'os corrigé ; contrôles, mode opératoire, téléchargement des STL. « Exporter la prescription (ZIP) »
    reste disponible : il contient aussi les os voisins et la carte du cartilage, et la commande qui reconstruit les mêmes
    guides hors de l'application.
 8. **Étape 13** : torsion de l'os mesurée avec les définitions publiées, et le laboratoire τ / ρ (radiographie contre
@@ -265,131 +265,101 @@ avec translation chiffrée (et le rayon qu'aurait un dôme centré sur le CORA, 
 
 ## Les guides imprimables (étape 7)
 
+**Version simplifiée (06/11/2026).** Deux pièces à imprimer : un guide de coupe et un guide de réduction. La butée
+graduée, le verrou de réduction intégré (« 2 en 1 »), la pièce du coin séparée et les gravures de la v3 ont été
+retirés : moins de pièces, moins de réglages, un mode opératoire de 9 à 10 étapes au lieu de 12 à 15.
+
 **Guide de coupe** — coque moulée sur l'os (jeu 0,3 mm, épaisseur 3 mm, sans contre-dépouille), une fente de scie
 (coin d'ouverture) ou deux (coin de fermeture) dans les plans prescrits, 4 manchons de broches (2 par fragment). Les
 broches distales sont forées avec l'inverse de la correction, donc non parallèles aux proximales : le guide est fait de
-**deux moitiés reliées par des ponts sécables** (et, en fermeture, d'une **pièce du coin** entre les deux fentes : 3
-pièces, 4 ponts). Après la coupe, on coupe les ponts, on retire la pièce du coin, et chaque moitié glisse le long de
-ses deux broches. Le guide se pose par la face d'appui (l'abord) ; chaque pièce sort sans contre-dépouille.
+**deux moitiés reliées par 2 ponts sécables**, aux deux bouts de la 1re fente. Après la coupe, on coupe les ponts et
+chaque moitié glisse le long de ses deux broches. En fermeture, la 2e fente est une fente fermée de la moitié distale
+(la partie au-dessus du coin osseux sort avec elle). Le guide se pose par la face d'appui (l'abord) ; chaque moitié
+sort sans contre-dépouille.
 
-**Butée de profondeur** — chaque fente est parallèle à la charnière, et le haut de chaque tour est à la **même
-distance D** de la butée de sa fente : la charnière, ou 1 mm au-delà de la corticale opposée pour une coupe complète.
-D est la plus petite valeur qui garde 10 mm de guidage, arrondie aux 5 mm supérieurs (une graduation de la lame) ; elle
-est **gravée sur les tours** (« P 30 », « D 30 ») : un seul repère sur la lame pour toutes les fentes, au lieu d'une
-profondeur différente par fente à mesurer. Si l'on entre la longueur utile de la lame (paramètre pl), la scie bute
-d'elle-même sur le haut des tours.
+**Fentes et profondeur de coupe** — chaque fente est parallèle à la charnière quand c'est possible : la profondeur de
+lame, du haut de la tour à la charnière (ou à la corticale opposée pour une coupe complète), est alors la même sur toute
+la fente. Le haut de chaque tour est à 10 mm de guidage au-dessus de la coque. La profondeur de lame de chaque fente est
+donnée au chirurgien (mode opératoire, plan coté) ; il la repère sur sa lame.
 
-**Finitions** — arêtes des tours arrondies, entrées chanfreinées (fentes, manchons, trous de verrouillage : la lame
-et les broches entrent sans accrocher), marquages gravés P / D.
+**Guide de réduction** — barre (enveloppe convexe des broches) et 4 manchons parallèles. Après la correction (angle +
+dérotation), les broches sont parallèles : la barre s'y enfile jusqu'au contact de l'os corrigé et tient les fragments
+dans la position planifiée (6 degrés de liberté) pendant la pose de la plaque. Il est construit sur l'os corrigé, trait
+de scie compensé : en fermeture, chaque trait enlève l'épaisseur de la lame, et le fragment distal avance de 0,6 mm de
+plus que prévu en fermant jusqu'au contact des surfaces coupées.
+
+**Finitions** — arêtes des tours arrondies, entrées chanfreinées (fentes, manchons : la lame et les broches entrent
+sans accrocher).
 
 **Guide générique, dimensions modifiables.** Le guide est un modèle paramétrique, comme une pièce de CAO pilotée par
-une table : 27 dimensions de conception se règlent dans le panneau « Guide générique : dimensions » (coque : jeu
+une table : 22 dimensions de conception se règlent dans le panneau « Guide générique : dimensions » (coque : jeu
 os-guide, épaisseur, secteur couvert, marge au-delà des broches, dépouille, congés, épaisseur minimale imprimable ; fentes
 et manchons : hauteur de guidage, paroi, lame, jeu de fente, diamètre de broche, jeu du manchon, hauteur des ponts,
-chanfreins ; butée : profondeur de lame, dépassement ; broches : écart, distance à la coupe ; voisins et cartilage ;
-verrou : activé ou non, écart et épaisseur des oreilles ; guide de réduction séparé : distance, manchons, barre).
-Valeurs par défaut dans `parametres.py`, bornes de sécurité, valeurs changées signalées. Toutes les autres dimensions
-**découlent de l'os** de chaque scanner : longueur des fentes (largeur de l'os dans le plan de coupe + 1 mm + paroi de
-chaque côté), hauteur des tours, étendue de la coque, position des broches (1,2 × largeur locale de l'os), position des
-oreilles du verrou… Un nouveau DICOM segmenté donne donc un nouveau guide, construit avec les mêmes règles.
+chanfreins ; broches : écart, distance à la coupe ; voisins et cartilage ; guide de réduction : distance, manchons,
+barre). Valeurs par défaut dans `parametres.py`, bornes de sécurité, valeurs changées signalées. Toutes les autres
+dimensions **découlent de l'os** de chaque scanner : longueur des fentes (largeur de l'os dans le plan de coupe + 1 mm +
+paroi de chaque côté), hauteur des tours, étendue de la coque, position des broches (1,2 × largeur locale de l'os)… Un
+nouveau DICOM segmenté donne donc un nouveau guide, construit avec les mêmes règles.
 
 **Plans 2D** (dans le dossier du guide, en SVG, PDF et PNG) : `plan_generique` : le guide en schéma, ses cotes en
-symboles (j, e, g, p, s, Øb, pl…) et le tableau des paramètres (défaut et valeur du cas) avec les formules des
-dimensions qui découlent de l'os ; `plan_guide` : le guide construit pour cet os en projections orthogonales (A : face
-d'appui, B : profil, C : vue axiale, D : après la correction, moitiés verrouillées le long des broches), cotes
-principales, tableau des dimensions, cartouche, échelle 2:1, 1:1 ou 1:2 sur A3 et cote de contrôle de 50 mm pour
-vérifier l'échelle à l'impression.
+symboles (j, e, g, p, s, Øb…) et le tableau des paramètres (défaut et valeur du cas) avec les formules des dimensions
+qui découlent de l'os ; `plan_guide` : le guide construit pour cet os en projections orthogonales (A : face d'appui,
+B : profil, C : vue axiale, D : guide de réduction le long des broches), cotes principales, tableau des dimensions, mode
+opératoire, cartouche, échelle 2:1, 1:1 ou 1:2 sur A3 et cote de contrôle de 50 mm pour vérifier l'échelle à
+l'impression.
 
 **Os voisins et cartilage** — le guide reste à ≥ 1 mm de la fibula, de la rotule et des fabelles (tissus mous), et ne
 passe sous aucun d'eux pendant la pose ou le retrait. Surtout, il n'occupe jamais **l'espace entre l'os et un os
 voisin** (entre le tibia et la fibula : membrane interosseuse, muscles) : tranche par tranche le long de l'os, la zone
 que l'enveloppe convexe de l'os et du voisin ajoute à celle de l'os seul est interdite à toute matière du guide
-(coque, tours, manchons, bras, oreilles du verrou). L'espace du milieu reste libre pour poser et fixer le guide et
-pour couper ; les creux de l'os lui-même restent couverts par la coque. La coque ne repose jamais sur le cartilage articulaire (elle s'en
-écarte de plus de 4 mm ; tout le guide, tours et manchons compris, reste à ≥ 1,5 mm de ses sommets). Quand le cartilage
-ou un os voisin coupe la coque (fragment distal du fémur couvert par la trochlée, par exemple), des **bras** relient les
+(coque, tours, manchons, bras). L'espace du milieu reste libre pour poser et fixer le guide et pour couper ; les creux
+de l'os lui-même restent couverts par la coque. Un coin dont la face d'entrée de la lame est derrière un os voisin est
+refusé (pas de guide, avec le coin conseillé). La coque ne repose jamais sur le cartilage articulaire (elle s'en écarte
+de plus de 4 mm ; tout le guide, tours et manchons compris, reste à ≥ 1,5 mm de ses sommets). Quand le cartilage ou un
+os voisin coupe la coque (fragment distal du fémur couvert par la trochlée, par exemple), des **bras** relient les
 manchons isolés, ou la 2e tour d'un coin de fermeture, au reste du guide, par-dessus l'os et hors du trajet de la lame.
-De même, si la pièce du coin sortirait en deux morceaux (le cartilage ou un os voisin entaille la paroi d'une tour),
-deux bras relient les parois des deux tours par-dessus le coin, en deçà du bout des tours (au-delà se trouvent les
-oreilles du verrou).
 
-**Verrou de réduction (« 2 en 1 »)** — les deux moitiés du guide de coupe servent aussi de guide de réduction. Chacune
-porte une **oreille** de chaque côté du trait, au-delà du bout des tours. Après la correction (angle + dérotation), les
-broches sont parallèles : on remet les moitiés sur leurs broches, et leurs oreilles se superposent ; leurs trous ne
-sont alignés que si les fragments sont à la position planifiée. Une **broche de verrouillage** (Ø des broches) passe
-alors dans les deux oreilles de chaque côté ; une erreur de 1° ou de 0,3 mm la bloque (contrôlé à chaque construction,
-axe par axe). Les moitiés, leurs broches et les broches de verrouillage forment ensuite un fixateur provisoire.
-Quelques points de conception :
-* **trait de scie compensé** : en fermeture, chaque trait enlève l'épaisseur de la lame ; en fermant jusqu'au contact
-  des surfaces coupées, le fragment distal avance de 0,6 mm de plus que prévu, et le verrou en tient compte ;
-* **oreilles adaptées côté par côté** : avant la correction, l'oreille distale (ramenée avec son fragment) ne doit
-  toucher ni l'oreille proximale ni l'autre moitié, et aucune moitié, en glissant sur ses broches, ne doit balayer
-  l'oreille de l'autre. Quand une dérotation fait monter l'oreille distale, l'écart entre les oreilles grandit ; quand
-  les broches sont très inclinées sur les tours (jusqu'à 35° au fémur), le verrou s'écarte vers l'extérieur (≤ 10 mm) ;
-* **remise en place après la correction** : chaque moitié évite aussi les os voisins dans leur position après la
-  correction (la rotule suit le fragment distal, la fibula est coupée) et le fragment osseux de l'autre moitié près du
-  trait (une dérotation fait tourner les sections l'une sur l'autre) ;
-* si un côté reste impossible (os voisin, cartilage, broche — au fémur distal, la rotule bloque souvent le côté
-  crânial), il est abandonné et l'autre côté reçoit des oreilles allongées à **deux broches de verrouillage** (à 6 mm
-  l'une de l'autre : le pivotement autour du verrou reste bloqué, à 2° près au lieu de 0,3°, et l'appui des surfaces
-  osseuses le limite) ; sans aucun côté
-  possible, ou avec le paramètre V = 0, le programme construit à la place le **guide de réduction séparé** : barre
-  (enveloppe convexe des broches) et manchons parallèles terminés par des butées moulées sur l'os corrigé ;
-* **sensibilité exigée** : le verrou n'est gardé que s'il détecte une rotation de 1° autour de chacun de ses trois axes
-  (axe de l'os, axe des fentes, axe des broches, passant par le centre de l'os) ; le calcul exige même 0,9° (marge de
-  10 %), pour qu'à 1° la broche soit franchement bloquée. Pour une rotation autour de l'axe de
-  l'os ou des fentes, le bras de levier est la **hauteur du trou du bas au-dessus du centre de l'os, mesurée le long
-  des broches** : avec 0,1 mm de jeu entre la broche et son trou, il faut au moins 5,7 mm. Quand les broches sont très
-  inclinées sur les tours (44° dans un cas du tibia) ou qu'une grosse dérotation fait descendre l'oreille du bas au
-  niveau de l'os, le verrou ne verrait pas une erreur de 1,5 à 3,7° : il est alors refusé et remplacé par le guide de
-  réduction séparé, dont les broches très écartées tiennent la correction à ≈ 0,1° près ;
-* chaque oreille doit appartenir à la pièce de sa moitié : si un os voisin isole le bout d'une tour, ses oreilles
-  partiraient avec lui à l'impression, et ce côté est refusé.
-
-**Mode opératoire** (donné aussi dans l'application et dans `guide.json`) : abord ; poser le guide de coupe (une seule
-position possible) ; forer les 2 broches proximales puis les 2 distales ; couper par chaque fente jusqu'à ce que la
-graduation D de la lame affleure le haut de la tour (charnière, ou corticale opposée) ; couper les ponts ; retirer la
-pièce du coin (fermeture), puis la moitié indiquée en premier et l'autre ; retirer le coin osseux (fermeture) ;
-ostéotomiser la fibula si nécessaire ; corriger (et, en règle 2, laisser glisser le fragment de la translation
-indiquée) jusqu'à ce que les broches soient parallèles ; remettre les moitiés (la moitié du bas d'abord) et enfoncer les
-broches de verrouillage ; fixer ; retirer broches de verrouillage, moitiés et broches.
+**Mode opératoire** (donné aussi dans l'application, dans `guide.json` et sur le plan coté) : abord ; poser le guide de
+coupe (une seule position possible) et forer les 2 broches proximales puis les 2 distales ; couper par chaque fente
+jusqu'à la profondeur indiquée (charnière, ou corticale opposée) ; couper les 2 ponts ; retirer la moitié indiquée en
+premier, puis l'autre, et le coin osseux (fermeture) ; ostéotomiser la fibula si nécessaire ; corriger (et, en règle 2,
+laisser glisser le fragment de la translation indiquée) jusqu'à ce que les broches soient parallèles ; enfiler le guide
+de réduction jusqu'au contact de l'os ; fixer ; retirer le guide de réduction et les broches.
 
 **Contrôles** (dans l'application et `guide.json`) : jeu minimal mesuré (les rares sommets trop proches sont repoussés au
-jeu), interpénétration, surface d'appui du guide et de chaque moitié, nombre de pièces après la coupe des ponts, aucune
-pièce détachée, chaque manchon présent, retrait de chaque pièce sans heurter l'os (lancer de rayons) ni l'autre moitié
-(balayage exact), broches hors du trajet de la lame, guide et broches contre les os voisins et le cartilage, butée
-(même D pour toutes les fentes), verrou dans la position corrigée (broche qui passe ; sensibilité à 1° et 0,3 mm, la
-broche de verrouillage étant enfoncée jusqu'au fond de son trou : seul un écart latéral entre les deux trous la bloque ;
-plus petite rotation détectée autour de chaque axe ; remise en place ; moitiés contre l'os et les voisins corrigés),
-étanchéité du STL (pincements de surface décollés de 2 µm si besoin).
+jeu), interpénétration, surface d'appui du guide et de chaque moitié, deux moitiés après la coupe des ponts, aucune
+pièce détachée, chaque manchon présent, retrait de chaque moitié sans heurter l'os (lancer de rayons) ni l'autre moitié
+(balayage exact), broches hors du trajet de la lame, guide et broches contre les os voisins et le cartilage ; guide de
+réduction : distance de la barre à l'os corrigé, manchons parallèles, os voisins après la correction ; étanchéité des STL
+(pincements de surface décollés de 2 µm si besoin).
 
-**Validation** (`code_source/tests/test_guide.py`) : sur un os coudé synthétique (fermeture, puis ouverture avec 12° de
-dérotation), fentes vides exactement dans les plans prescrits et chanfreinées, trous coaxiaux aux broches, haut des tours
-à D de la butée (lancer de rayon sur le STL), jeu ≥ 0,29 mm, aucune interpénétration, pièces retirables ; verrou contrôlé
-sur les fichiers seuls (la broche passe, un décalage de 0,3 mm la bloque) ; avec un os voisin qui empiète sur la coque
-et une bande de cartilage, jeu de 1,03 mm au voisin et coque hors du cartilage ; sur le fémur et le tibia réels du
-lévrier, guides sans alerte, verrou des deux côtés. Campagne de simulation sur l'os fictif : voir ci-dessous.
+**Validation** (`code_source/tests/test_guide.py`, 24 s) : sur un os coudé synthétique (fermeture, puis ouverture avec
+12° de dérotation), fentes vides exactement dans les plans prescrits et chanfreinées, trous coaxiaux aux broches, haut
+des tours à 10 mm au-dessus de la coque et profondeur de lame annoncée = distance mesurée (lancer de rayon sur le STL),
+jeu ≥ 0,3 mm, aucune interpénétration, deux moitiés retirables ; guide de réduction contrôlé sur les fichiers seuls
+(chaque broche passe dans son manchon, un décalage de 0,3 mm la bloque) ; avec un os voisin qui empiète sur la coque et
+une bande de cartilage, jeu de 1,03 mm au voisin et coque hors du cartilage ; sur le fémur réel du lévrier, guides sans
+alerte. Campagne de simulation sur l'os fictif : voir ci-dessous.
 
 ### Campagne de simulation (os fictif)
 
-**Guides v3, 22/10/2026** (`tests/campagne_export.mjs` + `tests/campagne_guides.py`, code définitif) : 320 cas
-« coins » (chaque paramètre à ses extrêmes : fémur et tibia, varus et valgus, sans composante sagittale, procurvatum ou
-recurvatum, F, S, niveau de l'apex, torsion 0 ou 20°, fermeture et ouverture) et 200 cas tirés au hasard (100
-déformités, torsion de −30 à +30°, × 2 types de coin) : **520 sur 520 sans erreur**.
+**Guides simplifiés, 06/11/2026** (`tests/campagne_export.mjs <dossier> tout 100 11` + `tests/campagne_guides.py`) :
+mêmes types de cas que la campagne v3 du 22/10/2026 : 320 cas « coins » (chaque paramètre à ses extrêmes : fémur et
+tibia, varus et valgus, sans composante sagittale, procurvatum ou recurvatum, F, S, niveau de l'apex, torsion 0 ou 20°,
+fermeture et ouverture) et 200 cas tirés au hasard (100 déformités, torsion de −30 à +30°, × 2 types de coin) :
+**520 sur 520 sans erreur**.
 
 | | Coins (320) | Hasard (200) |
 |---|---|---|
-| Verrou « 2 en 1 » des deux côtés | 226 | 148 |
-| Verrou d'un seul côté, à deux broches | 26 | 10 |
-| Guide de réduction séparé (aucun côté possible / verrou trop peu sensible) | 11 / 3 | 2 / 3 |
-| Pas de guide de coupe : coin forcé, fibula sur le trajet de la lame (conséquence attendue) | 54 | 37 |
-| Plus petite rotation détectée par le verrou (min / médiane / max) | 0,21 / 0,34 / 0,87° | 0,21 / 0,30 / 0,79° |
-| Jeu guide–os mesuré | 0,296 à 0,327 mm | 0,297 à 0,324 mm |
-| Durée par guide (min / médiane / max) | 11 / 18 / 31 s | 11 / 18 / 27 s |
+| Guide de coupe (2 moitiés) et guide de réduction construits | 266 | 159 |
+| Pas de guide de coupe : coin forcé, fibula sur le trajet de la lame (conséquence attendue) | 54 | 41 |
+| Jeu guide–os mesuré | 0,296 à 0,327 mm | 0,298 à 0,324 mm |
+| Durée par guide (min / médiane / max) | 9 / 15 / 25 s | 10 / 15 / 23 s |
 
 Les coins « forcés » sont ceux que la planification déclare non réalisables par un abord usuel (elle conseille
 l'autre type de coin) : la campagne les construit quand même pour éprouver le programme. Quand la fibula est sur la face
-du coin, le programme refuse désormais le guide, ce qui est le comportement voulu.
+du coin, le programme refuse le guide, ce qui est le comportement voulu. Pour comparaison, la campagne v3 (avec verrou
+et butée graduée) donnait aussi 520 sur 520 sans erreur, avec une durée médiane de 18 s par guide.
 
 **Stratégie, 19/10/2026** (`tests/campagne_strategie.mjs`) : 606 cas, soit les 17 préréglages avec leurs variantes
 (broches 2 + 2, 1 + 1 et 1 + 2 ; trait déplacé de ± 15 mm ; charnière à 0,5 et 6 mm ; chien en croissance) et 300
@@ -466,14 +436,13 @@ Rapports complets : `resultats/_campagne_os_fictif/` (`rapport_campagne.md`, `ra
    reste dans le plan prescrit.
 2. **Porter la correction** : les broches distales sont forées avec l'inverse de la correction planifiée (angle et
    dérotation) ; en corrigeant, elles redeviennent parallèles aux proximales exactement à la position planifiée.
-3. **Tenir la réduction** : les moitiés du guide de coupe, remises sur les broches parallèles, se verrouillent l'une à
-   l'autre (ou le guide de réduction séparé s'enfile sur toutes les broches) et maintiennent les fragments pendant la
-   pose de la plaque.
+3. **Tenir la réduction** : le guide de réduction s'enfile sur les broches parallèles et maintient les fragments
+   pendant la pose de la plaque.
 4. **Bloquer la rotation** : deux broches par fragment empêchent le fragment de tourner autour d'une broche (torsion).
 
 Configurations (panneau « Coin, niveau de coupe, charnière, broches ») : **2 + 2** (défaut : rotation bloquée sur
 chaque fragment) ; **1 + 1** (deux trous de moins, mais chaque fragment peut encore tourner autour de sa broche :
-vérifier que les moitiés, ou les butées du guide de réduction, touchent l'os) ; **1 + 2** (une proximale, deux distales côte à côte au
+vérifier que les manchons du guide de réduction touchent l'os) ; **1 + 2** (une proximale, deux distales côte à côte au
 même niveau, horizontalement : utile pour un fragment distal court).
 
 ## Faut-il des broches pour contrôler la torsion ?
@@ -482,8 +451,8 @@ même niveau, horizontalement : utile pour un fragment distal court).
 fragment, on juge le parallélisme à l'œil (quelques degrés) et une rotation autour de la broche elle-même passe
 inaperçue ; avec un guide de coupe seul, la rotation est l'erreur qui reste (Worth 2019 : 1 membre sur 7 réopéré).
 
-Ce que fait CT-CORA3D : **2 broches par fragment + verrou de réduction intégré au guide de coupe** (ou guide de
-réduction séparé) ; la torsion est contrôlée sans être mesurée (1° d'erreur bloque la broche de verrouillage).
+Ce que fait CT-CORA3D : **2 broches par fragment + guide de réduction** ; la torsion est contrôlée sans être mesurée
+(le guide de réduction ne s'enfile que si les fragments sont à la position planifiée).
 Publications avec des guides de réduction : torsion à 1,7 ± 2,1° de la cible (Hall 2019, fémur), 2,6 ± 1,3° dans le
 plan transverse (Jeon 2023, tibia), < 2° et < 1 mm (Bright 2024), > 90 % des paramètres à ≤ 5° (De Armond 2022).
 
@@ -513,7 +482,7 @@ cd code_source
 ../../.venv/bin/python etape7_guide.py --prescription prescription.json --os os.stl --sortie dossier   # guides
 ../../.venv/bin/python tests/test_chaine.py           # tests : fantôme CT (≈ 3 s)
 ../../.venv/bin/python tests/test_reperes.py          #         repères (≈ 13 s)
-../../.venv/bin/python tests/test_guide.py            #         guides (≈ 90 s)
+../../.venv/bin/python tests/test_guide.py            #         guides (≈ 25 s)
 cd cora && node tests/test_cas.mjs && node tests/test_reel.mjs   # planification : os fictif, os segmentés
 # campagne de la stratégie (606 cas, règles R1 à R9, ≈ 30 s), avec export d'un sous-ensemble de cas pour les guides
 node tests/campagne_strategie.mjs ../campagne_strategie 300 --exporter

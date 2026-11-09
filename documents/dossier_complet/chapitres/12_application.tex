@@ -1,0 +1,212 @@
+\chapter{L'application}
+\label{chap:application}
+
+\begin{chapeau}
+Ce chapitre explique comment les étapes de calcul deviennent une application de bureau : les couches du logiciel, le
+serveur local, l'interface, la fenêtre, l'application autonome, comment la lancer sur Mac et sur Windows, et les
+fichiers qu'elle produit.
+\end{chapeau}
+
+\section{Des étapes de calcul à une application}
+
+Les fichiers \fichier{etape1} à \fichier{etape7} restent des modules Python ordinaires, utilisables en ligne de
+commande. L'application ajoute trois couches autour d'eux, sans les réécrire (\cref{fig:architecture}) :
+\begin{enumerate}
+  \item un \textbf{serveur local} (\fichier{application/serveur.py}) qui importe les modules et les appelle à la
+  demande ;
+  \item une \textbf{interface web} (HTML et JavaScript) qui envoie les clics de l'utilisateur au serveur et affiche les
+  résultats ;
+  \item une \textbf{fenêtre native} (\fichier{application/fenetre.py}) qui affiche cette interface comme une vraie
+  application, avec son nom et son icône.
+\end{enumerate}
+Enfin, \textbf{PyInstaller} peut emballer le tout dans un seul programme, avec Python et toutes les bibliothèques.
+
+\fig{architecture_application.pdf}{L'organisation du logiciel : tout reste sur l'ordinateur.}{fig:architecture}
+
+\section{Le serveur local}
+\label{sec:serveur}
+
+\subsection{Le principe}
+
+Le serveur est un petit serveur web, construit avec le module \code{http.server} de Python. Il n'écoute que l'adresse
+\code{127.0.0.1} : il n'est joignable que depuis l'ordinateur lui-même, et rien ne passe par Internet. Il choisit un
+port libre au démarrage. Chaque bouton de l'interface correspond à une adresse (\cref{tab:api}).
+
+\begin{table}[htbp]
+\centering\small
+\caption{Les principales adresses du serveur.}
+\label{tab:api}
+\begin{tabularx}{\linewidth}{L{4.2cm}Y}
+\toprule
+\titrecol{Adresse} & \titrecol{Rôle} \\
+\midrule
+\code{/api/action} & lance un calcul : \code{inventaire}, \code{ouvrir}, \code{segmenter}, \code{nommer},
+\code{separer}, \code{oublier}, \code{guide} \\
+\code{/api/etat} & donne l'avancement du calcul en cours (étape, journal, erreur, résultat) \\
+\code{/api/serie}, \code{/api/coupe} & décrit la série ouverte ; renvoie une coupe du scanner en image, os colorés \\
+\code{/api/point}, \code{/api/maillage} & valeur sous le curseur ; maillage 3D d'un os \\
+\code{/api/cora/cas}, \code{/api/cora/os}, \code{/api/cora/maillage} & l'os à planifier, ses repères et son maillage dans le repère de l'os \\
+\code{/api/cora/guide}, \code{/api/cora/guide/fichier} & le résultat de l'étape 7 et ses fichiers (affichage, téléchargement) \\
+\code{/api/choisir_dossier}, \code{/api/montrer} & choisir un dossier de scanners ; ouvrir le dossier des résultats \\
+\code{/api/quitter} & arrêter le serveur \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Un calcul à la fois, dans le fil principal}
+
+Sur macOS, la bibliothèque VTK exige de tourner dans le fil principal du programme. Les calculs y sont donc exécutés,
+un à la fois ; le serveur HTTP tourne à côté et ne fait que lire (coupes, maillages, fichiers). Quand l'utilisateur
+clique sur \ui{Segmenter la série}, la demande est mise en file, le serveur répond tout de suite, et l'interface
+interroge \code{/api/etat} plusieurs fois par seconde pour afficher l'avancement (\cref{fig:parcours}). Pendant un
+calcul, le serveur empêche la mise en veille de l'ordinateur par inactivité.
+
+\fig[0.72]{parcours_requete.pdf}{Le parcours d'une demande, du clic au résultat.}{fig:parcours}
+
+Par exemple, la fonction \code{segmenter()} du serveur applique les réglages choisis dans l'interface (seuil, lissage)
+aux paramètres de \fichier{parametres.py}, appelle \code{lancer_tout.traiter()}, c'est-à-dire \textbf{les mêmes étapes
+1 à 6 qu'en ligne de commande}, puis remet les paramètres d'origine et garde le résultat en mémoire.
+
+\section{L'interface}
+
+\subsection{Onglet 1 · Segmentation CT}
+
+La liste des séries trouvées, les coupes du scanner (axiale, coronale, sagittale) avec les os en couleur, les os en 3D
+et la liste des os avec leur nom, leur volume et la raison de ce nom (\cref{fig:capture-segmentation}). On peut
+\ui{Renommer} un os ou le \ui{Séparer} en cliquant des points. La carte \ui{Os à planifier (CORA)} propose l'os complet
+de la série, avec un bouton \ui{Planifier CORA $\rightarrow$}.
+
+\fig{capture_segmentation.png}{L'onglet \ui{Segmentation CT} avec une série segmentée : coupes du scanner, os en 3D et
+liste des os trouvés.}{fig:capture-segmentation}
+
+\subsection{Onglet 2 · Planification CORA}
+
+Deux sources : l'\textbf{os segmenté} (celui de la série ouverte) ou l'\textbf{os fictif}. Un panneau à gauche permet
+de choisir la référence (valeurs normales ou os avant déformité), une déformité de test, un des 17 préréglages
+cliniques, la stratégie (type de coin, niveau du trait, profondeur de la charnière, broches) et les 27 dimensions du
+guide. Au centre, la vue 3D (Three.js) ; à droite, le texte de l'étape en cours, parmi les 13 étapes
+(\cref{tab:13etapes}). À l'étape 12, le bouton \ui{Construire les guides 3D} envoie la prescription au serveur, qui
+lance l'étape 7.
+
+\begin{pourquoi}
+\textbf{Pourquoi un seul fichier HTML ?} Les modules JavaScript de \fichier{code_source/cora/app/} sont assemblés par
+\fichier{code_source/cora/build_app.py} en un seul fichier, \fichier{application/interface/cora/index.html}, avec
+Three.js, les polices et les données de l'os fictif. Il s'ouvre sans Internet et sans installation. En contrepartie,
+il faut relancer \fichier{build_app.py} après chaque modification du JavaScript.
+\end{pourquoi}
+
+\subsection{La 3D à la demande}
+
+Les vues 3D ne sont redessinées que quand quelque chose change (rotation, curseur, étape). Au repos, l'application ne
+calcule aucune image : le processeur reste libre et l'ordinateur ne chauffe pas.
+
+\section{La fenêtre native}
+
+\fichier{application/fenetre.py} utilise la bibliothèque \textbf{pywebview}, qui affiche une page web dans une fenêtre
+du système : le moteur WebKit (celui de Safari) sur macOS, WebView2 (celui d'Edge) sur Windows. L'application a ainsi
+son nom et son icône dans le Dock ou la barre des tâches, des menus en français et des boîtes « Enregistrer sous » pour
+les exports. Si pywebview ne peut pas être installé, l'application s'ouvre dans une fenêtre de Chrome ou d'Edge.
+
+\section{L'application autonome}
+
+Pour qu'un utilisateur n'ait rien à installer, PyInstaller copie Python, toutes les bibliothèques et le code dans une
+application d'environ 800~Mo. Au lancement, un seul exécutable démarre \textbf{deux processus} : la fenêtre, et le
+serveur de calcul (le même exécutable, lancé avec l'option \code{--serveur}). Sur macOS, la fenêtre (Cocoa) et les
+calculs (VTK) exigent tous deux le fil principal : deux processus les séparent. Fermer la fenêtre arrête le serveur,
+après le calcul en cours.
+
+\begin{attention}
+L'application autonome contient une \textbf{copie figée} du code : il faut la reconstruire après chaque modification
+(\fichier{application/lanceurs/creer_app_autonome.sh} sur Mac, environ 3 minutes ;
+\fichier{creer_app_windows.bat} sur Windows, environ 10 minutes la première fois).
+\end{attention}
+
+\section{Lancer le logiciel}
+\label{sec:lancer}
+
+\begin{table}[htbp]
+\centering\small
+\caption{Les façons de lancer CT-CORA3D.}
+\label{tab:lancer}
+\begin{tabularx}{\linewidth}{L{3.2cm}Y}
+\toprule
+\titrecol{Système} & \titrecol{Comment} \\
+\midrule
+macOS (conseillé) & \fichier{~/Applications/CT-CORA3D.app} : application autonome \\
+macOS (développement) & \fichier{CT-CORA3D.app} du dossier du projet : petit lanceur qui utilise le Python de l'ordinateur \\
+Windows (développement) & \fichier{Lancer sur Windows.bat} : essayé avec succès sur un PC Windows le 04/11/2026 \\
+Windows (autonome) & raccourci créé par \fichier{application/lanceurs/creer_app_windows.bat} (recette écrite, pas encore construite) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Au premier lancement, les lanceurs de développement créent un environnement Python propre à l'ordinateur, hors de
+OneDrive (\fichier{~/Library/Application Support/CTCORA3D/venv} sur Mac, \texttt{\%LOCALAPPDATA\%\textbackslash{}CTCORA3D\textbackslash{}venv} sur
+Windows), y installent les bibliothèques (quelques minutes, Internet nécessaire), puis pywebview. Les lancements
+suivants prennent quelques secondes : le lanceur vérifie seulement que les bibliothèques sont présentes, sans les
+charger (0,02~s).
+
+\subsection{Depuis GitHub}
+
+Le code est versionné dans un dépôt GitHub \textbf{privé}. Un collègue invité peut le récupérer
+(\code{git clone}), installer Python 3.12 et lancer l'application comme ci-dessus. Les scanners DICOM ne sont pas dans le
+dépôt : il faut les placer dans un dossier \fichier{CT-scan/} à côté de \fichier{CT-CORA3D/}, ou les choisir par le
+bouton \ui{Changer de dossier…}. Un fichier \fichier{.gitattributes} impose les fins de ligne Windows aux fichiers
+\fichier{.bat} : sans cela, un \fichier{.bat} récupéré depuis GitHub peut échouer sous Windows.
+
+\section{Les fichiers produits}
+
+\begin{table}[htbp]
+\centering\small
+\caption{Le contenu de \fichier{resultats/<série>/}.}
+\label{tab:fichiers}
+\begin{tabularx}{\linewidth}{L{4.6cm}Y}
+\toprule
+\titrecol{Fichier} & \titrecol{Contenu} \\
+\midrule
+\fichier{femur.stl}, \fichier{tibia.stl}\ldots & un maillage étanche par os, en millimètres, repère du scanner \\
+\fichier{segmentation.seg.nrrd} & toutes les étiquettes, avec noms et couleurs (s'ouvre dans 3D Slicer) \\
+\fichier{rapport.md}, \fichier{rapport.json} & le rapport de la segmentation \\
+\fichier{apercu_3d.png}, \fichier{apercu_coupes.png} & des images de contrôle \\
+\fichier{reperes_auto.mrk.json} & la tête du fémur, au format de 3D Slicer \\
+\fichier{cora_<os>.json}, \fichier{.bin}, \fichier{.png} & repère, côté, repères, angles, torsion ; maillage dans le repère de l'os \\
+\fichier{cora_cas.json} & l'os à planifier et la raison du choix \\
+\fichier{guide_<os>_<coin>/} & \fichier{guide_coupe.stl} et \fichier{guide_reduction.stl} (à imprimer), \fichier{guide_coupe_scanner.stl}, \fichier{os_corrige.stl}, \fichier{prescription.json}, \fichier{guide.json} (contrôles, mode opératoire), plans 2D \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Il n'y a pas de base de données : pour sauvegarder un cas, il suffit de copier son dossier. Le journal de
+l'application est dans \fichier{~/Library/Logs/CTCORA3D.log} (Mac) ou \texttt{\%LOCALAPPDATA\%\textbackslash{}CTCORA3D\textbackslash{}CTCORA3D.log}
+(Windows).
+
+\section{Les performances}
+
+\begin{table}[htbp]
+\centering\small
+\caption{Mesures sur le Mac de développement, avant et après le travail sur la fluidité (22/10/2026). Les résultats
+des guides sont identiques au bit près.}
+\label{tab:perf}
+\begin{tabularx}{\linewidth}{Yrr}
+\toprule
+\titrecol{Mesure} & \titrecol{Avant} & \titrecol{Après} \\
+\midrule
+guide complet (tibia, fermeture, guide v3 avec verrou, plans 2D) & 86,5~s & 23,5~s \\
+\quad dont plans 2D & 49,8~s & 6,2~s \\
+chargement des bibliothèques du serveur & 2,1~s & 0,9~s \\
+vérification de l'environnement par les lanceurs & 1,5 à 2,6~s & 0,02~s \\
+vue 3D au repos (images calculées par seconde) & 60 & 0 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Les gains viennent de choix simples : plans 2D dessinés par un tampon de profondeur en numpy, recherches de voisins
+sur tous les cœurs du processeur, et chargement des seules classes de VTK utilisées (\fichier{vtk_leger.py}). Depuis
+la simplification du guide (06/11/2026), un guide complet avec ses plans prend 10 à 16~s.
+
+\begin{danslecode}
+\fichier{application/serveur.py} (serveur, actions, adresses), \fichier{application/fenetre.py} (fenêtre native),
+\fichier{application/ct_cora3d_app.py} (point d'entrée de l'application autonome), \fichier{application/interface/}
+(onglets), \fichier{application/lanceurs/} (fabrication des applications), \fichier{application/lancer_mac.sh} et
+\fichier{Lancer sur Windows.bat} (lanceurs de développement).
+\end{danslecode}

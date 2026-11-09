@@ -1,0 +1,61 @@
+\chapter{Les commandes utiles}
+\label{ann:commandes}
+
+\begin{chapeau}
+Les commandes se lancent dans un terminal, depuis le dossier \fichier{CT-CORA3D/code_source/}, avec le Python du
+projet (ici noté \code{python}). Sur Mac, c'est par exemple
+\fichier{~/Library/Application Support/CTCORA3D/venv/bin/python}.
+\end{chapeau}
+
+\section{Le calcul sans interface}
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[language=bash]
+python lancer_tout.py --liste                  # inventaire des séries DICOM
+python lancer_tout.py                          # toutes les séries, étapes 1 à 6
+python lancer_tout.py --serie hip_to_knee      # une série (un morceau de nom unique suffit)
+python lancer_tout.py --dossier "D:/CT chien 12" --sortie "D:/resultats" --seuil 250
+python etape6_reperes.py ../resultats/greyhound_hindlimb_knee_to_ankle --os tibia
+python etape7_guide.py --prescription prescription.json --os os.bin --sortie dossier \
+                       --voisin fibula=fibula.bin --cartilage cartilage.u8
+\end{lstlisting}
+\end{minipage}
+
+\section{Les tests et les campagnes}
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[language=bash]
+python tests/test_chaine.py                    # faux scanner (environ 3 s)
+python tests/test_reperes.py                   # repères (environ 13 s)
+python tests/test_guide.py                     # guides (environ 25 s ; --rapide)
+cd cora && node tests/test_cas.mjs && node tests/test_reel.mjs && cd ..
+node tests/campagne_strategie.mjs ../campagne_strategie 300 --exporter
+python tests/campagne_guides.py ../campagne_strategie/guides --processus 4
+node tests/campagne_export.mjs ../campagne tout 160 11
+python tests/campagne_guides.py ../campagne --processus 4
+\end{lstlisting}
+\end{minipage}
+
+Pour une campagne longue, limiter le nombre de fils par processus évite de surcharger le processeur :
+\code{OMP_NUM_THREADS=3 ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=3} avec \code{--processus 3}.
+
+\section{Reconstruire}
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[language=bash]
+cd cora && python3 build_app.py && cd ..       # interface CORA après une modification du JavaScript
+bash ../application/lanceurs/creer_app_autonome.sh       # application autonome macOS (environ 3 min)
+\end{lstlisting}
+\end{minipage}
+Sous Windows, double-cliquer sur \texttt{application\textbackslash{}lanceurs\textbackslash{}creer\_app\_windows.bat} construit l'application
+autonome (Python 3.10 ou plus récent et Internet nécessaires).
+
+\section{Refaire ce document}
+
+\noindent\begin{minipage}{\linewidth}
+\begin{lstlisting}[language=bash]
+cd documents/dossier_complet
+bash construire.sh            # le PDF (trois passes de XeLaTeX)
+bash construire.sh figures    # refait d'abord les figures et les schémas draw.io
+\end{lstlisting}
+\end{minipage}

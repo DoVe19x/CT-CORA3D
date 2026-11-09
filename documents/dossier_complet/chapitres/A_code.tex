@@ -1,0 +1,221 @@
+\chapter{Le code, fichier par fichier}
+\label{ann:code}
+
+\begin{chapeau}
+Cette annexe décrit chaque fichier du programme : son rôle, ses entrées, ses sorties et ses fonctions principales. Le
+nombre de lignes est donné pour se faire une idée de la taille. Au total, le projet compte environ 10\,500 lignes de
+Python et 6\,900 lignes de JavaScript et de HTML, dont environ 1\,900 lignes de tests et de campagnes.
+\end{chapeau}
+
+\newcommand{\fiche}[2]{\par\bigskip\noindent{\sffamily\bfseries\color{titre}\fichier{#1}}\hfill{\small\sffamily\color{gris}#2}\par\nopagebreak\smallskip}
+
+\section{Arborescence}
+
+\begin{lstlisting}[language={}, basicstyle=\ttfamily\footnotesize]
+CT-CORA3D/
+  CT-CORA3D.app            lanceur macOS de développement
+  Lancer sur Windows.bat   lanceur Windows de développement
+  LISEZ-MOI.md             mode d'emploi détaillé
+  application/             serveur, fenêtre, interface, fabrication des applications
+  code_source/             étapes 1 à 7 (Python), tests, cora/ (planification, JS)
+  documents/               cahier des charges, rapport, documentation, ce dossier
+  resultats/               un dossier par série, os fictif, rapports des campagnes
+\end{lstlisting}
+
+\section{Le programme de calcul : \texorpdfstring{\fichier{code_source/}}{code\_source/}}
+
+\fiche{parametres.py}{198 lignes}
+\textbf{Rôle} : tous les réglages du programme, au même endroit, chacun avec son origine (document de cadrage,
+littérature ou mesure sur les scanners du projet). Aucune autre valeur « magique » ne doit apparaître dans les scripts.
+Il définit aussi les dossiers : le dossier du projet, celui des scanners (\fichier{../CT-scan/} s'il existe) et celui
+des résultats. Toutes les valeurs sont listées à l'\cref{ann:parametres}.
+
+\fiche{etape1_lecture_dicom.py}{251 lignes}
+\textbf{Rôle} : inventaire des séries d'un dossier et construction du volume (\cref{chap:lecture}).
+\textbf{Entrée} : un dossier DICOM. \textbf{Sorties} : objets \code{Serie} et \code{Volume} (en mémoire).
+\textbf{Fonctions} : \code{inventaire()} (fouille et regroupement par série), \code{charger()} (tri le long de la
+normale, contrôles, rééchantillonnage, conversion en HU, matrice $\mt{A}$), \code{lire_pixels()},
+\code{trouver()} (série par son nom) ; la classe \code{Volume} convertit indices et millimètres
+(\code{vers_lps()}, \code{vers_indices()}).
+
+\fiche{etape2_segmentation.py}{374 lignes}
+\textbf{Rôle} : séparer les os (\cref{chap:segmentation}). \textbf{Entrée} : le \code{Volume}. \textbf{Sortie} :
+un objet \code{Segmentation} (étiquettes, image lissée, géométrie de la zone recadrée).
+\textbf{Fonctions} : \code{recadrage()}, \code{lisser()}, \code{graines_automatiques()} (seuil qui monte),
+\code{croissance()} (ligne de partage des eaux), \code{contacts()}, \code{fusionner_surdecoupages()} (critère $c^*$),
+\code{nettoyer()}, \code{segmenter()} (enchaîne le tout) ; outils de l'étape 3 : \code{recroissance()},
+\code{raffiner()}, \code{boule()} ; \code{depuis_fichier()} relit une segmentation enregistrée ;
+\code{boite_englobante()} calcule une boîte englobante 50 fois plus vite que la méthode classique.
+
+\fiche{etape3_identification.py}{644 lignes}
+\textbf{Rôle} : nommer les os et corriger la segmentation (\cref{chap:identification}). \textbf{Entrées} : la
+\code{Segmentation}, les points de l'utilisateur. \textbf{Sorties} : noms, raisons, repère de la tête du fémur.
+\textbf{Fonctions} : \code{decrire()} (descripteurs, ACP), \code{identifier()} (les 13 règles), \code{tete_femorale()}
+et \code{ajuster_sphere()} (chapeau haut-de-forme et RANSAC), \code{separer_fibula()}, \code{separer_par_points()},
+\code{nettoyer_morceaux()}, \code{nommer_cotes()}.
+
+\fiche{etape4_maillage.py}{396 lignes}
+\textbf{Rôle} : un STL étanche par os et la segmentation au format de 3D Slicer (\cref{chap:maillage}).
+\textbf{Sorties} : \fichier{<os>.stl}, \fichier{segmentation.seg.nrrd}, les mesures de chaque maillage.
+\textbf{Fonctions} : \code{exports()} (un fichier par os, plus le groupe « tarse »), \code{remplir()},
+\code{mailler()}, \code{affiner_demi_hauteur()}, \code{controle()}, \code{bords_touches()}, \code{ecrire_stl()},
+\code{ecrire_seg_nrrd()}, \code{lire_seg_nrrd()}, \code{exporter()}.
+
+\fiche{etape5_controle.py}{267 lignes}
+\textbf{Rôle} : sensibilité au seuil, aperçus et rapports (\cref{sec:sensibilite}). \textbf{Sorties} :
+\fichier{rapport.md}, \fichier{rapport.json}, \fichier{apercu_3d.png}, \fichier{apercu_coupes.png},
+\fichier{reperes_auto.mrk.json}. \textbf{Fonctions} : \code{sensibilite_seuil()}, \code{apercu_3d()},
+\code{apercu_coupes()}, \code{markups()}, \code{rapport_md()}, \code{controler()}.
+
+\fiche{etape6_reperes.py}{1236 lignes}
+\textbf{Rôle} : repère, côté, complétude, repères anatomiques, angles et torsion du fémur et du tibia
+(\cref{chap:reperes}). \textbf{Entrées} : les STL du dossier de résultats (et la fibula, la tête du fémur).
+\textbf{Sorties} : \fichier{cora_<os>.json}, \fichier{cora_<os>.bin}, \fichier{cora_<os>.png}, \fichier{cora_cas.json}.
+\textbf{Fonctions} : classe \code{Os} (repère courant, sections), \code{orienter()}, \code{cotes_femur()},
+\code{cotes_tibia()}, \code{extremites_coupees()}, \code{analyser()} (les trois passes), \code{reperes_femur()},
+\code{reperes_tibia()}, \code{tete_femorale()}, \code{centre_col()}, \code{petit_trochanter()},
+\code{enveloppe_tangente()}, \code{sphere_robuste()}, \code{region_connexe()}, \code{angles_articulaires()},
+\code{torsion()}, \code{calibration()}, \code{normales()}, \code{traiter_os()}, \code{choisir_cible()}. Ligne de
+commande : \code{python etape6_reperes.py [dossiers] [--os tibia]}.
+
+\fiche{etape7_guide.py}{2032 lignes}
+\textbf{Rôle} : guide de coupe (deux moitiés reliées par des ponts sécables) et guide de réduction, avec leurs
+contrôles (\cref{chap:guides}). \textbf{Entrées} : \fichier{prescription.json}, le maillage de l'os planifié, les os voisins et
+le cartilage. \textbf{Sorties} : \fichier{guide_coupe.stl}, \fichier{guide_reduction.stl}, \fichier{guide_coupe_scanner.stl}, \fichier{os_corrige.stl},
+\fichier{guide.json}, \fichier{guide.png}, les plans 2D, des \fichier{.bin} pour l'affichage.
+\textbf{Fonctions} : \code{generer()}, \code{verifier_abord()}, \code{parametres_du_cas} (dimensions choisies pour un
+cas), \code{Grille}, \code{distance_signee()}, \code{DistanceSurface}, \code{dist2_point_triangle()}, les champs
+\code{champ_boite_arrondie()}, \code{champ_cylindre()}, \code{champ_capsule()}, \code{champ_secteur()}, \code{smin()},
+\code{carte_hauteur()}, \code{depouille()}, \code{ombre()}, \code{EntreOs}, \code{sans_parties_fines()},
+\code{isosurface()}, \code{guide_coupe()}, \code{transformation_reelle()}, \code{os_corrige()},
+\code{guide_reduction()}, \code{controles_coupe()}, \code{controles_voisins()}, \code{controles_reduction()},
+\code{protocole()},
+\code{dimensions_guide()}, \code{assurer_jeu()}, \code{exporter()}.
+
+\fiche{dessin_guide.py}{1230 lignes}
+\textbf{Rôle} : les plans 2D du guide, générique (cotes en symboles) et coté (ce cas), en SVG, PDF et PNG, présentés
+comme des plans de pièce industrielle (normes ISO). \textbf{Méthode} : projections orthogonales en projection
+européenne, parties cachées par un tampon de profondeur en numpy, arêtes visibles en vecteurs ; coupe exacte
+(manifold3d) hachurée ; cotes ISO, repères des pièces, nomenclature et cartouche avec le logo de l'ECAM
+(\fichier{logo_ecam.png}) ; matplotlib, sans écran. \textbf{Fonctions} : \code{dessiner()}, \code{plan_generique()},
+\code{plan_cote()}, \code{_rendu()} (tampon de profondeur), \code{_cote()}, \code{_hachures()},
+\code{_cartouche()}, \code{_nomenclature()}.
+
+\fiche{lancer_tout.py}{113 lignes}
+\textbf{Rôle} : enchaîner les étapes 1 à 6 en ligne de commande, pour une série ou toutes. \textbf{Fonction} :
+\code{traiter()}, appelée aussi par le serveur. Options : \code{--liste}, \code{--serie}, \code{--dossier},
+\code{--sortie}, \code{--seuil}, \code{--ras}, \code{--sans-controle}, \code{--sans-images}.
+
+\fiche{vtk_leger.py}{22 lignes}
+\textbf{Rôle} : n'importer que les classes de VTK utilisées (0,5~s au lieu de 2,2~s au démarrage). Usage :
+\code{import vtk_leger as vtk}.
+
+\fiche{calibration_reperes.json}{fichier de données}
+\textbf{Rôle} : cache des écarts de définition des angles (\cref{sec:calibration}), recalculé si
+\fichier{etape6_reperes.py} change.
+
+\section{Les tests : \texorpdfstring{\fichier{code_source/tests/}}{code\_source/tests/}}
+
+\fiche{test_chaine.py}{172 lignes} Faux scanner écrit en DICOM, de géométrie connue ; contrôle de bout en bout des
+étapes 1 à 5 (14 contrôles).
+
+\fiche{test_reperes.py}{149 lignes} Os fictif dans des poses au hasard (repères exacts connus) et os du lévrier
+(40 contrôles).
+
+\fiche{test_guide.py}{378 lignes} Guides sur un os coudé synthétique (prescriptions écrites à la main) et sur les os du
+lévrier ; option \code{--rapide}.
+
+\fiche{modele_cora.py}{33 lignes} Lit l'os fictif (\fichier{cora/build/bones_pack.*}) depuis Python, pour les tests.
+
+\fiche{campagne_export.mjs}{111 lignes} Génère les cas d'une campagne de guides (planification par le cœur
+JavaScript, os, voisins et cartilage déformés).
+
+\fiche{campagne_guides.py}{519 lignes} Construit les guides des cas en parallèle et les contrôle « avec l'œil du
+chirurgien » ; écrit \fichier{rapport_campagne.md} et \fichier{resultats_campagne.jsonl}. Options \code{--processus},
+\code{--filtre}, \code{--reprendre}, \code{--rapport}.
+
+\fiche{campagne_strategie.mjs}{209 lignes} Campagne de la stratégie (préréglages et cas au hasard, règles R1 à R9) ;
+option \code{--exporter} pour préparer une campagne de guides.
+
+\section{La planification : \texorpdfstring{\fichier{code_source/cora/}}{code\_source/cora/}}
+
+\fiche{app/cora_simple.js}{1727 lignes}
+\textbf{Rôle} : le cœur de calcul de la planification, sans graphisme, utilisable sous Node (\cref{chap:planification}).
+\textbf{Contenu} : vecteurs 2D et 3D, rotations (Rodrigues) et transformations rigides, réglages, préréglages
+cliniques, paramètres du guide générique, valeurs publiées, \code{modeleReel()} (os segmenté au format du modèle),
+\code{makeDeformity()}, \code{reference()}, \code{axesNormales()}, \code{coraPerpCommune()}, \code{planifier()},
+\code{choisirAbord()}, \code{contraintesCoupe()}, \code{recommanderCoin()}, \code{placerBroches()},
+\code{prescription()}, \code{mesuresTorsion()}, \code{planTorsion()}, \code{clipMesh()} (découpe de maillages),
+\code{stlBinary()}.
+
+\fiche{app/modules/10_base.js}{154 lignes} Utilitaires de l'interface (DOM, formatage), décodage du modèle osseux, et
+la liste des références bibliographiques avec leurs DOI.
+
+\fiche{app/modules/20_scene.js}{200 lignes} La scène 3D : rendu, caméra orthographique (comme une radiographie),
+matériaux, et outils de dessin des tracés (lignes, points, arcs d'angle, plans, étiquettes).
+
+\fiche{app/modules/30_os.js}{274 lignes} Les os dans la scène : os déformé, os sain en fantôme, fragments de
+l'ostéotomie, broches, os tordu de l'étape « torsion ».
+
+\fiche{app/modules/40_etapes.js}{1137 lignes} Les 13 étapes : titre, vue, légende et texte explicatif de chacune, avec
+leurs chiffres et leurs sources.
+
+\fiche{app/modules/45_export.js}{134 lignes} L'export pour le guide : archive ZIP (prescription, STL de l'os et des
+voisins, carte du cartilage, mode d'emploi), écrite sans bibliothèque.
+
+\fiche{app/modules/50_main.js}{1044 lignes} Le programme principal de l'onglet : état, panneaux, curseurs, sources (os
+segmenté ou fictif), caméra, animation de la correction, construction des guides par le serveur, rendu à la demande
+(\code{demanderImage()}).
+
+\fiche{app/index.src.html}{401 lignes} Le gabarit de la page : structure et styles.
+
+\fiche{build_app.py}{97 lignes} Assemble le gabarit, le cœur, les modules, Three.js, les polices et l'os fictif en un
+seul fichier, \fichier{application/interface/cora/index.html}. À relancer après toute modification du JavaScript.
+
+\fiche{generate_bones.py}{1149 lignes} Fabrique l'os fictif (fémur, tibia, fibula, rotule, fabelles d'un chien de
+30~kg) par fonctions de distance et marching cubes, avec ses repères exacts et sa carte de cartilage ; écrit
+\fichier{build/bones_pack.json} et \fichier{bones_pack.bin.gz}.
+
+\fiche{tests/test_cas.mjs}{163 lignes} Planification sur l'os fictif : 12 cas, une grille d'amplitudes et de niveaux,
+la torsion ; vérifie $\theta$, $F$, $S$, la formule de l'angle vrai, le CORA, la correction et les broches.
+
+\fiche{tests/test_reel.mjs}{138 lignes} Planification sur les os segmentés, tels quels puis avec six déformités de test.
+
+\section{L'application : \texorpdfstring{\fichier{application/}}{application/}}
+
+\fiche{serveur.py}{1027 lignes} Le serveur local et les actions (inventaire, ouverture, segmentation, corrections,
+guides) ; sert l'interface ; lance la fenêtre (\cref{sec:serveur}). Options : \code{--port}, \code{--sans-fenetre},
+\code{--dossier}.
+
+\fiche{fenetre.py}{288 lignes} La fenêtre native (pywebview) ; \code{--verifier} et \code{--installer} pour les
+lanceurs.
+
+\fiche{ct_cora3d_app.py}{80 lignes} Le point d'entrée de l'application autonome : sans option, la fenêtre ; avec
+\code{--serveur}, le processus de calcul.
+
+\fiche{interface/index.html}{130 lignes} La page à deux onglets (thème clair ou sombre, bouton Quitter).
+
+\fiche{interface/ct/}{app.js 828, index.html 205 lignes} L'onglet \ui{Segmentation CT} : liste des séries, coupes,
+os en 3D, corrections.
+
+\fiche{interface/cora/index.html}{fichier produit} L'onglet \ui{Planification CORA}, assemblé par
+\fichier{build_app.py}.
+
+\fiche{lancer_mac.sh}{script} Choisit l'environnement Python (ou le crée au premier lancement) et lance le serveur ;
+appelé par \fichier{CT-CORA3D.app}.
+
+\fiche{lanceurs/}{scripts} \fichier{creer_app_autonome.sh} (application autonome macOS), \fichier{creer_app_mac.sh}
+(petit lanceur \fichier{.app}), \fichier{creer_app_windows.bat} (application autonome Windows),
+\fichier{ct_cora3d.spec} (recette PyInstaller commune), \fichier{lanceur_mac.applescript}.
+
+\fiche{icone/creer_icone.py}{68 lignes} Dessine l'icône (coupe de scanner, fémur, axes et CORA) aux formats PNG, ICNS
+et ICO.
+
+\fiche{requirements.txt}{liste} Les bibliothèques Python : numpy, scipy, pydicom, SimpleITK, vtk, trimesh, pyvista,
+matplotlib, pillow, manifold3d.
+
+\section{Les documents : \texorpdfstring{\fichier{documents/}}{documents/}}
+
+Le cahier des charges, le rapport de projet et la documentation technique (PDF et Word), leurs sources Markdown et
+leurs figures, et ce dossier complet (\fichier{documents/dossier_complet/} : sources LaTeX, scripts des figures et
+schémas draw.io modifiables).
