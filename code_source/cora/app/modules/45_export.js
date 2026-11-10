@@ -52,7 +52,7 @@ function telecharger(nom, blob) {
 function lisezMoiExport(P, kind, presc, voisins = [], cartilage = false) {
   const O = P.osteo[kind], R = P.reel, fos = nomFichierOs(P);
   const cas = R
-    ? `${P.bone === 'tibia' ? 'Tibia' : 'Fémur'} segmenté (série ${R.serie}, membre ${R.cote}${R.miroir ? ', mis en miroir pour être traité comme un droit' : ''})` +
+    ? `${NOM_OS[P.bone]} segmenté (série ${R.serie}, membre ${R.cote}${R.miroir ? ', mis en miroir pour être traité comme un droit' : ''})` +
       (P.D ? `, déformité de test : ${P.cas.titre.toLowerCase()} (F ${fr(P.thetaF, 0)}°, S ${fr(P.thetaS, 0)}°)` : ', analysé tel quel')
     : `${P.cas.titre} (modèle synthétique)`;
   const lignes = [
@@ -74,7 +74,7 @@ function lisezMoiExport(P, kind, presc, voisins = [], cartilage = false) {
     `  ${fos.padEnd(24)} os planifié (mm ; X latéral, Y proximal, Z caudal${R && R.miroir ? ' ; membre gauche mis en miroir' : ''})`,
     `  ${(P.bone + '_planifie.bin').padEnd(24)} même os, format de l'application (ordre des sommets conservé) : entrée de etape7_guide.py`,
     `  ${P.bone}_corrige_prevu.stl   os après la correction simulée (contrôle visuel)`);
-  for (const n of voisins) lignes.push(`  ${('voisin_' + n + '.stl').padEnd(24)} os voisin tel que planifié (${{ fibula: 'fibula', patella: 'rotule', fabellae: 'fabelles' }[n] || n}) : le guide et les broches l'évitent`);
+  for (const n of voisins) lignes.push(`  ${('voisin_' + n + '.stl').padEnd(24)} os voisin tel que planifié (${{ fibula: 'fibula', ulna: 'ulna', patella: 'rotule', fabellae: 'fabelles' }[n] || n}) : le guide et les broches l'évitent`);
   if (cartilage) lignes.push(`  ${('cartilage_' + P.bone + '.u8').padEnd(24)} cartilage articulaire : 1 octet par sommet de ${P.bone}_planifie.bin (255 = cartilage)`);
   if (R) lignes.push(`  cora_${R.nom || P.bone}.json${' '.repeat(Math.max(1, 13 - (R.nom || P.bone).length))}repères automatiques (étape 6), dans le repère de l'os et dans celui du scanner`);
   lignes.push('',

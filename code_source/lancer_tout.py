@@ -67,7 +67,7 @@ def traiter(serie, sortie=None, points=None, avec_sensibilite=True, avec_images=
     journal("Étape 5 : contrôle (seuil ± 50 HU), aperçus et rapport")
     rapport = E5.controler(seg, volume, bilan, dossier, debut, avec_sensibilite, avec_images, journal)
     (etape or (lambda n: None))(6)
-    journal("Étape 6 : repères anatomiques pour CORA 3D (fémur et tibia complets)")
+    journal("Étape 6 : repères anatomiques pour CORA 3D (fémur, tibia et radius complets)")
     for ancien in dossier.glob("cora_*"):                # repères d'un calcul précédent : refaits
         ancien.unlink()
     cora = E6.traiter_serie(dossier, journal, images=P.IMAGES_CONTROLE if avec_images is None else avec_images)

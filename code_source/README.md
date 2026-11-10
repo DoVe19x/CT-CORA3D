@@ -117,6 +117,8 @@ l'intérieur, contacts avec les voisins, contact avec le bord du champ (os coup�
 | Ordre | Os | Règle |
 |---|---|---|
 | 1 | objet non osseux | intérieur homogène et dense (fantôme de calibration : 1300 HU, 2 % de voxels < 600 HU) **et** aucune cavité à remplir (un os en a toujours) |
+| 1 bis | patte avant : humérus, radius, ulna | deux os longs **parallèles, de volumes voisins**, qui se touchent et touchent tous les deux, au coude, un os plus gros (l'humérus) ; l'**ulna** est celui qui dépasse le plus le coude (olécrâne). Puis le coude est nettoyé par un filtre majoritaire (`E2.lisser_frontiere`) : îlots et « doigts » d'un os dans l'autre, quand l'interligne est trop fin, sont rendus au bon os |
+| 1 ter | scapula, carpe, métacarpes, phalanges | scapula = gros os plat au contact de l'autre bout de l'humérus ; carpe = os compacts touchant le radius ou l'ulna, ou à moins d'un quart de radius au-delà de leur bout ; métacarpes = os allongés plus loin (trapus chez un petit chien) ; phalanges ensuite. Garde-fous de taille et de distance (une patte étendue peut toucher la tête) |
 | 2 | tibia, fibula | un os long fin, parallèle et qui recouvre au moins la moitié de la longueur, touche un gros os long |
 | 3 | fémur, bassin | une **sphère** (tête fémorale) est trouvée au contact d'un gros voisin (voir ci-dessous) |
 | 4 | genou | le gros os au contact du plateau tibial (extrémité la plus large) est le fémur, et inversement |
@@ -129,7 +131,13 @@ l'intérieur, contacts avec les voisins, contact avec le bord du champ (os coup�
 | 10 | patella, fabelles | petits os compacts au contact du fémur ; les fabelles collées au fémur en sont détachées par un raffinement si elles sont petites, compactes et peu en contact (c* < 1,5) |
 | 11 | bassin | gros os reliés à l'acétabulum par de larges contacts |
 | 12 | points de l'utilisateur | renommer un segment, ou le séparer quand il contient des points de plusieurs noms |
-| 13 | côtés | s'il y a deux fémurs ou deux tibias : `_gauche` / `_droit` d'après x (LPS), à vérifier |
+| 13 | côtés | s'il y a deux fémurs, deux tibias, deux humérus ou deux radius : `_gauche` / `_droit` d'après x (LPS), à vérifier |
+
+La patte avant (règles 1 bis et 1 ter, `membre_thoracique()`) passe en premier : les règles de la patte arrière ne
+s'appliquent ensuite qu'aux os encore sans nom. Une fibula ne peut pas être prise pour une ulna : elle est 5 à 10 fois
+plus fine que le tibia et ne touche pas le fémur. Vérifié le 09/11/2026 : les trois scanners du lévrier (patte
+arrière) donnent exactement les mêmes noms qu'avant ; le chien A de Zurich (deux pattes avant) donne, de chaque côté,
+scapula, humérus, radius, ulna, carpe, 4 métacarpes et 2 phalanges.
 
 **Tête fémorale.** La hanche est l'articulation la plus serrée : sur ce cadavre, la tête touche l'acétabulum
 jusqu'à 1100 HU alors qu'elle se détache du col dès 900 HU. Aucun seuil ne la rend au fémur. Mais l'interligne
@@ -137,7 +145,11 @@ reste visible comme une ligne sombre de 1 à 2 voxels. Un « chapeau haut-de-for
 en niveaux de gris − image, rayon 1 mm) révèle ces vallées. Une sphère y est ajustée par RANSAC (rayon 4 à 20 mm,
 tolérance 0,6 mm), validée si au moins 150 points la soutiennent et si elle couvre au moins 40 % des directions.
 La zone fémur + bassin est alors redistribuée : graine « fémur » à l'intérieur de la sphère (rayon − 1 mm), graine
-« bassin » au-delà (rayon + 1 mm), et la croissance de région place la frontière sur l'interligne. Le centre et le
+« bassin » au-delà (rayon + 1 mm), et la croissance de région place la frontière sur l'interligne. Garde-fous (ajoutés
+pour le chien A de Zurich, où la mandibule, articulée au crâne, avait été prise pour un fémur et le crâne pour le
+bassin) : un os qui porte des **dents** n'est pas un fémur (au moins 30 voxels d'émail > 2250 HU ; l'os des membres
+n'en a aucun, même avec le filtre osseux le plus net) ; la sphère doit rester petite devant l'os (rayon ≤ 9 % de sa
+longueur, 5 % chez le lévrier), si l'os n'est pas coupé par le champ du scanner. Le centre et le
 rayon sont écrits dans `reperes_auto.mrk.json` (format Markups de 3D Slicer, nom `tete_femorale`), lisible
 directement par `Planificateur_CORA_3Dv2`.
 
@@ -175,8 +187,10 @@ directement par `Planificateur_CORA_3Dv2`.
 
 ### Étape 6 — repères anatomiques pour CORA (`etape6_reperes.py`)
 
-Pour chaque `femur*.stl` et `tibia*.stl` du dossier (et `fibula*.stl` pour le tibia, `reperes_auto.mrk.json` pour
-la tête fémorale), en ≈ 1,3 s par os :
+Pour chaque `femur*.stl`, `tibia*.stl` et `radius*.stl` du dossier (et `fibula*.stl` pour le tibia,
+`ulna*.stl`, `humerus*.stl` et `carpe*.stl` pour le radius, `reperes_auto.mrk.json` pour la tête fémorale), en
+≈ 1,3 s par os. Le radius est décrit à la fin de cette section ; il se planifie dans l'onglet CORA comme le fémur et
+le tibia (`P.CORA_PLANIFIABLES`, 10/11/2026).
 
 1. **Orientation** : axe long par analyse en composantes principales ; extrémité proximale = côté de la tête fémorale
    (ou de la meilleure sphère) / extrémité la plus large du tibia (plateau). Sens anatomiques : fémur, médial = côté
@@ -243,6 +257,26 @@ méthode par repères (voir aussi la validation de la v2).
 condylaire caudale et axe antécochléaire (Brühschwein 2023) ; − = interne, + = externe (Méthodes de Longo 2022 ; le
 résumé de cet article inverse les deux mots) ; normale ≈ −4°, anormale < −10° ou > +2°. Les anciennes définitions de
 CORA 3D (axe du col au ras de la tête, axe bimalléolaire) classaient à tort le lévrier sain en torsion externe.
+
+**Radius (patte avant, `reperes_radius()`).** Proximal = côté où l'ulna dépasse (olécrâne). Les surfaces
+articulaires sont trouvées par **contact** : la tête radiale est la partie du radius qui fait face à l'humérus (à
+moins de l'interligne + 1,5 mm, tournée vers le coude), la surface carpienne celle qui fait face au carpe. Un **plan
+moyen** est ajusté à chacune (analyse en composantes principales) ; les points à plus de 3 écarts robustes, comme la
+pointe du processus styloïde, sont écartés. Repère de l'os : Y = axe mécanique (centre de la tête radiale → centre
+de la surface carpienne) ; X = **grand axe de la surface carpienne** (repère propre du radius : l'axe du coude dépend
+de la position de l'avant-bras sur la table). **Chaque articulation se mesure dans son propre repère**
+(`vues_radius()`, comme une radiographie centrée sur elle ; Kwon 2022 : au-delà de 15° de torsion, une vue unique fausse
+les angles de face de plus de 5°) : coude = axe médio-latéral de la tête radiale (perpendiculaire à la direction
+radius → ulna au col, `rad_prox_ml_*`, il faut donc l'ulna) ; carpe = grand axe de la surface carpienne. Les bords de
+chaque surface articulaire sont pris le long de ces axes. Angles (Kwon et al. 2022, d'après Fox et al. 2006) : MPRA,
+CrPRA (repère du coude), LDRA, CdDRA (repère du carpe ; de face, axe par les milieux de la diaphyse à 25 et 75 % ; de
+profil, axes proximal 20–40 % et distal 60–80 %, car le radius est arqué), procurvatum et angulation frontale (angle
+entre ces deux mêmes axes, de profil et de face : ce sont les axes de la planification), **courbure 3D** et
+**torsion** propre (axe de la tête radiale → grand axe de la surface carpienne ; + = externe ; normale 3,6 ± 6,4°,
+Kroner 2017). La torsion par rapport au coude (`torsion_coude_deg`) n'est qu'indicative. Normes : six races de Kwon et
+al. 2022 (`NORMALES_RADIUS`) ; race inconnue : la plus proche des angles mesurés (à confirmer), modifiable dans
+l'onglet CORA ou avec `P.RACE_REFERENCE_RADIUS` ; courbure normale de Duncan 2022. Un radius sans ces repères (pas
+d'ulna, ancien fichier) n'est pas complet.
 
 ### Étape 7 — guides imprimables (`etape7_guide.py`)
 
@@ -404,13 +438,35 @@ Reprise de `../../CORA3D/code_source/` (originaux intacts) ; même structure (`a
     les broches de γ = ± 10 ou ± 20° le long de l'os ; évaluations en cache.
   - prescription : `strategie.regle_paley`, `abord`, `osteotomie_complete`, `translation_osteotomie_mm`,
     `charniere.axe_correction_point`, `broches_reduction[].hauteur_manchon_mm`, `placement_broches`, `alertes`.
+* **Radius (patte avant, 10/11/2026)**, avec `commeTibia()` et des alias de repères (`ALIAS_RADIUS`) :
+  - axes (`axesRadius`) : **proximal** = axe anatomique mesuré (milieux de la diaphyse à 20 et 40 %) ; **distal** =
+    construit depuis la surface carpienne avec les angles NORMAUX LDRA et CdDRA de la race (Kwon 2022 ; Fox 2006 : le
+    segment distal est court et déformé), dans le repère propre du carpe, moins la courbure normale (procurvatum de
+    Duncan 2022, moitié du valgus normal car LDRA se rapporte à l'axe 25 → 75 %) ; position comme pour le fémur (de face
+    par le centre de la surface carpienne, de profil au niveau du CORA de face) : les deux axes se coupent, la
+    correction ne laisse aucune translation. Sans normes articulaires : axe distal mesuré (60 → 80 %) moins la courbure
+    normale ;
+  - mesures (`mesurerRadius`, `vuesRadius`) : chaque articulation dans son repère propre recalculé depuis les repères ;
+    après correction, le repère du carpe suit le fragment distal (dérotation comprise), comme un nouveau scanner ;
+  - broches sur la ligne centrale réelle de l'os (milieu de sa section), car l'axe distal construit ne suit pas l'os ;
+  - ulna = os voisin coupé au même niveau, comme la fibula (`BONE_MESHES`, étape 7 : `OS_A_OSTEOTOMISER`) ; le guide ne
+    se pose jamais entre le radius et l'ulna (coin d'ouverture latéral refusé) ;
+  - race choisie dans l'onglet CORA (`RACES_RADIUS`) ; un fichier `cora_radius_*.json` sans les repères propres
+    (`REPERES_RADIUS`) est refusé avec un message (relancer l'étape 6).
+  Chien A (cas de Zurich, `resultats/1_os_filtre_osseux`, race inconnue, normes du bichon maltais) : radius droit
+  θ = 32,8°, CORA à 41 mm du haut, coin de fermeture médial, dérotation 31,5° (torsion 36,4 → 3,6°) ; gauche θ = 33,4°,
+  CORA à 45 mm, dérotation 43,4° (48,2 → 3,6°) ; après correction LDRA 84°, CdDRA 75–78°, procurvatum 17–19°
+  (normes), MPRA du radius droit 57,5° (tête radiale inclinée par rapport à la diaphyse, ou norme de race / définition
+  de Kwon différente : à discuter). Guides construits sans alerte à droite ; à gauche, broches P2 et D2 à 9,5 mm des
+  extrémités (repère de 10 mm). `tests/test_reel.mjs` vérifie ces radius quand leurs résultats sont présents.
 * **Préréglages cliniques** (`PRESETS_DEFORMITE`) : 17 déformités avec contexte et référence.
 * **Guide générique** (`PARAMS_GUIDE`, `appliquerInstrument`) : 21 dimensions modifiables dans l'interface (les 19 de
   l'étape 7 + écart et distance des broches, qui servent à la planification).
 * **Prescription** (format v2.2 = v2.1 + `broches_reduction`, `guide_reduction`, bloc `torsion`, dérotation et
   `T_4x4` total) : pour un os segmenté, bloc `os_segmente` (série, côté, miroir, matrice `os_vers_scanner`). La v2 lit
   toujours ce fichier (elle ignore les ajouts).
-* **Os détecté** : l'onglet CORA prend l'os complet détecté dans la série ouverte dans l'onglet 1 (`cora_cas.json`).
+* **Os détecté** : l'onglet CORA prend l'os complet détecté dans la série ouverte dans l'onglet 1 (`cora_cas.json`) :
+  fémur, tibia ou radius ; avec les deux membres, l'autre côté se choisit dans le panneau de gauche.
 * **Références de normalité** (publications seulement) : « Vezzoni » par défaut (aLDFA 94 ± 3,3° de Vezzoni L 2022,
   mMPTA 93,3 ± 1,78° d'Olsen, Vezzoni 2016, mCaPTA = 90° − TPA des Labradors sains de Guénégo, Vezzoni 2021 :
   26,3°, étendue 20,4–30,8°, écart-type estimé = étendue / 4 ; les autres angles prennent la littérature),

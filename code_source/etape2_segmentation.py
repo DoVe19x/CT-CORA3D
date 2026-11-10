@@ -298,6 +298,51 @@ def recroissance(seg, etiquettes_zone, marqueurs, marge=3):
     seg.etiquettes[b] = sortie
 
 
+def lisser_frontiere(etiquettes, a, b, espacement, rayon_mm=1.5, bande_mm=4.0, iterations=12):
+    """Filtre majoritaire à la frontière de deux os a et b (tableau modifié en place). Quand l'interligne d'une
+    articulation est trop fin pour être vu, la croissance de région peut « déborder » : un os envoie des doigts ou des
+    îlots dans son voisin (cas du coude droit du chien A de Zurich : le radius entrait dans le condyle de l'humérus).
+    Chaque voxel proche de la frontière (moins de `bande_mm`) prend l'étiquette majoritaire parmi les voxels de a et
+    de b situés dans une petite boîte de demi-côté `rayon_mm` autour de lui ; on répète jusqu'à stabilité. Les îlots
+    disparaissent et les doigts fins se rétractent ; une frontière déjà lisse ne bouge presque pas.
+    Renvoie le nombre de voxels réattribués."""
+    union = (etiquettes == a) | (etiquettes == b)
+    if not union.any():
+        return 0
+    bx = boite_englobante(union)
+    L = etiquettes[bx]
+    A, B = L == a, L == b
+    itf = np.zeros_like(A)
+    for ax in range(3):
+        for s in (1, -1):
+            itf |= A & np.roll(B, s, axis=ax)
+    if not itf.any():
+        return 0
+    marge = np.ceil((bande_mm + 2 * rayon_mm) / np.asarray(espacement)).astype(int)
+    idx = np.argwhere(itf)
+    lo, hi = np.maximum(idx.min(0) - marge, 0), np.minimum(idx.max(0) + marge + 1, L.shape)
+    bi = tuple(slice(l, h) for l, h in zip(lo, hi))
+    M = L[bi].copy()
+    u = (M == a) | (M == b)
+    da = ndi.distance_transform_edt(M != a, sampling=espacement)
+    db = ndi.distance_transform_edt(M != b, sampling=espacement)
+    bande = u & (np.where(M == a, db, da) < bande_mm)
+    taille = 2 * np.ceil(rayon_mm / np.asarray(espacement)).astype(int) + 1
+    fu = ndi.uniform_filter(u.astype(np.float32), taille, mode="constant")
+    changes = 0
+    for _ in range(iterations):
+        fa = ndi.uniform_filter((M == a).astype(np.float32), taille, mode="constant")
+        nouveau = np.where(fa > 0.5 * np.maximum(fu, 1e-6), a, b).astype(M.dtype)
+        diff = bande & (nouveau != M)
+        if not diff.any():
+            break
+        changes += int(diff.sum())
+        M[diff] = nouveau[diff]
+    L[bi] = M
+    etiquettes[bx] = L
+    return changes
+
+
 def raffiner(seg, e, journal=print, finesse=2):
     """Re-découpe un segment qui contient sans doute plusieurs os (ex. talus soudé à un métatarse, fabelle collée
     au fémur) : graines plus fines (taille minimale et persistance divisées par `finesse`) cherchées dans ce seul

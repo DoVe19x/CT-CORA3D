@@ -22,6 +22,7 @@ const S = {
     reference: 'normales',    // 'normales' (valeurs de référence converties) | 'sain' (os avant la déformité de test)
     preset: 'vezzoni',        // référence de normalité (publications seulement) : vezzoni | litterature | race
     race: 'levrier',          // race si preset = race (Tomlinson 2007 pour le fémur, Wilke 2002 pour la pente tibiale)
+    raceRadius: null,         // radius : race de Kwon 2022 choisie ici (null = race de l'étape 6, cora_<radius>.json)
     normales: {},             // valeurs normales utilisées (définition des repères automatiques)
     sd: {},                   // écarts-types utilisés pour le dépistage (± 2 écarts-types)
     sources: {},              // publication d'où vient chaque valeur
@@ -264,7 +265,9 @@ const NOM_PRESET = {
   litterature: 'littérature (Tomlinson 2007, Labrador ; Dismukes 2007-2008)',
   race: 'valeurs publiées pour la race',
 };
-const nomPreset = () => (S.reel.preset === 'race' ? `race : ${RACES[S.reel.race].nom.toLowerCase()} (Tomlinson 2007, Wilke 2002)` : NOM_PRESET[S.reel.preset]);
+const raceRadiusUtilisee = () => S.reel.raceRadius || S.reel.json?.normales?.MPRA?.race || 'Beagle';
+const nomPreset = () => (S.reel.json?.os === 'radius' ? `${raceRadiusUtilisee().toLowerCase()} (Kwon 2022), courbure de Duncan 2022`
+  : S.reel.preset === 'race' ? `race : ${RACES[S.reel.race].nom.toLowerCase()} (Tomlinson 2007, Wilke 2002)` : NOM_PRESET[S.reel.preset]);
 // valeur publiée { m, sd, src } de l'angle k pour une référence ; null = pas de valeur publiée (on garde la littérature)
 function valeurReference(preset, bone, k, race = S.reel.race) {
   const lit = LITTERATURE[bone][k];
@@ -279,6 +282,16 @@ function valeurReference(preset, bone, k, race = S.reel.race) {
 function appliquerReference() {
   const R = S.reel, J = R.json;
   if (!J) return;
+  if (J.os === 'radius') {
+    const N = RACES_RADIUS[R.raceRadius];
+    for (const [k, n] of Object.entries(J.normales)) {
+      const r = N && N[k];
+      R.normales[k] = r ? r[0] : n.valeur;
+      R.sd[k] = r ? r[1] : n.sd;
+      R.sources[k] = r ? `Kwon et al. 2022, ${R.raceRadius}` : [n.source, n.note].filter(Boolean).join(' ; ');
+    }
+    return;
+  }
   for (const [k, n] of Object.entries(J.normales)) {
     // aCdDFA : pas de valeur publiée de même définition (os sain du modèle mesuré par le programme)
     const v = k === 'aCdDFA' ? null : valeurReference(R.preset, J.os, k) || valeurReference('litterature', J.os, k);
@@ -361,7 +374,7 @@ const ICONE = {
   procurvatum: '<svg width="16" height="22" viewBox="0 0 16 22" aria-hidden="true"><path d="M11 1 5 11l6 10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   recurvatum: '<svg width="16" height="22" viewBox="0 0 16 22" aria-hidden="true"><path d="M5 1l6 10-6 10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 };
-const LIBELLE = { femur: 'Fémur', tibia: 'Tibia', varus: 'Varus', valgus: 'Valgus', aucun: 'Aucune', procurvatum: 'Procurv.', recurvatum: 'Recurv.' };
+const LIBELLE = { femur: 'Fémur', tibia: 'Tibia', radius: 'Radius', varus: 'Varus', valgus: 'Valgus', aucun: 'Aucune', procurvatum: 'Procurv.', recurvatum: 'Recurv.' };
 const groupeCas = (titre, valeurs, courant, choisir, icones = true) => h('div', { class: 'case-group' },
   h('span', { class: 'case-lbl' }, titre),
   h('div', { class: `case-row n${valeurs.length}`, role: 'group', 'aria-label': titre }, valeurs.map((v) => h('button', {
@@ -388,7 +401,7 @@ function resumeCas() {
     : `Une seule angulation de θ = ${deg(v.thetaVrai)} dans un plan oblique à ${deg(v.phiVrai, 0)} du plan frontal.`;
 }
 const nomSerie = (s) => s.replace(/^greyhound_hindlimb_/, '').replace(/_/g, ' ');
-const libOs = (nom) => `${nom.startsWith('femur') ? 'Fémur' : 'Tibia'}${nom.includes('_') ? ' ' + nom.split('_')[1] : ''}`;
+const libOs = (nom) => `${NOM_OS[nom.split('_')[0]] || nom}${nom.includes('_') ? ' ' + nom.split('_')[1] : ''}`;
 function renderReel() {
   const R = S.reel, el = [];
   if (!R.serveur) {
@@ -404,18 +417,18 @@ function renderReel() {
     INTEGRE ? h('button', { type: 'button', class: 'btn petit', onclick: () => window.parent.postMessage({ type: 'onglet', nom: 'ct' }, '*') }, '← Segmentation CT') : null);
   if (!cas || !cas.serie || !cas.cible) {
     el.push(h('div', { class: 'box warn' }, h('h3', {}, cas?.serie ? 'Aucun os planifiable dans cette série' : 'Aucun os détecté'),
-      para(cas?.raison || 'Segmentez une série dans l\'onglet « Segmentation CT » : le fémur ou le tibia complet y est détecté automatiquement.'),
+      para(cas?.raison || 'Segmentez une série dans l\'onglet « Segmentation CT » : le fémur, le tibia ou le radius complet y est détecté automatiquement.'),
       ...(cas?.candidats || []).map((c) => h('p', { class: 'src' }, `${libOs(c.nom)} : ${c.complet ? 'complet' : c.raison}`))), boutons);
     $('#cases').replaceChildren(...el);
     return;
   }
-  // l'os détecté (un dossier DICOM = un fémur OU un tibia) ; les autres os du scanner ne sont pas planifiables
+  // l'os détecté (fémur, tibia ou radius complet) ; les autres os du scanner ne sont pas planifiables
   const actif = R.choix && R.choix.serie === cas.serie ? R.choix.os : cas.cible;
   const c = cas.candidats.find((x) => x.nom === actif) || cas.candidats.find((x) => x.nom === cas.cible);
   const complets = cas.candidats.filter((x) => x.complet), ignores = cas.candidats.filter((x) => !x.complet);
   const J = R.json && MODEL_R && R.choix?.serie === cas.serie && R.choix?.os === c.nom ? R.json : null;
   el.push(h('div', { class: 'os-detecte' },
-    h('div', { class: 'od-tete' }, h('b', {}, `${libOs(c.nom)} ${c.cote || ''}`), h('span', { class: 'tag ok' }, 'détecté')),
+    h('div', { class: 'od-tete' }, h('b', {}, `${libOs(c.nom)}${c.nom.includes('_') ? '' : ` ${c.cote || ''}`}`), h('span', { class: 'tag ok' }, 'détecté')),
     h('div', { class: 'od-meta' }, `Série ${nomSerie(cas.serie)}${c.longueur_mm ? ` · ${fr(c.longueur_mm, 0)} mm` : ''}${J ? ` · ${Object.keys(J.reperes).length} repères automatiques` : ''}`),
     h('p', { class: 'src' }, cas.raison + (cas.ouverte === false ? ' (la série ouverte dans l\'onglet 1 n\'est pas encore segmentée : dernière série segmentée)' : '')),
     J?.miroir ? h('p', { class: 'src' }, 'Membre gauche : analysé en miroir, comme un membre droit.') : null,
@@ -433,7 +446,7 @@ function renderReel() {
       h('span', { class: 'case-lbl' }, 'Déformité de test (simulation)'),
       h('label', { class: 'bascule' }, h('input', { type: 'checkbox', checked: T.on, onchange: (e) => { T.on = e.target.checked; if (!T.on) R.reference = 'normales'; replanUI(); } }),
         h('span', {}, T.on ? 'Imposer une déformité connue à cet os réel' : 'Os analysé tel quel (pas de déformité imposée)'))));
-    el.push(selectPresets(J.os));
+    if (PRESETS_DEFORMITE.some((p) => p.os === J.os)) el.push(selectPresets(J.os));
     if (T.on) {
       el.push(groupeCas('Plan frontal', FRONTAL, T.frontal, (v) => { T.frontal = v; replanUI(); }));
       el.push(groupeCas('Plan sagittal', SAGITTAL, T.sagittal, (v) => { T.sagittal = v; replanUI(); }));
@@ -452,6 +465,7 @@ function renderReel() {
 // valeurs normales de l'os segmenté : choix de la référence (publications seulement) et valeurs utilisées, avec leur source
 function tableNormales() {
   const R = S.reel, J = R.json, bone = J.os;
+  if (bone === 'radius') return tableNormalesRadius();
   const nouveau = (f) => () => { f(); appliquerReference(); replanUI(); };
   const presets = h('div', { class: 'seg presets', role: 'group', 'aria-label': 'Référence de normalité' },
     PRESETS.map(([id, nom]) => h('button', { type: 'button', 'aria-pressed': String(R.preset === id), onclick: nouveau(() => { R.preset = id; }) }, nom)));
@@ -470,6 +484,24 @@ function tableNormales() {
       h('table', { class: 't compact' }, h('thead', {}, h('tr', {}, h('th', {}, 'Angle'), h('th', {}, 'Utilisée'), h('th', {}, 'Publiée'))),
         h('tbody', {}, Object.keys(J.normales).filter((k) => k !== 'varusFem').map(ligne))),
       h('p', { class: 'src' }, 'Valeurs tirées uniquement de publications (survolez une ligne pour sa source). « Utilisée » = valeur publiée + écart de définition des repères automatiques. Comparaison et explications : étape 1.')));
+  det.open = R.normOuvert;
+  det.addEventListener('toggle', () => { R.normOuvert = det.open; });
+  return det;
+}
+// radius : race de Kwon 2022 (angles articulaires) ; courbure de Duncan 2022 ; valeurs utilisées et leur source
+function tableNormalesRadius() {
+  const R = S.reel, J = R.json, n6 = J.normales.MPRA || {};
+  const choix = h('select', { class: 'choix', 'aria-label': 'Race du chien (Kwon 2022)', onchange: (e) => { R.raceRadius = e.target.value || null; appliquerReference(); replanUI(); } },
+    h('option', { value: '', selected: !R.raceRadius }, `Race de l'étape 6 : ${n6.race || 'Beagle'}${(n6.note || '').includes('proches') ? ' (la plus proche des angles mesurés)' : ''}`),
+    ...Object.keys(RACES_RADIUS).map((k) => h('option', { value: k, selected: R.raceRadius === k }, k)));
+  const ligne = (k) => h('tr', {}, h('td', {}, court(k)), h('td', { class: 'hi' }, deg(R.normales[k])),
+    h('td', { class: 'src', title: R.sources[k] || '' }, `± ${fr(R.sd[k], 1)}`));
+  const det = h('details', { class: 'adjust' },
+    h('summary', {}, `Valeurs normales : ${nomPreset()}`),
+    h('div', { class: 'adjust-body' }, choix,
+      h('table', { class: 't compact' }, h('thead', {}, h('tr', {}, h('th', {}, 'Angle'), h('th', {}, 'Normale'), h('th', {}, 'Écart-type'))),
+        h('tbody', {}, Object.keys(J.normales).map(ligne))),
+      h('p', { class: 'src' }, 'Angles articulaires : Kwon et al. 2022 (six races de chiens sains ; race inconnue : celle dont les normes sont les plus proches des angles mesurés, à confirmer). Courbure : Duncan et al. 2022. La race change l\'axe distal construit, donc la correction. Survolez une ligne pour sa source.')));
   det.open = R.normOuvert;
   det.addEventListener('toggle', () => { R.normOuvert = det.open; });
   return det;
@@ -667,7 +699,7 @@ function renderExplain() {
   const st = ETAPES[S.step];
   if (!PLAN) {
     $('#explain').replaceChildren(h('h2', { class: 'title' }, 'Os segmenté'),
-      para('Choisissez un fémur ou un tibia <b>complet</b> dans le panneau de gauche. Il vient de la segmentation du scanner (onglet 1) ; ses repères anatomiques sont placés automatiquement.'),
+      para('Choisissez un fémur, un tibia ou un radius <b>complet</b> dans le panneau de gauche. Il vient de la segmentation du scanner (onglet 1) ; ses repères anatomiques sont placés automatiquement.'),
       para('Un os coupé par le champ du scanner n\'est pas planifiable : la méthode CORA a besoin des deux articulations.'),
       h('button', { type: 'button', class: 'btn', onclick: () => choisirSource('fictif') }, 'Voir plutôt l\'os fictif'));
     return;
@@ -702,7 +734,7 @@ function renderLegend() {
   }
   L.replaceChildren(...keys.map((k) => {
     const [c, t, forme] = LEG[k];
-    const txt = k === 'mech' ? (PLAN.bone === 'tibia' ? 'Axe mécanique (os entier)' : 'Axe anatomique (milieux de la diaphyse)') : k === 'plan' ? (st.plan2D === 'S' ? 'Plan sagittal' : 'Plan frontal') : k === 'ghost' && PLAN.reel ? 'Os avant déformité (transparence)' : t;
+    const txt = k === 'mech' ? (PLAN.bone === 'tibia' ? 'Axe mécanique (os entier)' : PLAN.bone === 'radius' ? 'Axes anatomiques (milieux de la diaphyse)' : 'Axe anatomique (milieux de la diaphyse)') : k === 'plan' ? (st.plan2D === 'S' ? 'Plan sagittal' : 'Plan frontal') : k === 'ghost' && PLAN.reel ? 'Os avant déformité (transparence)' : t;
     const col = c.startsWith('--') ? `var(${c})` : c;
     return h('div', {}, h('i', { class: forme || '', style: { background: col, color: col } }), txt);
   }));
@@ -710,7 +742,7 @@ function renderLegend() {
 }
 function renderContext() {
   if (!PLAN) { $('#ctx').replaceChildren(); return; }
-  const v = PLAN.validation, st = ETAPES[S.step], nomOs = PLAN.bone === 'tibia' ? 'Tibia' : 'Fémur';
+  const v = PLAN.validation, st = ETAPES[S.step], nomOs = NOM_OS[PLAN.bone];
   let pills;
   if (PLAN.reel) {
     const R = PLAN.reel;
@@ -919,7 +951,7 @@ function renderHelp() {
   const li = (html) => h('li', { html });
   b.append(
     h('h3', {}, 'Ce que fait l\'application'),
-    h('p', {}, 'Deux sources, même méthode. « Os segmenté (CT) » : le fémur ou le tibia segmenté sur le scanner (onglet 1 de CT-CORA3D), avec ses repères anatomiques placés automatiquement ; on peut l\'analyser tel quel ou lui imposer une déformité de test. « Os fictif (modèle) » : un os synthétique (fémur ou tibia droit, modèle procédural calibré sur la littérature) auquel on impose une déformité connue (varus ou valgus, seul ou associé à un procurvatum ou un recurvatum).'),
+    h('p', {}, 'Deux sources, même méthode. « Os segmenté (CT) » : le fémur, le tibia ou le radius segmenté sur le scanner (onglet 1 de CT-CORA3D), avec ses repères anatomiques placés automatiquement ; on peut l\'analyser tel quel ou lui imposer une déformité de test. « Os fictif (modèle) » : un os synthétique (fémur ou tibia droit, modèle procédural calibré sur la littérature) auquel on impose une déformité connue (varus ou valgus, seul ou associé à un procurvatum ou un recurvatum).'),
     h('p', {}, 'On suit ensuite, étape par étape, la planification par la méthode CORA de Paley dans les deux vues puis en 3D, jusqu\'à la prescription du guide de coupe. Une dernière étape explique pourquoi la torsion se mesure en 3D.'),
     h('h3', {}, 'La méthode en bref'),
     h('ol', {},
@@ -940,7 +972,8 @@ function renderHelp() {
       li('<b>Guide générique</b> : 21 dimensions de conception modifiables (panneau « Guide générique : dimensions ») ; les autres découlent de l\'os. Étape 12 : guide 3D et <b>plans 2D</b> (générique et coté).')),
     h('h3', {}, 'Os segmenté : repères et références'),
     h('ul', {},
-      li('Un dossier DICOM = un fémur <b>ou</b> un tibia : l\'onglet CORA prend l\'os complet détecté dans la série de l\'onglet 1 (les os coupés par le champ du scanner sont ignorés).'),
+      li('L\'onglet CORA prend l\'os complet détecté dans la série de l\'onglet 1 : fémur, tibia ou radius (les os coupés par le champ du scanner sont ignorés). S\'il y en a plusieurs (les deux membres), on choisit l\'os à planifier.'),
+      li('<b>Radius</b> (patte avant) : axe proximal anatomique (milieux de la diaphyse à 20 et 40 %), axe distal construit depuis la surface carpienne avec les angles normaux LDRA et CdDRA de la race (Kwon 2022), moins la courbure normale (Duncan 2022) ; l\'ulna est coupée au même niveau ; la torsion se corrige vers 3,6° (Kroner 2017).'),
       li('Les repères (éminence, plateaux, cochlée, malléoles ; tête fémorale, condyles, trochlée…) sont placés par <code>etape6_reperes.py</code> : repère de l\'os, côté reconnu par l\'anatomie (un membre gauche est traité en miroir comme un droit).'),
       li('<b>Valeurs normales</b> : uniquement des valeurs publiées : travaux de l\'équipe Vezzoni (par défaut, complétés par la littérature), littérature, ou valeurs par race (Tomlinson 2007, Wilke 2002 pour le lévrier) ; toujours corrigées de l\'écart de définition des repères automatiques.'),
       li('<b>Os avant déformité</b> (avec une déformité de test) : l\'os réel non déformé joue le rôle du membre controlatéral ; la méthode doit retrouver exactement la déformité imposée.')),

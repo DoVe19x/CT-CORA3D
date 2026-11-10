@@ -65,7 +65,7 @@ BORNES = {"SEUIL_OS_HU": (100, 700), "SIGMA_LISSAGE_MM": (0.0, 1.0), "VARIATION_
           "TRIANGLES_MAX": (10_000, 1_000_000), "RAYON_FERMETURE_MM": (0.0, 3.0)}
 CHOIX = {"SYSTEME_COORDONNEES": ("LPS", "RAS")}
 NOMS_PROPOSES = ["femur", "tibia", "fibula", "patella", "fabelles", "talus", "calcaneus", "tarse", "metatarses",
-                 "phalanges", "bassin", "objet", "autre"]
+                 "phalanges", "bassin", "scapula", "humerus", "radius", "ulna", "carpe", "metacarpes", "objet", "autre"]
 
 FILE = queue.Queue()                    # demandes de calcul, traitées une à une dans le fil principal
 VERROU = threading.Lock()
@@ -250,13 +250,17 @@ def apres_modification(seg, avant, journal_=journal):
     bilan = E4.exporter(seg, dossier, journal_, seulement=touches, precedent=COURANT.get("bilan") or {})
     rapport = E5.controler(seg, COURANT["volume"], bilan, dossier, time.time(), avec_sensibilite=True,
                            avec_images=True, journal=journal_, seulement=touches)
-    # fémur ou tibia modifié (ou fibula, qui sert au tibia) : repères CORA refaits
+    # fémur, tibia ou radius modifié, ou un os qui sert à ses repères (fibula pour le tibia ; ulna, humérus et carpe
+    # pour le radius) : repères CORA refaits
     refaire = {n for n in touches if E4.base(n) in P.CORA_OS}
     refaire |= {"tibia" + n[len("fibula"):] for n in touches if E4.base(n) == "fibula"}
+    for voisin in ("ulna", "humerus", "carpe"):
+        refaire |= {"radius" + n[len(voisin):] for n in touches if E4.base(n) == voisin}
     if refaire:
         journal_("  repères CORA refaits (étape 6)")
         for f in dossier.glob("cora_*"):
-            if any(f.name.startswith(f"cora_{n}.") or f.name.startswith(f"cora_{n}_fibula") for n in refaire):
+            if any(f.name.startswith(f"cora_{n}.") or f.name.startswith(f"cora_{n}_fibula") or f.name.startswith(f"cora_{n}_ulna")
+                   for n in refaire):
                 f.unlink()
         cora = {n: E6.traiter_os(dossier, n, journal_) for n in sorted(refaire) if (dossier / f"{n}.stl").exists()}
         E6.ajouter_au_rapport(dossier, cora)
@@ -343,7 +347,7 @@ def dossier_guide(d):
     """Dossier des guides : resultats/<série>/guide_<os>_<coin> (os segmenté), resultats/_os_fictif/… (os fictif)."""
     pr = d["prescription"]
     kind, os_ = pr["strategie"]["type_coin"], pr.get("os")
-    if kind not in ("fermeture", "ouverture") or os_ not in ("femur", "tibia"):
+    if kind not in ("fermeture", "ouverture") or os_ not in P.CORA_PLANIFIABLES:
         raise ValueError("prescription invalide (os ou type de coin)")
     if d.get("serie"):
         return dossier_serie(d["serie"]) / f"guide_{nom_os_valide(d.get('nom_os') or os_)}_{kind}"
@@ -367,8 +371,9 @@ def guide(d):
     (dossier / "prescription.json").write_text(json.dumps(pr, ensure_ascii=False, indent=2), encoding="utf-8")
     E7.ecrire_stl(dossier / "os_planifie.stl", v, f, "CT-CORA3D os planifie")
     E7.ecrire_bin(dossier / "os_planifie.bin", v, f)
-    # os voisins à éviter (fibula ; rotule et fabelles du fémur), dans le repère de l'os planifié, et cartilage articulaire
-    # (1 octet par sommet de l'os) : envoyés par l'interface quand ils sont connus (os fictif, fibula segmentée…)
+    # os voisins à éviter (fibula du tibia, ulna du radius ; rotule et fabelles du fémur), dans le repère de l'os planifié,
+    # et cartilage articulaire (1 octet par sommet de l'os) : envoyés par l'interface quand ils sont connus (os fictif,
+    # fibula ou ulna segmentée…)
     voisins = []
     for x in d.get("voisins") or []:
         vv = np.frombuffer(base64.b64decode(x["sommets"]), np.float32).reshape(-1, 3).astype(float)
@@ -642,8 +647,8 @@ def cora_a_jour(d, nom):
 
 
 def nom_os_valide(nom):
-    if not re.fullmatch(r"(femur|tibia)(_gauche|_droit)?", nom or ""):
-        raise ValueError("os inconnu (femur, tibia, femur_gauche…)")
+    if not re.fullmatch(r"(femur|tibia|radius)(_gauche|_droit)?", nom or ""):
+        raise ValueError("os inconnu (femur, tibia, radius, femur_gauche…)")
     return nom
 
 
@@ -691,7 +696,7 @@ def cas_courant(serie=None):
 
 def dossier_guide_lu(rel):
     """Dossier de guides désigné par l'interface (« <série>/guide_<os>_<coin> ») : vérifié, sans « ../ »."""
-    if not re.fullmatch(r"[A-Za-z0-9_][^/\\]*/guide_(femur|tibia)(_gauche|_droit)?_(fermeture|ouverture)", rel or ""):
+    if not re.fullmatch(r"[A-Za-z0-9_][^/\\]*/guide_(femur|tibia|radius)(_gauche|_droit)?_(fermeture|ouverture)", rel or ""):
         raise ValueError("dossier de guide invalide")
     d = (P.RESULTATS / rel).resolve()
     if not d.is_relative_to(P.RESULTATS.resolve()) or not d.is_dir():
