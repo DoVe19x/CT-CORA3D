@@ -1,13 +1,20 @@
-% Cahier des charges — Projet PMD2 CT-CORA3D (ECAM, Master en ingénierie biomédicale)
-% Compilateur Overleaf : pdfLaTeX (Menu → Compiler).
+% Cahier des charges du projet PMD2 CT-CORA3D (ECAM, Master en ingénierie biomédicale)
+% Compilateur Overleaf : pdfLaTeX (Menu, Compiler).
+% les plans 2D sont des PDF de version 1.7 : on l'autorise pour éviter un avertissement à la compilation
+\ifdefined\pdfminorversion \pdfminorversion=7 \fi
 \documentclass[11pt,a4paper]{article}
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[french]{babel}
+% puces rondes dans les listes et « Figure 1 : » dans les légendes (babel met des tirets par défaut)
+\frenchsetup{StandardItemLabels=true, CustomiseFigTabCaptions=false}
 \usepackage{lmodern}
 \usepackage[margin=2.3cm]{geometry}
 \usepackage{graphicx}
+\usepackage{pdflscape} % pages en paysage pour les plans 2D (la page tourne aussi à l'écran)
+\usepackage[labelsep=colon]{caption}
+\addto\captionsfrench{\renewcommand{\tablename}{Tableau}}
 \usepackage{xcolor}
 \usepackage{tabularx}
 \usepackage{booktabs}
@@ -19,34 +26,56 @@
 \usepackage{titlesec}
 \usepackage[hidelinks]{hyperref}
 
+% pas de coupure de mots en fin de ligne (pas de tiret de coupure)
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
+\emergencystretch=3em
+
 \definecolor{ecam}{RGB}{30,60,140}
 \titleformat{\section}{\Large\bfseries\color{ecam}}{\thesection.}{0.6em}{}
 \titleformat{\subsection}{\large\bfseries\color{ecam}}{\thesubsection}{0.6em}{}
 \setlist{itemsep=2pt}
+% paragraphes espacés, sans retrait (les tableaux ne débordent plus de la marge)
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.6em plus 0.2em}
 \renewcommand{\arraystretch}{1.25}
 
 \pagestyle{fancy}
 \fancyhf{}
-\lhead{\small Cahier des charges — CT-CORA3D}
-\rhead{\small Projet PMD2 · ECAM}
+\lhead{\small Cahier des charges CT-CORA3D}
+\rhead{\small Projet PMD2, ECAM}
 \cfoot{\thepage}
 
 \newcommand{\exigence}[3]{\textbf{#1} & #2 & #3 \\ \midrule}
+% échelle « 2:1 » : sans l'espace que babel ajoute devant les deux-points
+\DeclareRobustCommand{\echelle}{{\NoAutoSpacing 2:1}}
+
+% un plan 2D (feuille A3) sur une page entière en paysage : #1 fichier, #2 légende, #3 étiquette
+% (trim retire les marges blanches de la feuille autour du cadre)
+\newcommand{\planpleinepage}[3]{%
+  \begin{landscape}
+    \centering\vspace*{\fill}
+    \captionsetup{type=figure}% légende de figure hors flottant ; le lien « figure n » arrive en haut du plan
+    \includegraphics[width=\linewidth,height=0.9\textheight,keepaspectratio,trim=13mm 5.5mm 6mm 5.5mm,clip]{#1}
+    \caption{#2}\label{#3}
+    \vspace*{\fill}
+  \end{landscape}}
 
 \begin{document}
 
 % ------------------------------------------------------------------ page de titre
 \begin{titlepage}
   \centering
-  \includegraphics[width=0.38\textwidth]{images/logo_ecam.png}\par\vspace{2.5cm}
+  \includegraphics[width=0.38\textwidth]{images/logo_ecam.png}\par\vspace{2.2cm}
   {\Huge\bfseries\color{ecam} Cahier des charges\par}\vspace{0.6cm}
   {\LARGE CT-CORA3D\par}\vspace{0.3cm}
   {\large Planification 3D des ostéotomies de correction de la patte arrière du chien\\ et guides chirurgicaux imprimés en 3D\par}
   \vfill
-  {\large Projet PMD2 — Master en ingénierie biomédicale\par}\vspace{0.3cm}
-  {\large Groupe : \textit{(noms des membres du groupe)}\par}\vspace{0.3cm}
-  {\large Année académique 2026–2027\par}\vspace{0.3cm}
-  {\large Version 1.0 — \today\par}
+  {\large\bfseries Groupe\par}\vspace{0.2cm}
+  {\large Dorian Verstappen\\ Imane Bikass\\ Mohamed-Amine Ahmidouch\par}\vspace{1cm}
+  {\large Projet PMD2, Master en ingénierie biomédicale\par}\vspace{0.2cm}
+  {\large ECAM Brussels Engineering School, année académique 2026-2027\par}\vspace{0.2cm}
+  {\large Version 1.2 du \today\par}
 \end{titlepage}
 
 \tableofcontents
@@ -56,8 +85,9 @@
 \section{Contexte et objectif}
 
 Certains chiens présentent des déformations des os longs de la patte arrière (fémur, tibia) : l'os est penché, arqué
-ou tordu, ce qui fait boiter l'animal et use ses articulations (luxation de la rotule, arthrose du genou). Le traitement est une \textbf{ostéotomie de correction} : le
-chirurgien coupe l'os à l'endroit de la déformation, le remet droit, puis le fixe avec une plaque.
+ou tordu, ce qui fait boiter l'animal et use ses articulations (luxation de la rotule, arthrose du genou). Le
+traitement est une \textbf{ostéotomie de correction} : le chirurgien coupe l'os à l'endroit de la déformation, le
+remet droit, puis le fixe avec une plaque.
 
 La difficulté est de savoir \textbf{où} couper, \textbf{de combien} corriger et \textbf{comment} reproduire ce plan
 pendant l'opération. La méthode de référence est la \textbf{méthode du CORA} (Paley), habituellement appliquée sur des
@@ -130,6 +160,7 @@ Application de bureau (Mac, Windows) & Patte avant (radius, ulna) \\ \bottomrule
 \exigence{F11}{Présenter chaque étape dans une interface pas à pas, avec explications.}{Test utilisateur}
 \bottomrule
 \end{longtable}
+\addtocounter{table}{-1} % ce long tableau n'a pas de légende : il ne compte pas dans la numérotation
 
 % ------------------------------------------------------------------ 5
 \section{Exigences de performance}
@@ -141,8 +172,8 @@ P1 & Précision de la surface de l'os (maillage) & $< 0{,}3$ mm \\
 P2 & Erreur sur l'angle de correction planifié & $< 2^\circ$ \\
 P3 & Jeu entre le guide et l'os & $0{,}3$ mm \\
 P4 & Angle et translation résiduels après correction simulée & $< 0{,}01^\circ$ et $< 0{,}5$ mm \\
-P5 & Distance minimale broche -- cartilage & $\geq 3$ mm \\
-P6 & Temps de construction des guides & $< 1$ minute \\
+P5 & Distance minimale entre une broche et le cartilage & $\geq 3$ mm \\
+P6 & Temps de construction des guides & moins d'une minute \\
 \bottomrule
 \end{tabularx}
 
@@ -156,54 +187,109 @@ P6 & Temps de construction des guides & $< 1$ minute \\
   \item \textbf{Logiciel} : fonctionnement hors ligne, sur Mac et Windows ; code en Python et JavaScript.
   \item \textbf{Données} : les données des propriétaires (noms dans les fichiers DICOM) restent sur l'ordinateur et ne
         sont jamais publiées.
-  \item \textbf{Normes de dessin} : plans conformes aux conventions ISO (projection européenne, cartouche).
+  \item \textbf{Normes de dessin} : plans au format A3, conformes aux conventions ISO (projection européenne,
+        cartouche, nomenclature), fournis en DWG, DXF et PDF.
 \end{itemize}
 
 % ------------------------------------------------------------------ 7
+\section{Guide générique et plans 2D}
+\label{sec:generique}
+
+Tous les guides sont dérivés d'un même modèle paramétrique, le \textbf{guide générique}. Ses dimensions de conception
+(épaisseur de la coque, largeur des fentes, diamètre des manchons\ldots) sont des paramètres réglables. Pour chaque
+chien, le logiciel reprend ce modèle, moule ses faces d'appui sur l'os segmenté et recalcule les dimensions qui
+dépendent de l'os (longueur des fentes, position des broches, angle du coin).
+
+Le guide générique comprend deux pièces à imprimer :
+\begin{itemize}
+  \item le \textbf{guide de coupe} (figure~\ref{fig:plancoupe}) : une coque posée sur l'os, des fentes qui guident la
+        lame de scie (deux fentes pour un coin de fermeture) et quatre manchons pour les broches. Ses deux moitiés
+        sont reliées par deux ponts sécables, que le chirurgien coupe à la pince après la coupe de l'os ;
+  \item le \textbf{guide de réduction} (figure~\ref{fig:planreduction}) : une barre et quatre manchons parallèles,
+        enfilés sur les broches pour maintenir l'os dans sa position corrigée pendant la pose de la plaque.
+\end{itemize}
+
+Les deux plans ont été dessinés dans le logiciel de dessin assisté par ordinateur CADCraft, sans l'os, pour un os de
+16~mm de largeur et un coin de fermeture de 20°. Chaque plan tient sur une feuille A3 à l'échelle \echelle{} et existe en
+DWG, DXF et PDF. Chaque cote donne la dimension réelle, suivie du symbole du paramètre entre parenthèses. Le
+tableau~\ref{tab:parametres} reprend les paramètres principaux.
+
+\begin{center}
+  \captionsetup{type=table}% légende de tableau sans flottant : le tableau reste à cet endroit du texte
+  \renewcommand{\arraystretch}{1.1}
+  \caption{Paramètres principaux du guide générique (valeurs par défaut).}
+  \label{tab:parametres}
+  \begin{tabularx}{\textwidth}{@{}lXl@{}}
+  \toprule
+  \textbf{Symbole} & \textbf{Paramètre} & \textbf{Valeur} \\ \midrule
+  j & Jeu entre l'os et la coque & 0,3~mm \\
+  e & Épaisseur de la coque & 3~mm \\
+  $\alpha$ & Demi-ouverture de la coque autour de la face d'appui & 75° \\
+  g & Hauteur de guidage des fentes et des manchons au-dessus de la coque & 10~mm \\
+  p & Paroi des tours de fente et des manchons & 2~mm \\
+  s + js & Largeur des fentes (lame de 0,6~mm et jeu de 0,2~mm) & 0,8~mm \\
+  Øb + jb & Trou des manchons (broche de 1,6~mm et jeu de 0,2~mm) & 1,8~mm \\
+  hp & Hauteur des ponts sécables & 5~mm \\
+  eb & Écart entre les deux broches d'un même fragment & 10~mm \\
+  er & Guide de réduction : distance de la barre à l'os & 4~mm \\
+  lr & Guide de réduction : longueur des manchons & 12~mm \\
+  tb & Guide de réduction : épaisseur de la barre & 6~mm \\
+  \bottomrule
+  \end{tabularx}
+\end{center}
+
+% les deux plans : une page en paysage chacun, avec des marges latérales réduites pour agrandir le plan
+\newgeometry{left=1.2cm,right=1.2cm,top=2.3cm,bottom=2.3cm}
+\setlength{\headwidth}{\textwidth}
+\planpleinepage{images/plan_guide_coupe.pdf}{Plan 2D du guide de coupe générique (plan CTC3D-GEN-01) : vue de la
+  face d'appui et coupes B-B, C-C et D-D. Plan réduit pour tenir sur la page : l'échelle \echelle{} vaut pour la
+  feuille A3 imprimée à 100~\%.}{fig:plancoupe}
+\planpleinepage{images/plan_guide_reduction.pdf}{Plan 2D du guide de réduction générique (plan CTC3D-GEN-02) : coupe
+  A-A, vue de dessus et coupe B-B. Plan réduit pour tenir sur la page : l'échelle \echelle{} vaut pour la feuille A3
+  imprimée à 100~\%.}{fig:planreduction}
+\restoregeometry
+\setlength{\headwidth}{\textwidth}
+
+% ------------------------------------------------------------------ 8
 \section{Exemple de résultat attendu}
 
-La figure~\ref{fig:guide} montre les guides obtenus pour un tibia déformé de 15° (os fictif, modèle 3D) : le guide de
-coupe posé sur l'os, puis le guide de réduction qui maintient l'os corrigé ; la fibula, coupée au même niveau, est en
-gris. La figure~\ref{fig:plan} montre le plan 2D généré.
+La figure~\ref{fig:guide} montre le guide générique adapté à un fémur du modèle 3D (os fictif), déformé de 21° (16° vu
+de face et 15° vu de profil) : le guide de coupe posé sur l'os, puis le guide de réduction qui maintient l'os corrigé.
+La rotule et les fabelles, que le guide et les broches doivent éviter, sont en gris. Pour chaque cas, le logiciel
+produit aussi le plan 2D coté du guide adapté à l'os.
 
 \begin{figure}[h]
   \centering
-  \includegraphics[width=\textwidth]{images/guide_tibia.png}
-  \caption{Guide de coupe (bleu et vert) et guide de réduction (violet) d'un tibia.}
+  \includegraphics[width=\textwidth]{images/guide_femur.png}
+  \caption{Guide de coupe (bleu et vert) et guide de réduction (violet) d'un fémur.}
   \label{fig:guide}
 \end{figure}
 
-\begin{figure}[h]
-  \centering
-  \includegraphics[width=0.9\textwidth]{images/plan_guide_tibia.png}
-  \caption{Plan 2D coté du guide, généré automatiquement.}
-  \label{fig:plan}
-\end{figure}
-
-% ------------------------------------------------------------------ 8
+% ------------------------------------------------------------------ 9
 \section{Livrables}
 
 \begin{enumerate}
   \item L'application CT-CORA3D (code source et application installable).
+  \item Les plans 2D du guide générique (DWG, DXF et PDF).
   \item Les guides imprimables (STL) et leurs plans 2D pour les cas étudiés.
   \item Un rapport technique et une présentation orale.
 \end{enumerate}
 
-% ------------------------------------------------------------------ 9
+% ------------------------------------------------------------------ 10
 \section{Planning}
 
 \begin{tabularx}{\textwidth}{@{}lXl@{}}
 \toprule
 \textbf{Phase} & \textbf{Contenu} & \textbf{Échéance} \\ \midrule
-1 & Lecture DICOM, segmentation, maillages & \textit{(date)} \\
-2 & Repères anatomiques et mesures & \textit{(date)} \\
-3 & Planification CORA 3D & \textit{(date)} \\
-4 & Conception des guides et plans 2D & \textit{(date)} \\
-5 & Cas réels, validation, rapport & \textit{(date)} \\
+1 & Lecture DICOM, segmentation, maillages & \textit{(à compléter)} \\
+2 & Repères anatomiques et mesures & \textit{(à compléter)} \\
+3 & Planification CORA 3D & \textit{(à compléter)} \\
+4 & Conception des guides et plans 2D & \textit{(à compléter)} \\
+5 & Cas réels, validation, rapport & \textit{(à compléter)} \\
 \bottomrule
 \end{tabularx}
 
-% ------------------------------------------------------------------ 10
+% ------------------------------------------------------------------ 11
 \section{Risques}
 
 \begin{tabularx}{\textwidth}{@{}XX@{}}
