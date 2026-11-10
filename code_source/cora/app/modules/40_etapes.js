@@ -6,6 +6,8 @@ const NOMS = {
   mCaPTA: 'mCaPTA (caudal proximal)', mCrDTA: 'mCrDTA (crânial distal)',
   aLPFA: 'aLPFA (latéral proximal)', aLDFA: 'aLDFA (latéral distal)', varusFem: 'Angle de varus fémoral',
   aCdDFA: 'aCdDFA (caudal distal)',
+  MPRA: 'MPRA (médial proximal)', LDRA: 'LDRA (latéral distal)', CrPRA: 'CrPRA (crânial proximal)', CdDRA: 'CdDRA (caudal distal)',
+  procurvatum: 'Procurvatum (axes 20-40 / 60-80 %, de profil)', angulation_frontale: 'Valgus (axes 20-40 / 60-80 %, de face)',
 };
 const LEG = {
   plan: ['--accent', 'Plan de la vue'], ghost: ['#8fb4d0', 'Os sain (transparence)'], reperes: ['--c-joint', 'Repères automatiques', 'dot'],
@@ -27,10 +29,10 @@ const para = (html) => h('p', { html });
 const boite = (cls, titre, ...kids) => h('div', { class: 'box ' + cls }, titre ? h('h3', {}, titre) : null, ...kids);
 const ext = (a, b, e) => { const d = P2.norm(P2.sub(b, a)); return [P2.sub(a, P2.mul(d, e)), P2.add(b, P2.mul(d, e))]; };
 const tAtY = (p, d, y) => (y - p[1]) / d[1];          // paramètre de la droite (p, d) à la hauteur y
-const leOs = (P) => (P.bone === 'tibia' ? 'le tibia' : 'le fémur');
-const LeOs = (P) => (P.bone === 'tibia' ? 'Tibia' : 'Fémur');
+const leOs = (P) => ({ tibia: 'le tibia', radius: 'le radius' }[P.bone] || 'le fémur');
+const LeOs = (P) => ({ tibia: 'Tibia', radius: 'Radius' }[P.bone] || 'Fémur');
 // os segmenté (CT) ou modèle synthétique ; référence des « valeurs normales »
-const nomRef = (P) => (P.reference === 'normales' ? `valeurs normales publiées (${P.reel ? nomPreset() : 'littérature'}), converties dans la définition des repères automatiques`
+const nomRef = (P) => (P.reference === 'normales' ? `valeurs normales publiées (${P.reel ? nomPreset() : 'littérature'})${P.bone === 'radius' ? '' : ', converties dans la définition des repères automatiques'}`
   : P.reel ? 'os avant la déformité de test (rôle du membre controlatéral sain)' : 'os sain du modèle (rôle du membre controlatéral)');
 const colRef = (P) => (P.reference === 'normales' ? 'Normale' : P.reel ? 'Avant déf.' : 'Os sain');
 const ecartRef = (P, k, x = P.mesures.pre[k]) => x - P.mesures.normal[k];
@@ -38,7 +40,7 @@ const anormal = (P, k, x = P.mesures.pre[k]) => Math.abs(ecartRef(P, k, x)) > 2 
 const tousNormaux = (P, cles) => cles.every((k) => !anormal(P, k));
 // liste lisible des angles hors normes parmi `cles`, avec leur écart
 const horsNormes = (P, cles) => cles.filter((k) => anormal(P, k)).map((k) => `${court(k)} ${degS(ecartRef(P, k))}`).join(', ');
-const depuis = (P) => (P.bone === 'tibia' ? 'du plateau tibial' : 'du sommet de la tête fémorale');
+const depuis = (P) => ({ tibia: 'du plateau tibial', radius: 'du sommet de la tête radiale' }[P.bone] || 'du sommet de la tête fémorale');
 const kindNom = { fermeture: 'coin de fermeture', ouverture: 'coin d\'ouverture' };
 // direction anatomique d'un vecteur ⊥ à l'os (membre droit : +X latéral, −Z crânial)
 function sens3(v, fem = false) {
@@ -85,6 +87,12 @@ const SPEC = {
   femur: {
     F: { prox: { cle: 'aLPFA', a: ['head_center', 'gt_tip'], s: 1 }, dist: { cle: 'aLDFA', a: ['cond_med_dist', 'cond_lat_dist'], s: -1 } },
     S: { prox: null, dist: { cle: 'aCdDFA', a: ['troch_dist', 'caud_mid'], s: -1 } },
+  },
+  // radius (Fox 2006, Kwon 2022) : MPRA et LDRA de face avec l'axe 25 → 75 % ; CrPRA (axe 20 → 40 %) et CdDRA (axe
+  // 60 → 80 %) de profil. Les repères portent les noms du tibia (alias, cora_simple.ALIAS_RADIUS).
+  radius: {
+    F: { prox: { cle: 'MPRA', a: ['plat_lat', 'plat_med'], s: 1 }, dist: { cle: 'LDRA', a: ['groove_med', 'groove_lat'], s: -1 } },
+    S: { prox: { cle: 'CrPRA', a: ['plat_caud', 'plat_cran'], s: 1 }, dist: { cle: 'CdDRA', a: ['dist_cran', 'dist_caud'], s: -1 } },
   },
 };
 const court = (k) => NOMS[k].split(' ')[0];
@@ -153,9 +161,19 @@ function arcArticulaire(P, k, seg, axe, Lset, calque, couleur, suffixe = '', val
   calque.arc(X, va, vb, 13, couleur, 2, `${court(sp.cle)} ${deg(v)}${suffixe}`, cls);
   return v;
 }
-// axe « de diagnostic » de l'os entier : mécanique (tibia) ou anatomique (fémur)
+// axe « de diagnostic » de l'os entier : mécanique (tibia) ou anatomique (fémur, radius)
 function dessinAxeGlobal(P, k) {
   const to2 = VUE[k].to2, B = bornes(P);
+  if (P.bone === 'radius') {
+    // milieux de la diaphyse (Kwon 2022) ; de face : un seul axe, 25 → 75 % (MPRA, LDRA) ; de profil : axes 20 → 40 %
+    // (CrPRA) et 60 → 80 % (CdDRA). Les arcs affichent les valeurs mesurées (chaque articulation dans son repère propre).
+    const L = P.L, axe = (a, b) => ({ p: L[a], d: V.norm(V.sub(L[b], L[a])) });
+    for (const f of [20, 25, 40, 60, 75, 80]) if (L[`rad_shaft_${f}`]) OV.base.dot(to2(L[`rad_shaft_${f}`]), 1.4, COL.mech);
+    const axes = k === 'F' ? [axe('rad_shaft_25', 'rad_shaft_75')] : [axe('rad_shaft_20', 'rad_shaft_40'), axe('rad_shaft_60', 'rad_shaft_80')];
+    for (const a of axes) { const p = to2(a.p), d = P2.norm(to2(a.d)); OV.base.ray(p, d, tAtY(p, d, B.top), tAtY(p, d, B.bot), COL.mech, 1.8, { dashed: true, dashSize: 6, gapSize: 4 }); }
+    ['prox', 'dist'].forEach((seg, i) => arcArticulaire(P, k, seg, axes[Math.min(i, axes.length - 1)], L, seg === 'prox' ? OV.base : OV.dist, COL.joint, '', P.mesures.pre[SPEC.radius[k][seg].cle]));
+    return;
+  }
   if (P.bone === 'tibia') {
     const a = to2(P.centres.prox), b = to2(P.centres.dist);
     OV.base.seg(a, b, COL.mech, 1.8, { dashed: true, dashSize: 6, gapSize: 4 });
@@ -202,8 +220,16 @@ const COURTS = {
   groove_med: 'sillon méd.', groove_lat: 'sillon lat.', distal_center: 'centre distal', dist_cran: 'distal (crânial)',
   dist_caud: 'distal (caudal)', mall_med: 'malléole méd.', mall_lat: 'malléole lat.', fib_head: 'tête de la fibula',
 };
+// radius : ses propres repères (les alias du tibia, aux mêmes positions, ne sont pas étiquetés une seconde fois)
+const COURTS_RADIUS = {
+  rad_prox_center: 'centre de la tête radiale', rad_head_med: 'tête (méd.)', rad_head_lat: 'tête (lat.)',
+  rad_head_cran: 'tête (crânial)', rad_head_caud: 'tête (caudal)', rad_dist_center: 'centre distal',
+  rad_dist_med: 'surface carpienne (méd.)', rad_dist_lat: 'surface carpienne (lat.)', rad_dist_cran: 'surface carpienne (crânial)',
+  rad_dist_caud: 'surface carpienne (caudal)', rad_styloid: 'styloïde du radius', uln_styloid: 'styloïde de l\'ulna',
+  uln_olecranon: 'olécrâne (ulna)',
+};
 function dessinReperes(P, etiquettes = true) {
-  const pts = Object.entries(COURTS).filter(([k]) => P.L[k]).map(([k, nom]) => ({ k, nom, p: P.L[k] }));
+  const pts = Object.entries(P.bone === 'radius' ? COURTS_RADIUS : COURTS).filter(([k]) => P.L[k]).map(([k, nom]) => ({ k, nom, p: P.L[k] }));
   for (const it of pts) OV.base.dot(it.p, 1.1, COL.joint);
   if (!etiquettes || !P.box) return;
   // légendes rangées de part et d'autre de l'os (côté du repère), espacées d'au moins 9 mm, reliées par un trait
@@ -319,10 +345,41 @@ const SENS_ANGLE = {
   valgusTib: 'vue de face : angle entre les deux lignes articulaires du tibia',
   mCaPTA: 'genou, vue de profil : axe mécanique / ligne des plateaux (pente tibiale)',
   mCrDTA: 'jarret, vue de profil : axe mécanique / ligne distale',
+  MPRA: 'coude, vue de face : axe anatomique (25 → 75 %) / ligne de la tête radiale',
+  LDRA: 'carpe, vue de face : axe anatomique (25 → 75 %) / ligne de la surface carpienne ; trop bas = valgus distal',
+  CrPRA: 'coude, vue de profil : axe proximal (20 → 40 %) / ligne crânio-caudale de la tête radiale',
+  CdDRA: 'carpe, vue de profil : axe distal (60 → 80 %) / ligne crânio-caudale de la surface carpienne',
+  procurvatum: 'vue de profil : angle entre les axes 20 → 40 % et 60 → 80 % ; le radius normal est arqué vers crânial',
+  angulation_frontale: 'vue de face : angle entre les mêmes axes ; + = valgus (partie distale vers latéral)',
 };
 // Les angles normaux et leurs références publiées : travaux de l'équipe Vezzoni et autres études ; valeur de cet os
 // ramenée à la définition « radiographique » des articles.
+// Radius : normes articulaires par race (Kwon 2022), courbure (Duncan 2022), torsion (Kroner 2017) ; valeurs de cet os
+function boiteNormalesRadius(P) {
+  const J = P.reel ? S.reel.json : null;
+  const val = (k) => (J ? J.angles[k] : P.mesures.pre[k]);
+  const cles = ['MPRA', 'LDRA', 'CrPRA', 'CdDRA'];
+  const cellule = (k, m, sd) => {
+    const z = (val(k) - m) / sd;
+    return h('td', { title: `écart réduit de cet os z = ${fr(z, 1)}` }, h('span', { class: 'nw' }, `${fr(m)} ± ${fr(sd)}`), ' ', h('span', { class: `tag ${Math.abs(z) <= 2 ? 'ok' : 'bad'}` }, Math.abs(z) <= 2 ? 'dans' : 'hors'));
+  };
+  const utilisee = S.reel.raceRadius || J?.normales?.MPRA?.race || null;
+  const lignesR = Object.entries(RACES_RADIUS).map(([race, N]) => h('tr', { class: race === utilisee ? 'decisif' : '' },
+    h('td', {}, race + (race === utilisee ? ' ★' : '')), ...cles.map((k) => cellule(k, N[k][0], N[k][1]))));
+  const table = h('table', { class: 't compact enveloppe' }, h('caption', {}, 'Angles articulaires normaux par race (Kwon 2022)'),
+    h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, 'Race'), ...cles.map((k) => h('th', { scope: 'col', title: SENS_ANGLE[k] }, k)))),
+    h('tbody', {}, h('tr', {}, h('td', {}, h('b', {}, J ? 'Cet os' : 'Os')), ...cles.map((k) => h('td', { class: 'hi' }, deg(val(k))))), lignesR));
+  const L = LITTERATURE.radius, tor = P.torsion;
+  return boite('def', 'Les angles normaux du radius',
+    para('Un <b>angle normal</b> est l\'orientation habituelle d\'une ligne articulaire par rapport à l\'axe de son segment. Pour le radius, il varie beaucoup d\'une race à l\'autre (LDRA de 77 à 90°) : la <b>race du chien</b> choisit la référence (panneau de gauche ; ★ = race utilisée).'),
+    table,
+    para(`<b>Courbure</b> : le radius normal est arqué vers crânial (procurvatum <b>${fr(L.procurvatum.m)} ± ${fr(L.procurvatum.sd)}°</b>) et un peu en valgus (<b>${fr(L.angulation_frontale.m)} ± ${fr(L.angulation_frontale.sd)}°</b>) chez les petits chiens non chondrodystrophiques (Duncan 2022) ; plages normales 8 à 35° de profil et 0 à 8° de face (Knapp 2016). Cet os : procurvatum ${deg(val('procurvatum'))}, valgus ${deg(val('angulation_frontale'))}. La planification ne corrige que l'<b>excès</b> de courbure.`),
+    para(`<b>Torsion</b> : ${fr(tor.normale.m, 1)} ± ${fr(tor.normale.sd, 1)}° chez le chien sain (Kroner 2017) ; cet os : <b>${deg(tor.avant)}</b> (${tor.statut}).`),
+    para('<b>Définitions</b> : les angles sont mesurés en 3D, chaque articulation dans son repère propre (coude : axe médio-latéral de la tête radiale ; carpe : grand axe de la surface carpienne), comme sur une radiographie centrée sur elle. La ligne proximale de Kwon va du bord latéral de la tête radiale au processus coronoïde médial de l\'ulna ; ici, d\'un bord à l\'autre de la tête radiale : le MPRA n\'est qu\'approximativement comparable.'),
+    sources('kwon22', 'fox06', 'duncan22', 'knapp16', 'kroner17'));
+}
 function boiteNormales(P) {
+  if (P.bone === 'radius') return boiteNormalesRadius(P);
   const bone = P.bone, cles = [...CLES[bone].F, ...CLES[bone].S];
   const J = P.reel ? S.reel.json : null;
   // os segmenté : angles de l'os tel que segmenté, moins l'écart de définition des repères automatiques ;
@@ -416,6 +473,12 @@ const ETAPES = [
       const commun = [
         para('On commence par la <b>vue crânio-caudale</b> (de face), comme sur une radiographie ou une reconstruction CT dans le plan frontal. La caméra est orthographique : les angles vus à l\'écran sont les vrais angles <b>projetés</b> sur ce plan. Pour ce membre droit, <b>médial est à droite</b> de l\'écran.'),
       ];
+      if (P.bone === 'radius') {
+        return [...commun,
+          para('<b>JOL proximale</b> : ligne qui relie les bords médial et latéral de la surface articulaire de la <b>tête radiale</b> (face à l\'humérus). <b>JOL distale</b> : ligne qui relie les bords médial et latéral de la <b>surface carpienne</b> du radius.'),
+          para('Chaque surface articulaire est trouvée par <b>contact</b> avec l\'os voisin (humérus, carpe) puis résumée par son plan moyen ; ses bords sont pris le long de l\'axe médio-latéral <b>propre</b> de l\'articulation, comme sur une radiographie centrée sur le coude ou sur le carpe : la torsion de l\'avant-bras ne fausse pas les angles.'),
+          sources('fox06', 'kwon22')];
+      }
       if (P.bone === 'tibia') {
         const dv = M.pre.valgusTib - M.normal.valgusTib;
         const phraseV = anormal(P, 'valgusTib')
@@ -441,6 +504,15 @@ const ETAPES = [
     dessin(P) { dessinJOL(P, 'F', 0.55); dessinAxeGlobal(P, 'F'); },
     texte(P) {
       const M = P.mesures, d = (k) => M.pre[k] - M.normal[k];
+      if (P.bone === 'radius') {
+        return [
+          boite('def', 'Axes anatomiques du radius (Fox 2006, Kwon 2022)', para('On trace des perpendiculaires à la diaphyse à <b>20, 25, 40, 60, 75 et 80 %</b> de sa longueur et l\'on prend leurs milieux. De face, le radius est presque droit : un seul axe, des milieux à 25 et 75 %, sert aux angles <b>MPRA</b> (côté médial, avec la ligne de la tête radiale) et <b>LDRA</b> (côté latéral, avec la ligne de la surface carpienne). L\'angle entre les axes 20 → 40 % et 60 → 80 % (valgus) vaut normalement 4,8 ± 2,5° (Duncan 2022).'), sources('fox06', 'kwon22', 'duncan22')),
+          tableMesures(P, M.pre, 'Mesures dans le plan frontal', CLES.radius.F),
+          tousNormaux(P, CLES.radius.F)
+            ? para(`Écarts à la référence : MPRA ${degS(d('MPRA'))}, LDRA ${degS(d('LDRA'))}, valgus ${degS(d('angulation_frontale'))} : dans les normes.`)
+            : para(`${horsNormes(P, CLES.radius.F)}${anormal(P, 'LDRA') ? ` : la surface carpienne est inclinée (<b>${d('LDRA') < 0 ? 'valgus' : 'varus'} distal</b>, LDRA ${d('LDRA') < 0 ? 'diminué' : 'augmenté'})` : ''}. L'axe 25 → 75 % traverse la déformité : il ne dit pas <b>où</b> elle est ; on construit donc un axe par segment.`),
+        ];
+      }
       if (P.bone === 'tibia') {
         return [
           boite('def', 'Axe mécanique du tibia (IMAIOS)', para('Dans le plan frontal, il va du centre de l\'éminence intercondylaire au point le plus distal de la crête intermédiaire de la cochlée tibiale. mMPTA et mMDTA sont les angles, <b>côté médial</b>, entre cet axe et la JOL proximale ou distale.'), sources('imaiosMeca', 'imaiosMPTA', 'dismukes')),
@@ -466,13 +538,14 @@ const ETAPES = [
       dessinJOL(P, 'F', 0.45);
       dessinAxe(P, 'F', 'prox', true); dessinAxe(P, 'F', 'dist', true);
       if (P.bone === 'tibia') arcArticulaire(P, 'F', 'prox', P.axeProx, P.L, OV.base, COL.prox, ' (normal)');
+      else if (P.bone === 'radius') for (const f of [20, 40]) OV.base.dot(VUE.F.to2(P.L[`rad_shaft_${f}`]), 1.6, COL.prox);
       else for (const m of P.milieux) OV.base.dot(m.F.mid, 1.6, COL.prox);
       arcArticulaire(P, 'F', 'dist', P.axeDist, P.L, OV.dist, COL.dist, ' (normal)');
       dessinCORA2D(P, 'F');
     },
     texte(P) {
       const n = P.mesures.normal, pr = P.proj.F;
-      const axes = P.bone === 'tibia'
+      const axes = P.bone === 'radius' ? paraAxesRadius(P) : P.bone === 'tibia'
         ? para(`<b>Axe proximal</b> : depuis l'éminence, droite qui fait avec la JOL proximale l'angle <b>mMPTA normal (${deg(n.mMPTA)})</b>. <b>Axe distal</b> : depuis la crête intermédiaire, droite qui fait avec la JOL distale l'angle <b>mMDTA normal (${deg(n.mMDTA)})</b>.`)
         : para(`<b>Axe proximal</b> : l'axe anatomique (le segment proximal est sain). <b>Axe distal</b> : le segment distal est trop court pour y prendre des milieux de diaphyse ; on part donc de la JOL distale avec l'<b>aLDFA normal (${deg(n.aLDFA)})</b>.`);
       return [
@@ -495,6 +568,15 @@ const ETAPES = [
     texte(P) {
       const M = P.mesures, d = (k) => M.pre[k] - M.normal[k];
       const intro = para('On tourne l\'os de 90° : <b>vue médio-latérale</b> (de profil), crânial à droite de l\'écran. On refait exactement le même travail dans le <b>plan sagittal</b>.');
+      if (P.bone === 'radius') {
+        return [intro,
+          boite('def', 'Angles sagittaux du radius (Fox 2006, Kwon 2022)', para('Le radius du chien est naturellement <b>arqué vers crânial</b> : de profil, on utilise <b>deux axes</b>, proximal (milieux à 20 et 40 %) et distal (milieux à 60 et 80 %). <b>CrPRA</b> : angle crânial entre l\'axe proximal et la ligne crânio-caudale de la tête radiale. <b>CdDRA</b> : angle caudal entre l\'axe distal et la ligne crânio-caudale de la surface carpienne. <b>Procurvatum</b> : angle entre les deux axes (16,8 ± 4,1° chez les petits chiens non chondrodystrophiques, Duncan 2022 ; 8 à 35° selon Knapp 2016).'), sources('fox06', 'kwon22', 'duncan22', 'knapp16')),
+          tableMesures(P, M.pre, 'Mesures dans le plan sagittal', CLES.radius.S),
+          tousNormaux(P, CLES.radius.S)
+            ? para(`Dans les normes (CrPRA ${degS(d('CrPRA'))}, CdDRA ${degS(d('CdDRA'))}, procurvatum ${degS(d('procurvatum'))}) : la courbure du radius est normale, pas de composante sagittale nette.`)
+            : para(`${horsNormes(P, CLES.radius.S)}${anormal(P, 'procurvatum') ? ` : le radius est <b>trop arqué</b> vers crânial` : ''}. C'est l'<b>excès</b> par rapport à la courbure normale qui se corrige, pas la courbure elle-même.`),
+        ];
+      }
       if (P.bone === 'tibia') {
         return [intro,
           boite('def', 'Angles sagittaux du tibia (Dismukes 2008)', para('<b>JOL proximale</b> : pente du plateau tibial médial (bords crânial et caudal). <b>JOL distale</b> : bords crânial et caudal de la surface articulaire distale. <b>mCaPTA</b> : angle caudal entre l\'axe mécanique et la JOL proximale (pente du plateau TPA = 90° − mCaPTA). <b>mCrDTA</b> : angle crânial entre l\'axe et la JOL distale.'), sources('dismukes08')),
@@ -520,6 +602,7 @@ const ETAPES = [
       dessinJOL(P, 'S', 0.45);
       dessinAxe(P, 'S', 'prox', true); dessinAxe(P, 'S', 'dist', true);
       if (P.bone === 'tibia') arcArticulaire(P, 'S', 'prox', P.axeProx, P.L, OV.base, COL.prox, ' (normal)');
+      else if (P.bone === 'radius') for (const f of [20, 40]) OV.base.dot(VUE.S.to2(P.L[`rad_shaft_${f}`]), 1.6, COL.prox);
       else for (const m of P.milieux) OV.base.dot(m.S.mid, 1.6, COL.prox);
       arcArticulaire(P, 'S', 'dist', P.axeDist, P.L, OV.dist, COL.dist, ' (normal)');
       dessinCORA2D(P, 'S');
@@ -620,15 +703,20 @@ const ETAPES = [
         boiteContraintes(P, O),
         boiteStrategie(P, O, ctx.kind),
         P.bone === 'tibia' && P.meshes.includes('fibula') ? para('La <b>fibula</b>, accolée au tibia, est coupée par les mêmes plans : sans cela, elle bloquerait la correction.') : null,
+        P.bone === 'radius' && P.meshes.includes('ulna') ? para('L\'<b>ulna</b>, parallèle au radius, est coupée au même niveau (ostéotomie de l\'ulna, par un court abord caudo-latéral) : intacte, elle bloquerait la correction. Le guide ne se pose jamais entre le radius et l\'ulna.') : null,
         boite('def', 'Sur quoi se base l\'angle de coupe ?',
           h('ol', {},
-            h('li', { html: `L'angle à corriger est l'<b>écart à l'orientation normale</b> : angle articulaire mesuré − valeur de référence (valeurs publiées : travaux de l'équipe Vezzoni et autres études, éventuellement par race ; ou membre controlatéral sain). Ici : ${nomRef(P)}.` }),
+            h('li', { html: `L'angle à corriger est l'<b>écart à l'orientation normale</b> : angle articulaire mesuré − valeur de référence (valeurs publiées${P.bone === 'radius' ? ' par race et courbure normale' : ' : travaux de l\'équipe Vezzoni et autres études, éventuellement par race'} ; ou membre controlatéral sain). Ici : ${nomRef(P)}.` }),
             h('li', { html: `Avec deux radiographies, on mesure F et S puis on combine : tan²θ = tan²F + tan²S, plan à φ = atan(tan S / tan F). En 3D, θ se mesure directement (ici ${deg(P.theta)}).` }),
             h('li', { html: '<b>Le même θ sert pour l\'ouverture et pour la fermeture</b> : seule la position de la charnière change (concave = fermeture, convexe = ouverture, milieu = neutre).' }),
             h('li', { html: 'Fermeture : un trait ⊥ à chaque axe, donc angle entre les traits = θ. Ouverture : un trait le long de la bissectrice, ouvert de θ.' }),
             h('li', { html: `Précision : 1° de correction ne vaut que ${mm(O.D * Math.PI / 180, 2)} à la corticale opposée (os de ${mm(O.D, 0)}) : c'est l'angle qu'il faut contrôler, pas les millimètres.` })),
           sources('paley', 'qatu')),
-        boite('def', 'Les exemples de l\'équipe Vezzoni',
+        P.bone === 'radius' ? boite('def', 'Exemples publiés pour l\'avant-bras',
+          para('<b>Une seule ostéotomie oblique</b> pour une déformité angulaire et de torsion de l\'avant-bras : 23° de valgus et 23° de procurvatum forment une seule angulation de 32° dans un plan oblique à 45° (Kim 2017) ; c\'est le principe du coin oblique de θ calculé ici.'),
+          para('<b>Guides imprimés en 3D</b> : guides de coupe seuls, un membre sur 7 réopéré pour une rotation mal corrigée (Worth 2019) ; avec des guides de repositionnement (réduction), plus de 90 % des paramètres planifiés sont obtenus à 5° et 5 mm près (De Armond 2022 ; Carwardine 2021). D\'où le guide de réduction, qui fixe aussi la dérotation.'),
+          sources('shihtzu', 'worth19', 'dearmond22', 'carwardine21')) : null,
+        P.bone === 'radius' ? null : boite('def', 'Les exemples de l\'équipe Vezzoni',
           para('<b>CCWO « AMA-based »</b> (coin crânial de fermeture du tibia proximal) : angle du coin = angle entre l\'axe anatomique et l\'axe mécanique (= 0,65 × TPA) ; trait distal ⊥ à l\'axe anatomique, trait proximal ⊥ à l\'axe de rotation ; sommet du coin (charnière) à l\'insertion caudale du ligament collatéral médial. C\'est exactement la règle ci-dessus : un trait ⊥ à chaque axe, charnière sur la corticale concave.'),
           para('<b>TPLO + coin de fermeture médial</b> pour un valgus tibial : mMPTA 101° → 92,8°. <b>Pes varus du teckel</b> : coin d\'ouverture médial au CORA, en préservant la corticale latérale (la charnière) pour éviter la sous-correction.'),
           sources('guenego21', 'guenego25', 'vezzoni20', 'petazzoni')),
@@ -819,7 +907,7 @@ function boiteDerotation(P, O, kind) {
   const T = P.torsion, der = Math.abs(O.derotation) >= DEROTATION_MIN;
   return boite('def', 'Comment fonctionne la dérotation ?',
     h('ol', {},
-      h('li', { html: `<b>Mesure</b> : la torsion est l'angle, autour de l'axe long de l'os, entre un axe transverse proximal et un axe transverse distal (${P.bone === 'femur' ? 'fémur : axe du col contre ligne condylaire caudale, Al Aiyan 2021' : 'tibia : ligne condylaire caudale contre axe antécochléaire, Brühschwein 2023'}). Ici : ${deg(T.avant)} avant correction.` }),
+      h('li', { html: `<b>Mesure</b> : la torsion est l'angle, autour de l'axe long de l'os, entre un axe transverse proximal et un axe transverse distal (${P.bone === 'femur' ? 'fémur : axe du col contre ligne condylaire caudale, Al Aiyan 2021' : P.bone === 'radius' ? 'radius : axe médio-latéral de la tête radiale (perpendiculaire à la direction radius → ulna) contre grand axe de la surface carpienne, normale de Kroner 2017' : 'tibia : ligne condylaire caudale contre axe antécochléaire, Brühschwein 2023'}). Ici : ${deg(T.avant)} avant correction.` }),
       h('li', { html: `<b>Décision</b> : référence « valeurs normales » : on ne dérote que si la torsion sort des seuils publiés (${fr(T.normale.seuils[0], 0)} à ${fr(T.normale.seuils[1], 0)}°), jusqu'à la valeur moyenne (${fr(T.normale.m, 0)}°) ; référence « os sain » : jusqu'à la torsion de l'os sain. Seuil : ${fr(DEROTATION_MIN, 0)}°.` }),
       h('li', { html: `<b>Axe</b> : le fragment distal tourne autour de son propre axe long, choisi pour ne pas défaire la correction angulaire : ${kind === 'fermeture' ? 'coin de fermeture : autour de l\'axe distal, avant de refermer (la face distale, perpendiculaire à cet axe, tourne dans son plan et reste en face de la face proximale)' : 'coin d\'ouverture : autour de l\'axe réaligné, après l\'ouverture'}.` }),
       h('li', { html: '<b>Angle</b> : calculé par itérations (méthode de la sécante) pour que la torsion mesurée <b>après</b> toute la correction égale la cible : l\'angulation elle-même change la torsion mesurée de quelques dixièmes de degré.' }),
@@ -905,7 +993,7 @@ function boiteGuide3D(P, O, ctx) {
       h('button', { type: 'button', class: 'btn primary', onclick: () => ctx.construireGuide() }, Gd.etat === 'erreur' ? 'Réessayer' : 'Construire les guides 3D'))];
   }
   const I = Gd.info, C = I.guide_coupe, R = I.guide_reduction;
-  const NOMS_VOISINS = { fibula: 'fibula', patella: 'rotule', fabellae: 'fabelles' };
+  const NOMS_VOISINS = { fibula: 'fibula', ulna: 'ulna', patella: 'rotule', fabellae: 'fabelles' };
   const tag = (ok, oui = 'oui', non = 'non') => h('span', { class: `tag ${ok ? 'ok' : 'bad'}` }, ok ? oui : non);
   const ligne = (a, b) => h('tr', {}, h('td', {}, a), h('td', { class: 'hi' }, ...[b].flat()));
   const piece = C.pieces[0];
@@ -1006,8 +1094,15 @@ function texteCasReel(P) {
     : boite('ok', 'Angles dans les normes', para(`Tous les angles sont à moins de 2 écarts-types de la référence (${nomRef(P)}) : <b>pas de déformité significative</b>.${P.D ? '' : ' Pour suivre toute la planification sur cet os, activez une déformité de test (panneau de gauche).'}`)));
   out.push(boiteNormales(P));
   out.push(para(`Les points ${P.D ? 'marquent' : 'montrent'} les repères détectés ; tournez la vue pour les vérifier.`));
-  out.push(sources('paley', 'dismukes', 'dismukes08', 'tomlinson'));
+  out.push(P.bone === 'radius' ? sources('paley', 'fox06', 'kwon22', 'duncan22', 'kroner17') : sources('paley', 'dismukes', 'dismukes08', 'tomlinson'));
   return out;
+}
+// Radius : comment sont construits les axes des deux segments (étape « Frontal : axes et CORA »)
+function paraAxesRadius(P) {
+  const n = P.mesures.normal;
+  return P.axeDist.depuis.startsWith('ligne articulaire')
+    ? para(`<b>Axe proximal</b> : l'axe anatomique du segment proximal (milieux de la diaphyse à 20 et 40 %), sain chez ce chien. <b>Axe distal</b> : le segment distal est court et déformé ; on part donc de la <b>surface carpienne</b> avec les angles <b>normaux</b> LDRA (${deg(n.LDRA)}) et CdDRA (${deg(n.CdDRA)}), comme Fox (2006), puis on retire la courbure normale du radius (procurvatum ${deg(n.procurvatum)}, moitié du valgus normal) : un radius normal donnerait deux axes parallèles. De profil, l'axe distal croise l'axe proximal au niveau du CORA de face (une seule angulation).`)
+    : para('<b>Axe proximal</b> : milieux de la diaphyse à 20 et 40 %. <b>Axe distal</b> : milieux à 60 et 80 %, moins la courbure normale du radius (pas de normes articulaires pour ce cas).');
 }
 
 // valeur de l'angle projeté de l'axe construit (vue k, segment) — utilisée dans le texte de l'étape 4
@@ -1065,10 +1160,14 @@ function texteTorsion(P, ctx) {
   const T = ctx.torsion, m = T.m, m0 = T.m0, A = m?.axes || axesTorsion(P.bone, T.L);
   const W0 = Math.max(...T.courbe.map((p) => p.largeur));
   const aPrec = Math.acos(1 - 0.5 / W0) * DEG, aMag = Math.acos(0.95) * DEG;
-  const nomAngle = P.bone === 'femur' ? 'angle de torsion fémorale (antéversion)' : 'angle de torsion tibiale';
-  const [bProx, bDist] = P.bone === 'femur' ? ['la hanche', 'du genou'] : ['le genou', 'du jarret'];
-  const bDistNu = P.bone === 'femur' ? 'le genou' : 'le jarret';
-  const seuil = P.bone === 'femur' ? 'antéversion < 20° : torsion externe ; > 35° : torsion interne' : 'torsion tibiale < −10° : torsion interne ; > +2° : torsion externe (− interne, + externe)';
+  const rad = P.bone === 'radius';
+  const nomAngle = P.bone === 'femur' ? 'angle de torsion fémorale (antéversion)' : rad ? 'angle de torsion radiale' : 'angle de torsion tibiale';
+  const [bProx, bDist] = P.bone === 'femur' ? ['la hanche', 'du genou'] : rad ? ['le coude', 'du carpe'] : ['le genou', 'du jarret'];
+  const bDistNu = P.bone === 'femur' ? 'le genou' : rad ? 'le carpe' : 'le jarret';
+  const seuil = P.bone === 'femur' ? 'antéversion < 20° : torsion externe ; > 35° : torsion interne'
+    : rad ? 'torsion radiale du chien sain 3,6 ± 6,4° (Kroner 2017) : au-delà de +16,4°, torsion externe ; en deçà de −9,2°, torsion interne (± 2 écarts-types)'
+      : 'torsion tibiale < −10° : torsion interne ; > +2° : torsion externe (− interne, + externe)';
+  const largeurNom = P.bone === 'femur' ? 'épicondylienne' : rad ? 'bistyloïdienne (styloïdes du radius et de l\'ulna)' : 'bimalléolaire';
   const curseurs = h('div', { class: 'sliders' },
     curseur('t-tau', 'Torsion de l\'os τ (anatomique)', -40, 40, 1, T.tau, (x) => `${x > 0 ? '+' : ''}${fr(x, 0)}°`, (x) => ctx.setTorsion(x, null), 'interne', 'externe'),
     curseur('t-rho', 'Rotation sur la table ρ (positionnement)', -40, 40, 1, T.rho, (x) => `${x > 0 ? '+' : ''}${fr(x, 0)}°`, (x) => ctx.setTorsion(null, x), 'vers médial', 'vers latéral'),
@@ -1081,10 +1180,11 @@ function texteTorsion(P, ctx) {
   const nomStatut = { normale: 'dans la normale', externe: 'torsion externe', interne: 'torsion interne' };
   const statutDe = (t) => { const sl = TORSION_NORMALE[P.bone].seuils; return t < sl[0] ? (P.bone === 'femur' ? 'externe' : 'interne') : t > sl[1] ? (P.bone === 'femur' ? 'interne' : 'externe') : 'normale'; };
   const mesureReel = JT ? boite(JT.statut === 'normale' ? 'ok' : 'warn', 'Mesure sur cet os (scanner)',
-    para(`${P.bone === 'femur' ? 'Antéversion fémorale' : 'Torsion tibiale'} de l'os segmenté : <b>${deg(JT.valeur_deg)}</b>, ${nomStatut[JT.statut] || JT.statut} (normale ${fr(JT.normale.m, 0)}°${JT.normale.sd ? ` ± ${fr(JT.normale.sd, 0)}°` : ''} ; ${seuil}).`),
+    para(`${P.bone === 'femur' ? 'Antéversion fémorale' : rad ? 'Torsion radiale' : 'Torsion tibiale'} de l'os segmenté : <b>${deg(JT.valeur_deg)}</b>, ${nomStatut[JT.statut] || JT.statut} (normale ${fr(JT.normale.m, 0)}°${JT.normale.sd ? ` ± ${fr(JT.normale.sd, 0)}°` : ''} ; ${seuil}).`),
     para(`Définition publiée : ${JT.definition}.`),
-    isNum(JT.definition_cora3d_deg) ? para(`Avec l'autre définition courante (${P.bone === 'femur' ? 'axe du col au ras de la tête' : 'axe bimalléolaire'}), ce même os donnerait ${deg(JT.definition_cora3d_deg)}, soit « ${nomStatut[statutDe(JT.definition_cora3d_deg)]} » : la définition compte autant que la mesure. ${P.bone === 'femur' ? 'Le centre de la tête et la base du col restent estimés automatiquement : à confirmer par un pointage.' : ''}`) : null,
-    sources(P.bone === 'femur' ? 'alaiyan' : 'bruhT', 'longo')) : null;
+    rad && isNum(S.reel.json?.torsion_coude_deg) ? para(`Par rapport au <b>coude</b> (axe des condyles de l'humérus), le carpe est tourné de ${deg(S.reel.json.torsion_coude_deg)} : cette valeur inclut la position de l'avant-bras sur la table (pronation, supination), pas seulement la torsion de l'os ; elle n'est qu'indicative.`) : null,
+    !rad && isNum(JT.definition_cora3d_deg) ? para(`Avec l'autre définition courante (${P.bone === 'femur' ? 'axe du col au ras de la tête' : 'axe bimalléolaire'}), ce même os donnerait ${deg(JT.definition_cora3d_deg)}, soit « ${nomStatut[statutDe(JT.definition_cora3d_deg)]} » : la définition compte autant que la mesure. ${P.bone === 'femur' ? 'Le centre de la tête et la base du col restent estimés automatiquement : à confirmer par un pointage.' : ''}`) : null,
+    rad ? sources('kroner17', 'kwon22') : sources(P.bone === 'femur' ? 'alaiyan' : 'bruhT', 'longo')) : null;
   return [
     para(`La <b>torsion</b> est une rotation d'un bout de l'os par rapport à l'autre, <b>autour de l'axe long</b>. Ici on tord l'os ${P.reel ? 'segmenté' : '<b>sain</b>'} de τ et on peut aussi le poser de travers sur la table (ρ). Bouton <b>Ax</b> : vue axiale, le long de l'os.`),
     mesureReel,
@@ -1093,11 +1193,11 @@ function texteTorsion(P, ctx) {
       h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, 'Mesure'), h('th', { scope: 'col' }, 'Ici'), h('th', { scope: 'col' }, P.reel ? 'Os tel quel' : 'Os sain'))),
       h('tbody', {},
         h('tr', {}, h('td', {}, `3D : ${nomAngle}`), h('td', { class: 'hi', id: 'tor-3d' }, deg(m.torsion3D)), h('td', {}, deg(m0.torsion3D))),
-        h('tr', {}, h('td', {}, `2D : largeur ${P.bone === 'femur' ? 'épicondylienne' : 'bimalléolaire'} projetée`), h('td', { class: 'hi', id: 'tor-w' }, mm(m.radio.epicondyles, 2)), h('td', {}, mm(m0.radio.epicondyles, 2))),
-        h('tr', {}, h('td', {}, `2D : distance entre ${P.bone === 'femur' ? 'les condyles (points distaux)' : 'les condyles caudaux'}`), h('td', { class: 'hi', id: 'tor-c' }, mm(m.radio.condyles, 2)), h('td', {}, mm(m0.radio.condyles, 2))))),
+        h('tr', {}, h('td', {}, `2D : largeur ${largeurNom} projetée`), h('td', { class: 'hi', id: 'tor-w' }, mm(m.radio.epicondyles, 2)), h('td', {}, mm(m0.radio.epicondyles, 2))),
+        h('tr', {}, h('td', {}, `2D : distance entre ${P.bone === 'femur' ? 'les condyles (points distaux)' : rad ? 'les bords de la tête radiale' : 'les condyles caudaux'}`), h('td', { class: 'hi', id: 'tor-c' }, mm(m.radio.condyles, 2)), h('td', {}, mm(m0.radio.condyles, 2))))),
     h('div', { id: 'tor-chart', html: courbeTorsionSVG(P, T) }),
     boite('def', 'Largeur projetée et torsion : limites de la radiographie de face',
-      para(`En géométrie, la largeur projetée d'une extrémité vaut W·cos α, où α est sa rotation <b>par rapport au film</b> (ici ${P.bone === 'femur' ? 'largeur épicondylienne' : 'largeur bimalléolaire'}, W = ${mm(W0)} ; le même calcul vaut pour la distance entre les condyles). Cette mesure a quatre limites :`),
+      para(`En géométrie, la largeur projetée d'une extrémité vaut W·cos α, où α est sa rotation <b>par rapport au film</b> (ici largeur ${largeurNom}, W = ${mm(W0)} ; le même calcul vaut pour la distance entre les condyles). Cette mesure a quatre limites :`),
       h('ol', {},
         h('li', { html: `<b>cos α est plat près de 0</b> : il faut tourner de ${deg(aPrec, 0)} pour perdre 0,5 mm (la précision d'une mesure sur radiographie), et de ${deg(aMag, 0)} pour perdre 5 %, l'incertitude habituelle sur le grossissement.` }),
         h('li', { html: '<b>Pas de signe</b> : une rotation interne et une externe de même valeur donnent la même largeur.' }),
@@ -1114,6 +1214,7 @@ function texteTorsion(P, ctx) {
         h('li', {}, 'Tibia : la radiographie standard ne distingue pas une torsion d\'une rotation du membre pendant le cliché ; un tibia normal peut paraître tordu et inversement (Apelt 2005).'),
         h('li', {}, 'Fémur : une vue axiale bien positionnée peut suffire sur des chiens normaux (Dudley 2006), mais les méthodes radiographiques ne corrèlent pas avec le scanner chez des Labradors et seul le scanner localise la torsion (Mostafa 2014).'),
         h('li', {}, 'Une rotation de plus de ±5° du fémur fait varier l\'aLDFA de façon imprévisible (Miles 2016) : la torsion fausse aussi les angles frontaux.'),
+        h('li', {}, 'Radius : au-delà de 15° de torsion, les angles mesurés de face sur une radiographie sont faussés de plus de 5° (Kwon 2022) ; ici, chaque articulation se mesure dans son propre repère, et la torsion se mesure au scanner (Kroner 2017).'),
         h('li', {}, 'Deux radiographies orthogonales ne suffisent qu\'avec un modèle 3D de l\'os (système EOS chez l\'homme ≈ scanner) : c\'est une reconstruction 3D, pas une lecture 2D.')),
       sources('apelt', 'dudley', 'mostafa', 'miles', 'folinais')),
   ];

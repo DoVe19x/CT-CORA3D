@@ -33,9 +33,10 @@ def _racine():
 
 
 RACINE = _racine()                                        # dossier CT-CORA3D/
-# dossier fouillé par défaut : les séries DICOM du projet sont dans le dossier voisin CT-scan/ (≈ 1 Go, non
-# recopiées) ; à défaut, le dossier CT-CORA3D lui-même. Un autre dossier se choisit dans l'application.
-DOSSIER_DICOM = RACINE.parent / "CT-scan" if (RACINE.parent / "CT-scan").is_dir() else RACINE
+# dossier fouillé par défaut : CT-CORA3D/dicom/ (depuis le 09/11/2026) ; sinon l'ancien dossier voisin CT-scan/ ;
+# à défaut, le dossier CT-CORA3D lui-même. Un autre dossier se choisit dans l'application. dicom/ n'est jamais envoyé
+# sur GitHub (.gitignore) : il contient de vraies données cliniques.
+DOSSIER_DICOM = next((d for d in (RACINE / "dicom", RACINE.parent / "CT-scan") if d.is_dir()), RACINE)
 RESULTATS = RACINE / "resultats"                          # un sous-dossier par série : resultats/<série>/
 IGNORES = {"resultats", "code_source", "application", "__pycache__"}   # sous-dossiers jamais fouillés
 
@@ -91,6 +92,15 @@ TOLERANCE_SPHERE_MM = 0.6        # un point de vallée appartient à la sphère 
 COUVERTURE_MIN_SPHERE = 0.4      # fraction des directions couvertes par des points de la sphère (lévrier : 70 %)
 INLIERS_MIN_SPHERE = 150         # nombre minimal de points sur la sphère (lévrier : 1912)
 MARGE_SPHERE_MM = 1.0            # graine « fémur » : sphère - 1 mm ; graine « bassin » : au-delà de sphère + 1 mm
+# Garde-fous de la tête fémorale (09/11/2026, chien A de Zurich : la mandibule, articulée au crâne, avait été prise pour
+# un fémur et le crâne pour le bassin) : un os qui porte des dents n'est pas un fémur. Émail des dents : des centaines
+# à des milliers de voxels > 2250 HU (même avec le filtre « tissus mous », qui lisse les densités) ; os des membres :
+# aucun (lévrier ≤ 1770 HU ; humérus, radius et ulna du chien A ≤ 2140 HU avec le filtre osseux, le plus net).
+# La tête fémorale est petite devant le fémur (rayon / longueur : 5 % chez le lévrier), vérifié seulement si l'os
+# n'est pas coupé par le champ du scanner.
+HU_EMAIL_DENTS = 2250
+VOXELS_MIN_DENTS = 30
+RAPPORT_TETE_FEMUR_MAX = 0.09
 
 # Fabelles (sésamoïdes du gastrocnémien, derrière les condyles fémoraux) : trop petites pour avoir une graine,
 # elles sont collées au fémur ; on les en détache par un raffinement du fémur. Mesuré (lévrier) : 0,52 cm³, c* ≈ 0,5.
@@ -112,12 +122,18 @@ RAYON_GRAINE_MM = 2.5
 NOMS_OS = {
     "femur": "fémur", "tibia": "tibia", "fibula": "fibula", "patella": "patella", "fabelles": "fabelles",
     "talus": "talus", "calcaneus": "calcanéus", "tarse": "tarse (autres os)", "metatarses": "métatarses",
-    "phalanges": "phalanges", "bassin": "bassin", "objet": "objet non osseux", "autre": "autre os",
+    "phalanges": "phalanges", "bassin": "bassin",
+    # membre thoracique (patte avant), depuis le 09/11/2026 (cas de Zurich)
+    "scapula": "scapula", "humerus": "humérus", "radius": "radius", "ulna": "ulna", "carpe": "carpe",
+    "metacarpes": "métacarpes",
+    "objet": "objet non osseux", "autre": "autre os",
 }
 COULEURS = {
     "femur": (0.89, 0.85, 0.74), "tibia": (0.80, 0.86, 0.95), "fibula": (0.95, 0.70, 0.45), "patella": (0.98, 0.55, 0.60),
     "fabelles": (0.85, 0.55, 0.85), "talus": (0.55, 0.85, 0.55), "calcaneus": (0.40, 0.70, 0.45), "tarse": (0.65, 0.90, 0.75),
     "metatarses": (0.95, 0.85, 0.40), "phalanges": (0.90, 0.75, 0.30), "bassin": (0.70, 0.70, 0.78),
+    "scapula": (0.82, 0.78, 0.66), "humerus": (0.89, 0.85, 0.74), "radius": (0.80, 0.86, 0.95), "ulna": (0.95, 0.70, 0.45),
+    "carpe": (0.65, 0.90, 0.75), "metacarpes": (0.95, 0.85, 0.40),
     "objet": (0.50, 0.50, 0.50), "autre": (0.62, 0.60, 0.56),
 }
 # Fichiers STL exportés : un par os nommé, plus des groupes. « tarse » = tous les os du tarse (schéma du projet).
@@ -149,7 +165,11 @@ ECART_SURFACE_CIBLE_MM = 0.5     # BP, H2 : le maillage coïncide avec la surfac
 IMAGES_CONTROLE = True           # aperçus PNG (rendu 3D + coupes) dans resultats/<série>/
 
 # --------------------------------------------------------------------------- étape 6 : repères pour CORA 3D
-CORA_OS = ("femur", "tibia")     # os analysés automatiquement après la segmentation (s'ils sont complets)
+CORA_OS = ("femur", "tibia", "radius")   # os analysés automatiquement après la segmentation (s'ils sont complets)
+CORA_PLANIFIABLES = ("femur", "tibia", "radius")  # os que l'onglet CORA sait planifier (et dont il construit les guides)
+# Valeurs normales du radius : race de référence (clé de etape6_reperes.NORMALES_RADIUS) ; None = la race la plus
+# proche est seulement indiquée (la race du chien n'est pas dans le DICOM)
+RACE_REFERENCE_RADIUS = None
 CORA_COUVERCLE_MIN_MM2 = 80.0    # STL sans rapport : extrémité « coupée par le champ du scanner » si elle porte une zone
                                  # plane ⊥ à un axe du scanner plus grande que ça. Lévrier : couvercles 122 et 146 mm²,
                                  # surfaces naturelles ≤ 47 mm² (mesuré le 13/10/2026)

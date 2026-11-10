@@ -653,7 +653,7 @@ def _controle_echelle(fond, ech, x0=CADRE[0] + 5, y0=CADRE[1] + 3.2):
 
 
 def _numero_plan(pr, suffixe):
-    os_ = {"tibia": "TIB", "femur": "FEM"}.get(pr.get("os", ""), "OS")
+    os_ = {"tibia": "TIB", "femur": "FEM", "radius": "RAD"}.get(pr.get("os", ""), "OS")
     coin = {"fermeture": "FER", "ouverture": "OUV"}.get((pr.get("strategie") or {}).get("type_coin", ""), "COIN")
     return f"CTC3D-{os_}-{coin}-{time.strftime('%y%m%d')}-{suffixe}"
 
@@ -1199,7 +1199,7 @@ def plan_cote(base, pr, info, v_os, f_os, moities, ponts, red, geo, broches_c, v
     y_n = _nomenclature(fond, nomen, CADRE[1] + 52)
     serie = (pr.get("os_segmente") or {}).get("serie")
     derot = float((pr.get("correction") or {}).get("derotation_deg") or 0)
-    os_nom = {"tibia": "Tibia", "femur": "Fémur"}.get(pr.get("os"), pr.get("os", ""))
+    os_nom = {"tibia": "Tibia", "femur": "Fémur", "radius": "Radius"}.get(pr.get("os"), pr.get("os", ""))
     designation = (f"{os_nom} {pr.get('cote', '')} · {'coin de fermeture' if kind == 'fermeture' else 'coin d’ouverture'}"
                    f" θ = {_fr(theta, 1)}°" + (f", dérotation {_fr(derot, 1)}°" if abs(derot) >= 1 else "")
                    + f" · {serie or 'os fictif (modèle)'}")

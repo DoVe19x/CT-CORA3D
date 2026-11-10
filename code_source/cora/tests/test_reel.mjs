@@ -1,5 +1,5 @@
 // =============================================================================
-// test_reel.mjs — planification CORA sur les os segmentés (fémur, tibia du CT)
+// test_reel.mjs — planification CORA sur les os segmentés (fémur, tibia, radius du CT)
 // -----------------------------------------------------------------------------
 // Lit resultats/<série>/cora_<os>.json et cora_<os>.bin (écrits par etape6_reperes.py) et vérifie :
 //   1. l'os tel quel, référence « valeurs normales » : planification sans erreur, angles comparés aux normes ;
@@ -8,7 +8,13 @@
 //      angle et translation résiduels nuls, broches parallèles après correction, prescription complète ;
 //   3. mêmes déformités, référence « valeurs normales » : θ retrouvé à l'écart naturel de l'os près ; fémur : CORA
 //      au niveau de l'apex (règle « une seule angulation ») ;
-//   4. matrice os -> scanner de la prescription : redonne les repères dans le repère du scanner.
+//   4. matrice os -> scanner de la prescription : redonne les repères dans le repère du scanner ;
+//   5. radius (patte avant, chien A : déformé des deux côtés) : coin de fermeture faisable, broches valables, torsion
+//      ramenée à la normale, sans angle ni translation résiduels, et après correction LDRA, CdDRA et procurvatum dans les
+//      normes (± 2 écarts-types) : c'est la cible de la méthode (axe distal construit depuis la surface carpienne).
+//      Les résultats du chien A ne sont pas dans le dépôt : sans eux, cette partie est sautée. Les déformités de test
+//      (2, 3 et torsion) supposent un os sain : elles ne s'appliquent pas à ces radius déjà arqués de 30° (un axe droit
+//      y sort de l'os, le CORA tomberait hors de la section).
 //
 // Usage : node tests/test_reel.mjs [dossier resultats]   (défaut : ../../resultats)
 // =============================================================================
@@ -53,18 +59,21 @@ console.log(`Gabarit du fémur (modèle sain) : l'axe anatomique coupe la JOL di
 const series = fs.existsSync(RES) ? fs.readdirSync(RES).filter((d) => fs.statSync(path.join(RES, d)).isDirectory()) : [];
 let nbOs = 0;
 for (const serie of series) {
-  for (const bone of ['femur', 'tibia']) {
-    const fj = path.join(RES, serie, `cora_${bone}.json`);
+  const fichiers = ['cora_femur.json', 'cora_tibia.json', ...fs.readdirSync(path.join(RES, serie)).filter((f) => /^cora_radius(_gauche|_droit)?\.json$/.test(f)).sort()];
+  for (const nomFichier of fichiers) {
+    const fj = path.join(RES, serie, nomFichier);
     if (!fs.existsSync(fj)) continue;
     const json = JSON.parse(fs.readFileSync(fj, 'utf8'));
+    const bone = json.os;
     if (!json.complet) { console.log(`\n${serie} / ${bone} : non analysé (${json.raison})`); continue; }
     nbOs++;
     const meshes = {};
     for (const [n, f] of Object.entries(json.maillages)) meshes[n] = lireBin(path.join(RES, serie, f));
-    const model = C.modeleReel(json, meshes);
+    let model;
+    try { model = C.modeleReel(json, meshes); } catch (e) { console.log(`\n${serie} / ${nomFichier.slice(5, -5)} : ignoré (${e.message})`); continue; }
     const normales = { type: 'normales', valeurs: Object.fromEntries(Object.entries(json.normales).map(([k, x]) => [k, x.valeur])),
       sd: Object.fromEntries(Object.entries(json.normales).map(([k, x]) => [k, x.sd])), gabarit: GABARIT };
-    console.log(`\n${serie} / ${bone} (membre ${json.cote}${json.miroir ? ', mis en miroir' : ''}, ${json.longueur_mm} mm, maillage ${meshes[bone].idx.length / 3} triangles)`);
+    console.log(`\n${serie} / ${nomFichier.slice(5, -5)} (membre ${json.cote}${json.miroir ? ', mis en miroir' : ''}, ${json.longueur_mm} mm, maillage ${meshes[bone].idx.length / 3} triangles)`);
 
     // 1. os tel quel
     const t0 = Date.now();
@@ -72,7 +81,21 @@ for (const serie of series) {
     const cles = [...C.CLES[bone].F, ...C.CLES[bone].S];
     console.log(`   tel quel (${Date.now() - t0} ms) : ` + cles.map((k) => `${k} ${P0.mesures.pre[k].toFixed(1)}° (normal ${P0.mesures.normal[k].toFixed(1)})`).join(', '));
     ok(cles.every((k) => Number.isFinite(P0.mesures.pre[k])), 'angles mesurés finis');
-    ok(P0.anomalies.length === 0, `angles dans les normes (± 2 écarts-types)${P0.anomalies.length ? ' — hors normes : ' + P0.anomalies.join(', ') : ''}`);
+    if (bone !== 'radius') ok(P0.anomalies.length === 0, `angles dans les normes (± 2 écarts-types)${P0.anomalies.length ? ' — hors normes : ' + P0.anomalies.join(', ') : ''}`);
+    else {
+      // 5. radius déformé (chien A) : la correction planifiée ramène l'os aux normes
+      const O = P0.osteo.fermeture;
+      ok(P0.osteoPossible && O && O.faisable && O.placementBroches.ok, `radius : coin de fermeture faisable (abord ${O?.abord}), broches valables ; hors normes avant : ${P0.anomalies.join(', ') || 'aucun'}`);
+      if (O) {
+        const N = P0.mesures.normal, sd = P0.sdRef;
+        const dans = ['LDRA', 'CdDRA', 'procurvatum'].map((k) => [k, O.post[k], Math.abs(O.post[k] - N[k]) <= 2 * sd[k]]);
+        ok(dans.every((x) => x[2]), `radius : après correction ${dans.map(([k, x]) => `${k} ${x.toFixed(1)}°`).join(', ')} dans les normes`);
+        ok(Math.abs(O.torsionApres - P0.torsion.normale.m) < 0.1 && O.residuel < 0.01 && O.decalage < 0.5,
+          `radius : torsion ${P0.torsion.avant.toFixed(1)}° → ${O.torsionApres.toFixed(2)}° (dérotation ${O.derotation.toFixed(1)}°), résiduel ${O.residuel.toFixed(4)}°, translation ${O.decalage.toFixed(3)} mm`);
+        const dirs = O.brochesApres.map((bb) => V3n(bb.dir));
+        ok(Math.max(...dirs.map((d) => angDeg(d, dirs[0]))) < 1e-6, 'radius : les 4 broches parallèles après correction');
+      }
+    }
     console.log(`   θ entre les axes ${P0.theta.toFixed(2)}° (F ${P0.Fm.toFixed(2)}°, S ${P0.Sm.toFixed(2)}°), CORA ${P0.coraDansOs ? 'dans l\'os' : 'hors de l\'os'}, ostéotomie ${P0.osteoPossible ? 'calculable' : 'non calculée'}`);
     ok(Number.isFinite(P0.theta) && Number.isFinite(P0.coraC[0]) && Number.isFinite(P0.section.largeur), 'planification sans valeur non définie');
 
@@ -88,6 +111,8 @@ for (const serie of series) {
       ok(e < 0.01, `matrice os → scanner de la prescription (écart max ${e.toFixed(4)} mm, déterminant ${pr.os_segmente.repere_scanner.determinant})`);
     }
 
+    if (bone === 'radius') continue;      // radius du chien A : déjà déformés, pas de déformité de test (voir en-tête)
+
     // 2. et 3. déformités de test
     let pireTheta = 0, pirePost = 0, pireRes = 0, pireTrans = 0, pireBroches = 0, pireNorm = 0, pireNiveau = 0;
     for (const frontal of C.FRONTAL) for (const sagittal of C.SAGITTAL) {
@@ -99,6 +124,7 @@ for (const serie of series) {
         `${cas.titre} (réf. os avant déformité) : θ ${P.theta.toFixed(2)}° pour ${v.thetaVrai.toFixed(2)}°, F ${Math.abs(P.Fm).toFixed(2)}° (vrai ${Math.abs(v.FProjVrai).toFixed(2)}), S ${Math.abs(P.Sm).toFixed(2)}° (vrai ${Math.abs(v.SProjVrai).toFixed(2)})`);
       for (const kind of ['fermeture', 'ouverture']) {
         const O = P.osteo[kind];
+        if (!O) { ok(false, `${cas.titre} : pas de ${kind} calculé`); continue; }
         pirePost = Math.max(pirePost, ...cles.map((k) => Math.abs(O.post[k] - P.mesures.normal[k])));
         pireRes = Math.max(pireRes, O.residuel); pireTrans = Math.max(pireTrans, O.decalage);
         const dirsApres = O.brochesApres.map((bb) => V3n(bb.dir));

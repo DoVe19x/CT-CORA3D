@@ -5,6 +5,9 @@ Rôle    : (1) décrire chaque segment : volume, longueur et allongement (analys
               densité, contacts avec ses voisins, contact avec le bord du volume (os coupé par le champ du scanner) ;
           (2) écarter les objets non osseux (fantôme de calibration : densité homogène, sans os spongieux) ;
           (3) reconnaître les os par leurs formes et leurs voisinages :
+              patte avant (d'abord) : radius et ulna = deux os longs parallèles de volumes voisins, qui se touchent et
+                       touchent tous les deux l'humérus au coude ; ulna = celui qui dépasse le coude (olécrâne) ;
+                       scapula, carpe, métacarpes et phalanges ensuite (membre_thoracique) ;
               fémur  = os long dont une extrémité porte une sphère (tête fémorale) au contact d'un gros os (bassin) ;
               tibia  = os long longé par un os long fin (fibula), ou en contact avec le fémur au genou ;
               patella, fabelles = petits os compacts au bout distal du fémur ;
@@ -170,15 +173,22 @@ def ajuster_sphere(points, rng, iterations=4000):
     return {"centre_mm": c, "rayon_mm": r, "inliers": int(inl.sum()), "candidats": n, "couverture": couverture}
 
 
-def tete_femorale(seg, femur, voisin, journal=print):
+def tete_femorale(seg, femur, voisin, journal=print, longueur_mm=None):
     """Cherche la tête fémorale au contact fémur / gros voisin (bassin) : l'interligne, ligne sombre entre la tête
     et l'acétabulum, est révélé par un « chapeau haut-de-forme noir » (fermeture en niveaux de gris - image),
     puis une sphère y est ajustée. Si elle est valide, la zone fémur + bassin est redistribuée : graine « fémur »
     = intérieur de la sphère (rayon - marge) + diaphyse, graine « bassin » = au-delà de la sphère (rayon + marge).
+    Garde-fous : un os qui porte des dents (émail) n'est pas un fémur ; la sphère doit être petite devant l'os
+    (longueur_mm : longueur de l'os s'il n'est pas coupé par le champ du scanner).
     Renvoie le centre (LPS) et le rayon, ou None."""
     esp = np.array(seg.espacement)
     lab = seg.etiquettes
     F, N = lab == femur, lab == voisin
+    dents = int((seg.image[F] > P.HU_EMAIL_DENTS).sum())
+    if dents >= P.VOXELS_MIN_DENTS:
+        journal(f"    pas de tête fémorale : l'os porte des dents ({dents} voxels d'émail > {P.HU_EMAIL_DENTS} HU), "
+                "c'est une mandibule")
+        return None
     contact = ndi.binary_dilation(F, E2.S26) & N
     if not contact.any():
         return None
@@ -203,6 +213,10 @@ def tete_femorale(seg, femur, voisin, journal=print):
     c_vox, R = s["centre_mm"] / esp, s["rayon_mm"]
     if np.linalg.norm(s["centre_mm"] - c0 * esp) > R + 15:
         journal("    sphère trop loin du contact fémur / bassin : rejetée")
+        return None
+    if longueur_mm and R > P.RAPPORT_TETE_FEMUR_MAX * longueur_mm:
+        journal(f"    sphère rejetée : rayon {R:.1f} mm pour un os de {longueur_mm:.0f} mm ({R / longueur_mm:.0%} ; "
+                f"une tête fémorale fait ≈ 5 %, au plus {P.RAPPORT_TETE_FEMUR_MAX:.0%})")
         return None
     # redistribution de la zone fémur + voisin à partir de graines séparées par la sphère
     zone = np.argwhere(F | N)
@@ -324,6 +338,97 @@ def separer_par_points(seg, e, par_nom, journal=print):
 
 
 # =============================================================================== identification
+def membre_thoracique(seg, d, paires, nommer, libre, journal=print):
+    """Patte avant. L'avant-bras est fait de deux os longs parallèles, de volumes voisins, qui se touchent (radius et
+    ulna) et qui touchent tous les deux, au coude, un os plus gros (l'humérus). La fibula de la patte arrière, elle, est
+    bien plus fine que le tibia et ne touche pas le fémur : les deux membres ne se confondent pas. L'ulna est celui des
+    deux os qui dépasse le plus le coude (olécrâne, la pointe du coude). Puis : scapula (gros os plat à l'autre bout de
+    l'humérus, l'épaule), carpe (os compacts au bout distal du radius et de l'ulna), métacarpes (os longs fins au-delà
+    du carpe) et phalanges. Renvoie la liste des avant-bras trouvés : (humérus, radius, ulna)."""
+    cand = [e for e in d if libre(e) and d[e]["longueurs"][0] >= P.LONGUEUR_OS_LONG_MM and d[e]["allongement"] >= 2.5
+            and not est_objet(d[e])]
+    paires_ab = []
+    for i, a in enumerate(cand):
+        for b in cand[i + 1:]:
+            xa, xb = d[a], d[b]
+            if not 0.4 <= xa["volume_mm3"] / xb["volume_mm3"] <= 2.5:
+                continue                                   # volumes voisins (une fibula est 5 à 10 fois plus petite)
+            if angle_axes(xa["axes"][0], xb["axes"][0]) > 25 or min(recouvrement(xa, xb), recouvrement(xb, xa)) < 0.6:
+                continue                                   # côte à côte, sur presque toute leur longueur
+            va, vb = voisins(paires, a), voisins(paires, b)
+            if va.get(b, 0.0) < 5:
+                continue                                   # articulations radio-ulnaires : ils se touchent
+            communs = [h for h in set(va) & set(vb) if h in d and libre(h) and min(va[h], vb[h]) >= 20
+                       and d[h]["volume_mm3"] >= 1.3 * max(xa["volume_mm3"], xb["volume_mm3"])
+                       and d[h]["longueurs"][0] >= 0.8 * max(xa["longueurs"][0], xb["longueurs"][0])]
+            if communs:
+                h = max(communs, key=lambda z: va[z] + vb[z])
+                paires_ab.append((va[h] + vb[h], a, b, h))
+    trouves = []
+    for _, a, b, h in sorted(paires_ab, reverse=True):
+        if not (libre(a) and libre(b) and libre(h)):
+            continue
+        c_ab = (d[a]["centre"] + d[b]["centre"]) / 2
+        i_coude = extremite_proche(d[h], c_ab)
+        coude, epaule = d[h]["extremites"][i_coude], d[h]["extremites"][1 - i_coude]
+        w = d[a]["axes"][0] if (c_ab - coude) @ d[a]["axes"][0] > 0 else -d[a]["axes"][0]   # du coude vers le carpe
+        depasse = {e: -min((p - coude) @ w for p in d[e]["extremites"]) for e in (a, b)}
+        ulna = max((a, b), key=lambda e: depasse[e])
+        radius = b if ulna == a else a
+        nommer(h, "humerus", f"gros os au contact des deux os de l'avant-bras (coude, segments {radius} et {ulna})")
+        nommer(ulna, "ulna", f"os de l'avant-bras qui dépasse le coude de {depasse[ulna] - depasse[radius]:.0f} mm de "
+                             "plus que l'autre (olécrâne)")
+        nommer(radius, "radius", "os de l'avant-bras parallèle à l'ulna, de volume voisin (porte le carpe)")
+        trouves.append((h, radius, ulna))
+        # coude : l'interligne est fin ; une croissance de région qui a débordé (îlots, doigts d'un os dans l'autre)
+        # est corrigée par un filtre majoritaire à chaque frontière
+        n = sum(E2.lisser_frontiere(seg.etiquettes, x, y, seg.espacement) for x, y in ((radius, h), (ulna, h), (radius, ulna)))
+        if n:
+            journal(f"    coude : frontières humérus / radius / ulna lissées ({n * seg.volume_voxel:.0f} mm³ réattribués)")
+        # scapula : gros os plat au contact de l'autre extrémité de l'humérus (épaule)
+        sc = [(s, f) for f, s in voisins(paires, h).items() if f in d and libre(f) and s >= 20 and not est_os_long(d[f])
+              and d[f]["volume_mm3"] >= 0.3 * d[h]["volume_mm3"]
+              and np.linalg.norm(d[f]["centre"] - epaule) < np.linalg.norm(d[f]["centre"] - coude)]
+        if sc:
+            nommer(max(sc)[1], "scapula", "gros os au contact de la tête de l'humérus (épaule)")
+        # carpe : os compacts reliés au bout distal du radius ou de l'ulna, de proche en proche. Garde-fous (la patte
+        # peut toucher la tête quand elle est étendue vers l'avant) : un os du carpe est plus petit que le radius et
+        # reste près du bout distal de l'avant-bras
+        bouts = [d[e]["extremites"][1 - extremite_proche(d[e], coude)] for e in (radius, ulna)]
+        L_ab = d[radius]["longueurs"][0]
+        t_bout = max((b_ - coude) @ w for b_ in bouts)        # bout distal de l'avant-bras, le long de l'avant-bras
+        au_dela = lambda f: float((d[f]["centre"] - coude) @ w - t_bout)
+        # le carpe touche le radius ou l'ulna, ou reste à moins d'un quart de radius au-delà de leur bout ; plus loin,
+        # ce sont les métacarpes (trapus chez un petit chien : leur allongement ne suffit pas à les reconnaître)
+        a_voir = [(f, True) for e, bout in zip((radius, ulna), bouts) for f, s in voisins(paires, e).items() if s >= 10
+                  and f in d and np.linalg.norm(d[f]["centre"] - bout) < np.linalg.norm(d[f]["centre"] - coude)]
+        carpe = []
+        while a_voir:
+            f, direct = a_voir.pop()
+            if (f in carpe or f not in d or not libre(f) or not est_compact(d[f]) or d[f]["volume_mm3"] < P.VOLUME_MIN_NOMME_MM3
+                    or d[f]["volume_mm3"] > d[radius]["volume_mm3"] or not (direct or au_dela(f) <= 0.25 * L_ab)):
+                continue
+            carpe.append(f)
+            nommer(f, "carpe", "os compact du carpe (au bout distal du radius et de l'ulna)")
+            a_voir += [(g, False) for g, s in voisins(paires, f).items() if s >= 10]
+        # métacarpes : os allongés au contact du carpe, au-delà ; phalanges : plus loin (pas plus gros qu'un métacarpe)
+        meta = sorted({f for c in carpe for f, s in voisins(paires, c).items() if s >= 5 and f in d and libre(f)
+                       and d[f]["allongement"] >= 2.5 and d[f]["volume_mm3"] >= P.VOLUME_MIN_NOMME_MM3
+                       and d[f]["longueurs"][0] < L_ab and au_dela(f) > 0})
+        for f in meta:
+            nommer(f, "metacarpes", "os long et fin au-delà du carpe (rayon de la patte)")
+        v_meta = max([d[f]["volume_mm3"] for f in meta], default=0.0)
+        a_voir = [g for f in meta for g in voisins(paires, f)]
+        while a_voir:
+            g = a_voir.pop()
+            if g in d and libre(g) and P.VOLUME_MIN_NOMME_MM3 <= d[g]["volume_mm3"] <= 1.5 * v_meta:
+                nommer(g, "phalanges", "au-delà des métacarpes (doigts)")
+                a_voir += list(voisins(paires, g))
+    if trouves:
+        journal(f"  patte avant : {len(trouves)} avant-bras (radius et ulna) au contact d'un humérus")
+    return trouves
+
+
 def identifier(seg, points=None, journal=print):
     """Nomme les segments (seg.noms) et applique les corrections anatomiques. Ordre : objets, tibia (fibula),
     fémur (sphère de la tête), genou, fibula interne, métatarses, tibia par défaut (pied seul), tarse,
@@ -363,6 +468,9 @@ def identifier(seg, points=None, journal=print):
             if cavite < P.CAVITE_MAX_OBJET:
                 nommer(e, "objet", f"intérieur homogène ({x['hu_moyen']:.0f} HU, {x['frac_spongieux']:.0%} de voxels "
                                    f"< 600 HU) et sans cavité ({cavite:+.0%}) : fantôme ou objet, pas un os")
+    # 1 bis) patte avant (humérus, radius, ulna, scapula, carpe, métacarpes, phalanges) : avant les règles de la patte
+    #        arrière, qui ne s'appliquent ensuite qu'aux os encore sans nom
+    membre_thoracique(seg, d, paires, nommer, libre, journal)
     os_ = [e for e in d if noms.get(e) != "objet"]
     longs = [e for e in os_ if est_os_long(d[e])]
     v_max = max([d[e]["volume_mm3"] for e in longs], default=0.0)
@@ -392,7 +500,7 @@ def identifier(seg, points=None, journal=print):
                        and not est_os_long(d[f])), reverse=True)
         for s, f in cand[:2]:
             journal(f"  recherche de la tête fémorale entre les segments {e} et {f} (contact {s:.0f} mm²)…")
-            tete = tete_femorale(seg, e, f, journal)
+            tete = tete_femorale(seg, e, f, journal, None if d[e]["tronque"] else d[e]["longueurs"][0])
             if tete:
                 nommer(e, "femur", f"os long avec une tête sphérique (rayon {tete['rayon_mm']} mm) au contact du bassin")
                 if libre(f):
@@ -582,7 +690,7 @@ def nettoyer_morceaux(seg, journal=print):
     détaché (composante 26-connexe autre que la plus grosse) est rendu au voisin dont il a été découpé s'il le
     touche sur toute une section (c* ≥ RAPPORT_CONTACT_FUSION) ; sinon il devient un segment non nommé (un
     sésamoïde, par exemple) ; un morceau minuscule va au voisin de plus grand contact."""
-    groupes = {"bassin", "metatarses", "phalanges", "tarse", "objet", "autre", ""}
+    groupes = {"bassin", "metatarses", "phalanges", "tarse", "carpe", "metacarpes", "objet", "autre", ""}
     vox = seg.volume_voxel
     for e, n in list(seg.noms.items()):
         if base_nom(n) in groupes:
@@ -625,11 +733,11 @@ def nettoyer_morceaux(seg, journal=print):
 
 
 def nommer_cotes(seg, journal=print):
-    """S'il y a deux fémurs ou deux tibias (CT des deux membres), chaque os du membre reçoit _gauche ou _droit
+    """S'il y a deux fémurs, deux tibias, deux humérus ou deux radius (CT des deux membres), chaque os du membre reçoit _gauche ou _droit
     selon sa position (repère LPS du scanner : +x = gauche du patient ; à vérifier si l'animal n'était pas
     enregistré dans la bonne position sur la console)."""
     d = {e: n for e, n in seg.noms.items() if n}
-    ancres = [e for e, n in d.items() if n in ("femur", "tibia")]
+    ancres = [e for e, n in d.items() if n in ("femur", "tibia", "humerus", "radius")]
     par_nom = {}
     for e in ancres:
         par_nom.setdefault(d[e], []).append(e)
@@ -637,7 +745,8 @@ def nommer_cotes(seg, journal=print):
         return
     centres = {e: seg.vers_lps(np.argwhere(seg.etiquettes == e).mean(0))[0] for e in d}
     x_milieu = np.mean([centres[e][0] for e in ancres])
-    membre = ("femur", "tibia", "fibula", "patella", "fabelles", "talus", "calcaneus", "tarse", "metatarses", "phalanges")
+    membre = ("femur", "tibia", "fibula", "patella", "fabelles", "talus", "calcaneus", "tarse", "metatarses", "phalanges",
+              "scapula", "humerus", "radius", "ulna", "carpe", "metacarpes")
     for e, n in d.items():
         if n in membre:
             seg.noms[e] = f"{n}_{'gauche' if centres[e][0] > x_milieu else 'droit'}"

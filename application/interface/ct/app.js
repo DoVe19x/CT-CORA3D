@@ -11,7 +11,7 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const INTEGRE = window.parent !== window;
 const parentMsg = (m) => { if (INTEGRE) window.parent.postMessage(m, "*"); };
 // fémur ou tibia exporté en STL : il peut passer à la planification CORA (onglet 2)
-const osCora = (nom) => /^(femur|tibia)(_gauche|_droit)?$/.test(nom || "");
+const osCora = (nom) => /^(femur|tibia|radius)(_gauche|_droit)?$/.test(nom || "");
 
 const E = {
   config: null, serie: null, version: -1, ouverte: null, travail: null, enCours: false,
@@ -151,7 +151,7 @@ async function chargerSerie() {
     E.cachees.clear();
     for (const v of Object.values(vues)) v.reinitialiser();
     if (d.segments.length) {                        // réticule sur l'os principal
-      const p = d.segments.find((s) => ["femur", "tibia"].includes(base(s.nom))) || d.segments[0];
+      const p = d.segments.find((s) => ["femur", "tibia", "radius"].includes(base(s.nom))) || d.segments[0];
       if (p.centre_kji) E.point = p.centre_kji.map(Math.round);
     }
   }
@@ -253,11 +253,44 @@ function afficherCas() {
     b.textContent = "Planifier CORA →";
     b.title = "Ouvrir cet os dans l'onglet « Planification CORA »";
     b.addEventListener("click", () => ouvrirCora(cas.cible));
-    el.append(titre, p, b);
+    el.append(titre, p);
+    // patte avant : mesures de chaque radius complet (l'autre se choisit dans l'onglet CORA)
+    const rad = (cas.candidats || []).filter((x) => x.os === "radius" && x.complet && x.mesures);
+    if (rad.length) el.append(listeRadius(rad));
+    el.append(b);
   } else {
+    // radius analysé mais pas planifiable (cas qui ne devrait plus arriver : le radius se planifie dans l'onglet CORA)
+    const radius = (cas.candidats || []).filter((x) => x.os === "radius" && x.complet);
+    if (radius.length) {
+      el.classList.remove("vide");
+      titre.querySelector(".cc-lbl").textContent = "Patte avant (analyse du radius)";
+      titre.querySelector("b").textContent = radius.map((x) => libelle(x.nom)).join(" et ");
+      const note = document.createElement("p");
+      note.className = "aide";
+      note.textContent = "Repères et angles dans cora_radius_*.json et cora_radius_*.png (dossier des résultats).";
+      el.append(titre, listeRadius(radius), note);
+      return;
+    }
     titre.querySelector("b").textContent = "aucun";
     el.append(titre, p);
   }
+}
+
+// mesures de chaque radius (étape 6) : courbure, procurvatum, valgus, torsion propre (tête radiale → surface carpienne)
+function listeRadius(radius) {
+  const deg = (v) => (v === null || v === undefined ? "?" : `${fmt(Math.abs(v), 0)}°`);
+  const ul = document.createElement("ul");
+  ul.className = "aide";
+  for (const x of radius) {
+    const m = x.mesures || {};
+    const li = document.createElement("li");
+    const t = m.torsion_deg;
+    li.textContent = `${libelle(x.nom)} (${fmt(x.longueur_mm, 0)} mm) : courbure ${deg(m.courbure_3d_deg)} (procurvatum `
+      + `${deg(m.procurvatum_deg)}, valgus ${deg(m.angulation_frontale_deg)}) ; torsion ${deg(t)} `
+      + `${t === null || t === undefined ? "" : t >= 0 ? "externe" : "interne"} (normale : 3,6°)`;
+    ul.append(li);
+  }
+  return ul;
 }
 
 function ouvrirCora(fichier) {

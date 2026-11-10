@@ -1,5 +1,5 @@
 """
-etape6_reperes.py — repères anatomiques automatiques sur le fémur et le tibia segmentés (lien CT → CORA 3D).
+etape6_reperes.py — repères anatomiques automatiques sur le fémur, le tibia et le radius segmentés (lien CT → CORA 3D).
 
 Rôle    : à partir du STL d'un fémur ou d'un tibia (coordonnées du scanner), construire le repère de l'os (X latéral,
           Y proximal, Z caudal, comme CORA 3D), reconnaître le côté (droit / gauche, d'après l'anatomie), vérifier que
@@ -11,8 +11,15 @@ Rôle    : à partir du STL d'un fémur ou d'un tibia (coordonnées du scanner),
                     malléoles, tubérosité ; tête et malléole de la fibula si son STL existe ;
             fémur : centre de la tête (sphère), sommet du grand trochanter, centre du col, points distaux et caudaux
                     des condyles (tangentes communes), centres des condyles (sphères), épicondyles, sillon de la
-                    trochlée (fond, aux niveaux proximal et distal).
-Entrées : resultats/<série>/femur.stl, tibia.stl (et fibula.stl, reperes_auto.mrk.json s'ils existent).
+                    trochlée (fond, aux niveaux proximal et distal) ;
+            radius (patte avant, depuis le 09/11/2026) : surfaces articulaires trouvées par CONTACT avec l'os voisin
+                    (tête radiale face à l'humérus, surface carpienne face au carpe), plan moyen de chacune (la pointe
+                    du processus styloïde est écartée), bords médial / latéral / crânial / caudal, milieux de la
+                    diaphyse ; repère du coude (axe des condyles de l'humérus) ; angles MPRA, LDRA, CrPRA, CdDRA de
+                    Kwon et al. 2022 (d'après Fox et al. 2006), procurvatum, courbure 3D et torsion de l'avant-bras ;
+                    normes de six races (pas encore de planification du radius dans l'onglet CORA).
+Entrées : resultats/<série>/femur.stl, tibia.stl, radius.stl (et fibula.stl, ulna.stl, humerus.stl, carpe.stl,
+          reperes_auto.mrk.json s'ils existent ; suffixes _gauche / _droit pour un scanner des deux membres).
 Sorties : resultats/<série>/cora_<os>.json (repère, côté, complétude, repères dans le repère de l'os et dans celui du
           scanner, ligne centrale, contrôles) et cora_<os>.png (repères sur les trois vues).
 
@@ -58,12 +65,37 @@ NOMS = {
     "ant_med": "saillie crâniale distale médiale (axe antécochléaire)",
     "ant_lat": "saillie crâniale distale latérale (axe antécochléaire)",
     "tib_shaft_prox": "centre de la diaphyse (proximal)", "tib_shaft_dist": "centre de la diaphyse (distal)",
+    # radius (patte avant)
+    "rad_prox_center": "centre de la surface articulaire proximale (tête radiale)",
+    "rad_head_med": "bord médial de la tête radiale", "rad_head_lat": "bord latéral de la tête radiale",
+    "rad_head_cran": "bord crânial de la tête radiale", "rad_head_caud": "bord caudal de la tête radiale",
+    "rad_dist_center": "centre de la surface articulaire distale (carpienne)",
+    "rad_dist_med": "bord médial de la surface carpienne", "rad_dist_lat": "bord latéral de la surface carpienne",
+    "rad_dist_cran": "bord crânial de la surface carpienne", "rad_dist_caud": "bord caudal de la surface carpienne",
+    "rad_styloid": "processus styloïde du radius (médial)",
+    "rad_shaft_20": "milieu de la diaphyse à 20 %", "rad_shaft_25": "milieu de la diaphyse à 25 %",
+    "rad_shaft_40": "milieu de la diaphyse à 40 %", "rad_shaft_50": "milieu de la diaphyse à 50 %",
+    "rad_shaft_60": "milieu de la diaphyse à 60 %", "rad_shaft_75": "milieu de la diaphyse à 75 %",
+    "rad_shaft_80": "milieu de la diaphyse à 80 %",
+    "uln_olecranon": "pointe de l'olécrâne (ulna)", "uln_styloid": "processus styloïde de l'ulna (distal)",
+    "uln_prox_center": "centre de l'ulna au niveau du col du radius (direction caudale du coude)",
+    "rad_dist_ml_med": "extrémité médiale du grand axe de la surface carpienne",
+    "rad_dist_ml_lat": "extrémité latérale du grand axe de la surface carpienne",
+    "rad_prox_ml_med": "côté médial de la tête radiale (référence proximale de la torsion)",
+    "rad_prox_ml_lat": "côté latéral de la tête radiale (référence proximale de la torsion)",
+    "hum_cond_med": "côté médial du condyle de l'humérus (axe du coude)",
+    "hum_cond_lat": "côté latéral du condyle de l'humérus (axe du coude)",
 }
 OBLIGATOIRES = {
     "femur": ["head_center", "gt_tip", "neck_base", "cond_med_dist", "cond_lat_dist", "cond_med_caud", "cond_lat_caud",
               "troch_dist", "epi_med", "epi_lat"],
     "tibia": ["eminence", "plat_med", "plat_lat", "plat_cran", "plat_caud", "groove_med", "groove_lat",
               "distal_center", "dist_cran", "dist_caud", "caud_med", "caud_lat", "mall_med", "mall_lat"],
+    "radius": ["rad_prox_center", "rad_head_med", "rad_head_lat", "rad_head_cran", "rad_head_caud", "rad_dist_center",
+               "rad_dist_med", "rad_dist_lat", "rad_dist_cran", "rad_dist_caud", "rad_shaft_20", "rad_shaft_25",
+               "rad_shaft_40", "rad_shaft_60", "rad_shaft_75", "rad_shaft_80",
+               # repères propres du coude et du carpe (repères de mesure, torsion) : sans l'ulna, pas de planification
+               "rad_prox_ml_med", "rad_prox_ml_lat", "rad_dist_ml_med", "rad_dist_ml_lat"],
 }
 
 
@@ -679,6 +711,230 @@ def cotes_tibia(O, fib=None):
     return sgn * perp, -cranial2, raison_lat
 
 
+# =============================================================================== radius (patte avant)
+def cotes_radius(O, vo=None):
+    """Sens anatomiques du radius dans le plan (x, z) du repère courant (vo : os voisins, points dans ce repère).
+    Caudal = vers l'ulna au tiers proximal (au coude, l'ulna est derrière le radius : l'olécrâne) ; latéral = vers
+    l'ulna au cinquième distal (au carpe, l'ulna est sur le côté latéral), rendu perpendiculaire au caudal.
+    Sans ulna : crânial = côté convexe (le radius du chien est arqué vers l'avant) ; médial = côté du processus
+    styloïde (la pointe distale du radius est médiale). Renvoie (latéral, caudal, raison latéral, raison caudal)."""
+    yt, yb, L = O.ytop, O.ybot, O.L
+    uln = (vo or {}).get("ulna")
+    if uln is not None and len(uln):
+        def vers_ulna(y0, y1):
+            sel = (uln[:, 1] >= y0) & (uln[:, 1] <= y1)
+            c = O.milieu_diaphyse((y0 + y1) / 2)
+            if not sel.any() or c is None:
+                return None
+            u = uln[sel].mean(0)
+            return unitaire(np.array([u[0] - c[0], u[2] - c[2]]))
+        cau2 = vers_ulna(yt - 0.35 * L, yt - 0.15 * L)
+        lat_brut = vers_ulna(yb + 0.08 * L, yb + 0.25 * L)
+        if cau2 is not None and lat_brut is not None:
+            return (unitaire(lat_brut - (lat_brut @ cau2) * cau2), cau2,
+                    "côté de l'ulna au carpe (l'ulna est latérale au poignet)",
+                    "côté de l'ulna au coude (l'olécrâne est caudal)")
+    c1, c2, c3 = (O.milieu_diaphyse(yt - f * L) for f in (0.2, 0.5, 0.8))
+    corde = unitaire(c3 - c1)
+    fleche = (c2 - c1) - ((c2 - c1) @ corde) * corde
+    cau2 = -unitaire(np.array([fleche[0], fleche[2]]))
+    basses = O.tranche(yb, yb + 0.03 * L)
+    p = O.v[basses][np.argmin(O.v[basses, 1])]
+    c = O.milieu_diaphyse(yb + 0.10 * L)
+    perp = np.array([-cau2[1], cau2[0]])
+    sgn = -np.sign(perp @ np.array([p[0] - c[0], p[2] - c[2]]))
+    return (sgn * perp, cau2, "à l'opposé du processus styloïde (pas d'ulna : à vérifier)",
+            "à l'opposé de la convexité (le radius est arqué vers crânial ; pas d'ulna : à vérifier)")
+
+
+def surface_articulaire(O, haut, voisin=None, ecart=1.5):
+    """Surface articulaire d'une extrémité du radius (masque des sommets). Avec l'os voisin de l'articulation (humérus
+    au coude, carpe au poignet), c'est la partie du radius qui lui fait face : les sommets de l'extrémité à moins de
+    (interligne + `ecart`) mm de cet os, tournés vers lui. Le processus styloïde, qui dépasse sans toucher le carpe,
+    est ainsi laissé de côté (comme sur les radiographies). Sans voisin : région de normales tournées vers
+    l'articulation, par croissance de région (comme pour le tibia). Renvoie (masque, méthode)."""
+    v, n, L = O.v, O.n, O.L
+    tranche = O.tranche(O.ytop - 0.15 * L, O.ytop) if haut else O.tranche(O.ybot, O.ybot + 0.15 * L)
+    s = 1.0 if haut else -1.0
+    if voisin is not None and len(voisin) and tranche.any():
+        idx = np.flatnonzero(tranche)
+        dist, _ = cKDTree(voisin).query(v[idx])
+        dmin = float(dist.min())
+        seuil = min(dmin + ecart, 3.5)
+        # face à l'os voisin ET tournée vers l'articulation, le long de l'os (à moins de 50° de l'axe) : la face
+        # axiale du processus styloïde, qui touche le carpe mais regarde sur le côté, n'est pas la surface carpienne
+        ok = (dist < seuil) & (s * n[idx, 1] > np.cos(np.radians(50)))
+        if dmin < 3.0 and ok.sum() >= 20:
+            m = np.zeros(len(v), bool)
+            m[idx[ok]] = True
+            return m, f"face à l'os voisin (interligne {dmin:.1f} mm, sommets à moins de {seuil:.1f} mm)"
+    bout = O.tranche(O.ytop - 0.05 * L, O.ytop) if haut else O.tranche(O.ybot, O.ybot + 0.05 * L)
+    admis = tranche & (s * n[:, 1] > np.cos(np.radians(50)))
+    cand = np.flatnonzero(admis & bout) if (admis & bout).any() else np.flatnonzero(admis)
+    if not len(cand):
+        return np.zeros(len(v), bool), "introuvable"
+    c = v[bout].mean(0)
+    dep = cand[np.argmin(np.linalg.norm(v[cand][:, [0, 2]] - c[[0, 2]], axis=1))]
+    return region_connexe(O.voisins, dep, admis), "normales tournées vers l'articulation (sans os voisin)"
+
+
+def plan_articulaire(p, sens_y):
+    """Plan moyen d'une surface articulaire (points p) par analyse en composantes principales : la normale est la
+    direction de plus petite dispersion. Les points trop loin du plan (plus de 3 écarts robustes, au moins 0,8 mm),
+    comme la pointe du processus styloïde, sont écartés et le plan est recalculé. Renvoie (centre, normale tournée vers
+    l'articulation, grand axe et petit axe du plan, demi-largeurs le long de ces axes, masque des points gardés)."""
+    garde = np.ones(len(p), bool)
+    for _ in range(5):
+        c = p[garde].mean(0)
+        nrm = np.linalg.svd(p[garde] - c, full_matrices=False)[2][2]
+        r = (p - c) @ nrm
+        med = np.median(r[garde])
+        mad = 1.4826 * np.median(np.abs(r[garde] - med))
+        nouveau = np.abs(r - med) < max(3.0 * mad, 0.8)
+        if nouveau.sum() < 10 or (nouveau == garde).all():
+            break
+        garde = nouveau
+    c = p[garde].mean(0)
+    vt = np.linalg.svd(p[garde] - c, full_matrices=False)[2]
+    nrm = vt[2] if vt[2][1] * sens_y > 0 else -vt[2]
+    q = p[garde] - c
+    w1, w2 = (float(np.percentile(np.abs(q @ a), 98)) for a in (vt[0], vt[1]))
+    return c, nrm, vt[0], vt[1], w1, w2, garde
+
+
+def reperes_radius(O, vo=None):
+    """Repères du radius dans le repère courant (X latéral, Y proximal, Z caudal), pour les angles de Fox et al. 2006
+    et de Kwon et al. 2022 : centre et bords médial, latéral, crânial et caudal de la surface articulaire proximale
+    (tête radiale, face à l'humérus) et de la surface distale (face au carpe) ; milieux de la diaphyse à 20, 25, 40, 50,
+    60, 75 et 80 % de la longueur depuis proximal (axes anatomiques) ; processus styloïde ; olécrâne et processus
+    styloïde de l'ulna. vo : os voisins (points dans le repère courant), clés « humerus », « carpe », « ulna »."""
+    vo = vo or {}
+    v, L, yt, yb = O.v, O.L, O.ytop, O.ybot
+    R, infos, surfaces = {}, {}, {}
+    for haut, nom, pre, voisin in ((True, "prox", "rad_head", vo.get("humerus")), (False, "dist", "rad_dist", vo.get("carpe"))):
+        m, methode = surface_articulaire(O, haut, voisin)
+        infos[nom] = {"methode": methode, "sommets": int(m.sum())}
+        if m.sum() < 10:
+            continue
+        p = v[m]
+        c, nrm, m1, m2, w1, w2, garde = plan_articulaire(p, 1.0 if haut else -1.0)
+        infos[nom].update(sommets_plan=int(garde.sum()), largeur_mm=round(2 * w1, 1), profondeur_mm=round(2 * w2, 1))
+        surfaces[nom] = (pre, c, nrm, p[garde] - c)
+        R[f"rad_{nom}_center"] = c
+        if not haut:
+            # grand axe de la surface carpienne (bien plus large que profonde) : direction médio-latérale du radius,
+            # qui oriente le repère et sert à la torsion
+            m1 = m1 if m1[0] > 0 else -m1
+            R["rad_dist_ml_med"], R["rad_dist_ml_lat"] = c - w1 * m1, c + w1 * m1
+    for f in (20, 25, 40, 50, 60, 75, 80):
+        c = O.milieu_diaphyse(yt - f / 100 * L)
+        if c is not None:
+            R[f"rad_shaft_{f}"] = c
+    basses = O.tranche(yb, yb + 0.05 * L)
+    if basses.any():
+        q = v[basses]
+        med = q[q[:, 0] < np.median(q[:, 0])]
+        R["rad_styloid"] = (med if len(med) else q)[np.argmin((med if len(med) else q)[:, 1])]
+    uln = vo.get("ulna")
+    if uln is not None and len(uln):
+        R["uln_olecranon"] = uln[np.argmax(uln[:, 1])]
+        R["uln_styloid"] = uln[np.argmin(uln[:, 1])]
+        # au coude, l'ulna est derrière le radius : le centre de l'ulna au niveau du col du radius (15 à 35 % depuis
+        # proximal) donne la direction caudale proximale (référence proximale de la torsion)
+        sel = (uln[:, 1] >= yt - 0.35 * L) & (uln[:, 1] <= yt - 0.15 * L)
+        if sel.any():
+            R["uln_prox_center"] = uln[sel].mean(0)
+            # direction médio-latérale de la tête radiale : perpendiculaire à la direction radius → ulna (caudale) au col,
+            # dans le plan transverse ; c'est la référence proximale de la torsion du radius (comme la tangente à la
+            # corticale crâniale de la tête radiale des publications)
+            c25 = O.milieu_diaphyse(yt - 0.25 * L)
+            if c25 is not None and "rad_prox_center" in R:
+                cau = R["uln_prox_center"] - c25
+                ml = np.cross(np.array([0.0, 1.0, 0.0]), cau)          # X = Y × Z (repère direct)
+                ml = unitaire(np.array([ml[0], 0.0, ml[2]]))
+                w = infos.get("prox", {}).get("largeur_mm", 10.0) / 2
+                R["rad_prox_ml_med"], R["rad_prox_ml_lat"] = R["rad_prox_center"] - w * ml, R["rad_prox_center"] + w * ml
+    # bords de chaque surface articulaire, le long des directions latérale (X) et caudale (Z) du repère PROPRE de
+    # l'articulation, ramenées dans son plan : carpe = repère courant (X = grand axe de la surface carpienne) ; tête
+    # radiale = X le long de l'axe médio-latéral de la tête (rad_prox_ml), comme une radiographie centrée sur le coude.
+    # Avec une torsion de 30 à 50°, des bords pris le long de l'axe du carpe fausseraient MPRA et CrPRA (Kwon 2022 :
+    # au-delà de 15° de torsion, erreurs de plus de 5°). Les lignes articulaires sont les traces de ces plans.
+    for nom, (pre, c, nrm, q) in surfaces.items():
+        ex = np.array([1.0, 0, 0])
+        if nom == "prox" and "rad_prox_ml_lat" in R:
+            ex = unitaire(R["rad_prox_ml_lat"] - R["rad_prox_ml_med"])
+        ez = np.cross(ex, np.array([0.0, 1.0, 0.0]))                  # Z = X × Y (repère direct, comme poser())
+        for (a, b), axe in ((("med", "lat"), ex), (("cran", "caud"), ez)):
+            d = unitaire(axe - (axe @ nrm) * nrm)
+            w = float(np.percentile(np.abs(q @ d), 98))
+            R[f"{pre}_{a}"], R[f"{pre}_{b}"] = c - w * d, c + w * d
+    hum = vo.get("humerus")
+    if hum is not None and len(hum) and "rad_prox_center" in R:
+        # axe du coude = grand axe du condyle de l'humérus (cinquième distal de l'humérus, bien plus large que
+        # profond, épicondyles compris), sans la direction de l'humérus (le coude est fléchi) et vu le long du
+        # radius : c'est la référence de la vue de face d'une radiographie centrée sur le coude, et la référence
+        # proximale de la torsion de l'avant-bras
+        ch, vh = axe_long(hum)
+        th = (hum - ch) @ vh[0]
+        bout = th.max() if (R["rad_prox_center"] - ch) @ vh[0] > 0 else th.min()
+        sel = np.abs(th - bout) < 0.2 * np.ptp(th)
+        if sel.sum() >= 20:
+            cc = hum[sel].mean(0)
+            q = hum[sel] - cc
+            q = q - np.outer(q @ vh[0], vh[0])           # sans l'axe de l'humérus (coude fléchi : il croise le radius)
+            _, s, vt = np.linalg.svd(q[:, [0, 2]], full_matrices=False)
+            ml = np.array([vt[0][0], 0.0, vt[0][1]])
+            ml = ml if ml[0] > 0 else -ml
+            w = float(np.percentile(np.abs(q @ ml), 98))
+            R["hum_cond_med"], R["hum_cond_lat"] = cc - w * ml, cc + w * ml
+            infos["coude"] = {"largeur_condyle_mm": round(2 * w, 1), "rapport_axes": round(float(s[0] / max(s[1], 1e-9)), 2)}
+    R["_articulations"] = infos
+    return R
+
+
+# Valeurs normales du radius (radiographies de chiens sains, définitions voisines des nôtres : la ligne articulaire
+# proximale de face y va du bord latéral de la tête radiale au processus coronoïde médial de l'ulna ; ici, d'un bord à
+# l'autre de la tête radiale). Kwon et al. 2022, Front. Vet. Sci. 8:774993, moyenne ± écart-type.
+NORMALES_RADIUS = {
+    "Welsh Corgi": {"CrPRA": (77.62, 5.09), "CdDRA": (59.90, 4.44), "MPRA": (70.53, 5.19), "LDRA": (77.63, 4.12)},
+    "Teckel": {"CrPRA": (75.69, 4.56), "CdDRA": (64.79, 4.43), "MPRA": (70.96, 4.49), "LDRA": (76.69, 5.37)},
+    "Pékinois": {"CrPRA": (86.52, 4.13), "CdDRA": (66.53, 3.59), "MPRA": (61.97, 5.30), "LDRA": (82.95, 3.59)},
+    "Bichon maltais": {"CrPRA": (86.12, 4.65), "CdDRA": (77.59, 4.72), "MPRA": (73.51, 4.83), "LDRA": (87.24, 5.81)},
+    "Caniche": {"CrPRA": (88.13, 3.91), "CdDRA": (71.11, 3.80), "MPRA": (77.91, 3.44), "LDRA": (89.60, 2.03)},
+    "Beagle": {"CrPRA": (84.39, 4.30), "CdDRA": (75.62, 3.87), "MPRA": (74.82, 1.87), "LDRA": (86.98, 1.58)},
+}
+SOURCE_RADIUS = "Kwon et al. 2022, Front. Vet. Sci. 8:774993 (radiographies de chiens sains, définitions voisines)"
+# Courbure normale du radius (radiographies orthogonales, petits chiens non chondrodystrophiques : Duncan et al. 2022,
+# résumé PubMed 36054008) : procurvatum 16,8 ± 4,1° (angle entre les axes proximal et distal de profil) et angle frontal
+# 4,8 ± 2,5° ; plages normales de Knapp et al. 2016 : 0 à 8° de face, 8 à 35° de profil. La planification corrige
+# l'EXCÈS de courbure (le radius du chien est naturellement arqué vers l'avant), pas la courbure entière.
+NORMALES_COURBURE_RADIUS = {
+    "procurvatum": {"publiee": 16.79, "sd": 4.13, "valeur": 16.79, "ecart_definition": 0.0,
+                    "source": "Duncan et al. 2022 (petits chiens non chondrodystrophiques ; Knapp 2016 : 8 à 35°)"},
+    "angulation_frontale": {"publiee": 4.75, "sd": 2.46, "valeur": 4.75, "ecart_definition": 0.0,
+                            "source": "Duncan et al. 2022 (Knapp 2016 : 0 à 8°) ; signe pris en valgus (à confirmer)"},
+}
+
+
+def normales_radius(angles=None, race=None):
+    """Valeurs normales du radius pour une race (NORMALES_RADIUS) ; sans race : la race dont les normes sont les plus
+    proches des angles mesurés (somme des écarts en écarts-types), seulement indiquée. Renvoie {angle: {...}}."""
+    race = race or P.RACE_REFERENCE_RADIUS
+    proche = None
+    if angles:
+        ecarts = {r: sum(abs(angles[k] - m) / sd for k, (m, sd) in N.items() if k in angles) for r, N in NORMALES_RADIUS.items()}
+        proche = min(ecarts, key=ecarts.get)
+    choisie = race if race in NORMALES_RADIUS else proche
+    out = {k: dict(v) for k, v in NORMALES_COURBURE_RADIUS.items()}
+    if choisie:
+        for k, (m, sd) in NORMALES_RADIUS[choisie].items():
+            out[k] = {"publiee": m, "sd": sd, "source": f"{SOURCE_RADIUS}, {choisie}", "ecart_definition": 0.0,
+                      "valeur": m, "race": choisie,
+                      "note": "race choisie" if choisie == race else "race non connue : race dont les normes sont les "
+                                                                      "plus proches des angles mesurés (à confirmer)"}
+    return out
+
+
 # =============================================================================== analyse complète
 MIROIR = np.diag([-1.0, 1.0, 1.0])
 
@@ -688,13 +944,33 @@ def miroir_maillage(m):
     return trimesh.Trimesh(np.asarray(m.vertices) @ MIROIR, np.asarray(m.faces)[:, ::-1], process=False)
 
 
-def orienter(m, type_os, fibula=None, tete_scanner=None):
+def orienter(m, type_os, fibula=None, tete_scanner=None, voisins_os=None):
     """Premier repère (axe long, sens proximal) et sens anatomiques latéral / caudal dans le repère du scanner.
+    voisins_os : os voisins (trimesh, repère du scanner) ; pour le radius : « ulna », « humerus », « carpe ».
     Renvoie (O, lateral, caudal, droit, raisons)."""
     O = Os(m)
     c, vt = axe_long(O.v0)
     y = vt[0]
     t = (O.v0 - c) @ y
+    if type_os == "radius":
+        uln = (voisins_os or {}).get("ulna")
+        if uln is not None:
+            tu = (np.asarray(uln.vertices, float) - c) @ y
+            raison_prox = "côté où l'ulna dépasse le radius (olécrâne, au coude)"
+            if tu.max() - t.max() < t.min() - tu.min():
+                y = -y
+        else:
+            raison_prox = "extrémité la plus étroite (tête radiale ; le bout distal est plus large ; pas d'ulna)"
+            largeur = lambda sel: np.ptp((O.v0[sel] - c) @ vt[1:].T, axis=0).max() if sel.any() else 0
+            if largeur(t > t.max() - 0.08 * np.ptp(t)) > largeur(t < t.min() + 0.08 * np.ptp(t)):
+                y = -y
+        O.poser(vt[1], y, c)
+        vo = {k: O.depuis_scanner(np.asarray(x.vertices, float)) for k, x in (voisins_os or {}).items() if x is not None}
+        lat2, cau2, raison_lat, raison_cau = cotes_radius(O, vo)
+        lateral = O.R[0] * lat2[0] + O.R[2] * lat2[1]
+        caudal = O.R[0] * cau2[0] + O.R[2] * cau2[1]
+        droit = bool(np.cross(lateral, O.R[1]) @ caudal > 0)
+        return O, lateral, caudal, droit, {"proximal": raison_prox, "lateral": raison_lat, "caudal": raison_cau}
     if type_os == "femur":
         if tete_scanner is not None:
             raison_prox = "côté de la tête fémorale trouvée par la segmentation"
@@ -732,10 +1008,12 @@ def orienter(m, type_os, fibula=None, tete_scanner=None):
 
 
 def analyser(m, type_os, fibula=None, tete_scanner=None, nom_serie="", systeme="LPS", fichier="", bords=None,
-             calibrer=True):
-    """Repère, côté, complétude et repères d'un fémur ou d'un tibia. m : trimesh (coordonnées du scanner).
-    Renvoie (résultat JSON, objet Os dans le repère final ou None)."""
-    O, lateral, caudal, droit, raisons = orienter(m, type_os, fibula, tete_scanner)
+             calibrer=True, voisins_os=None):
+    """Repère, côté, complétude et repères d'un fémur, d'un tibia ou d'un radius. m : trimesh (coordonnées du
+    scanner) ; voisins_os (radius) : {« ulna », « humerus », « carpe » : trimesh}. Renvoie (résultat JSON, objet Os dans
+    le repère final ou None)."""
+    voisins_os = {k: x for k, x in (voisins_os or {}).items() if x is not None}
+    O, lateral, caudal, droit, raisons = orienter(m, type_os, fibula, tete_scanner, voisins_os)
     longueur = O.L
     coupes = extremites_coupees(O.v0, np.asarray(m.faces), np.asarray(m.face_normals, float),
                                 np.asarray(m.area_faces), O.R[1], longueur, bords)
@@ -760,6 +1038,7 @@ def analyser(m, type_os, fibula=None, tete_scanner=None, nom_serie="", systeme="
     if not droit:
         m = miroir_maillage(m)
         fibula = miroir_maillage(fibula) if fibula is not None else None
+        voisins_os = {k: miroir_maillage(x) for k, x in voisins_os.items()}
         tete_scanner = np.asarray(tete_scanner) @ MIROIR if tete_scanner is not None else None
         lateral, caudal = lateral @ MIROIR, caudal @ MIROIR
     O = Os(m)
@@ -779,6 +1058,17 @@ def analyser(m, type_os, fibula=None, tete_scanner=None, nom_serie="", systeme="
             m1, m2 = O.milieu_diaphyse(O.ytop - O.L / 3), O.milieu_diaphyse(O.ytop - O.L / 2)
             y_new = O.vers_scanner(m1) - O.vers_scanner(m2)
             x_new = O.vers_scanner(Rp["cond_lat_caud"]) - O.vers_scanner(Rp["cond_med_caud"])
+        elif type_os == "radius":
+            # axe mécanique (centre de la tête radiale → centre de la surface carpienne) ; X : bords de la tête radiale
+            Rp = reperes_radius(O, {k: O.depuis_scanner(np.asarray(x.vertices, float)) for k, x in voisins_os.items()})
+            if not all(k in Rp for k in ("rad_prox_center", "rad_dist_center", "rad_dist_ml_lat", "rad_dist_ml_med")):
+                break
+            # Y : axe mécanique (centre de la tête radiale → centre de la surface carpienne) ; X : grand axe de la surface
+            # carpienne, repère PROPRE du radius (la tête radiale, presque ronde chez certains chiens, ne donne pas de
+            # direction sûre ; l'axe du coude dépend de la position de l'avant-bras sur la table : pronation, supination).
+            # La torsion (tête radiale → surface carpienne) est mesurée à part, comme dans les publications.
+            y_new = O.vers_scanner(Rp["rad_prox_center"]) - O.vers_scanner(Rp["rad_dist_center"])
+            x_new = O.vers_scanner(Rp["rad_dist_ml_lat"]) - O.vers_scanner(Rp["rad_dist_ml_med"])
         else:
             fib = O.depuis_scanner(np.asarray(fibula.vertices, float)) if fibula is not None else None
             Rp = reperes_tibia(O, fib)
@@ -797,6 +1087,13 @@ def analyser(m, type_os, fibula=None, tete_scanner=None, nom_serie="", systeme="
             if cc is not None:
                 res["qualite"][f"condyle_{cote}_rayon_mm"] = round(rr, 2)
                 res["qualite"][f"condyle_{cote}_rms_mm"] = round(rms, 3)
+    elif type_os == "radius":
+        Rp = reperes_radius(O, {k: O.depuis_scanner(np.asarray(x.vertices, float)) for k, x in voisins_os.items()})
+        res["qualite"] = {"voisins": sorted(voisins_os), "articulations": Rp.pop("_articulations")}
+        if "rad_dist_center" not in Rp:
+            res.update(complet=False, raison="surface articulaire distale du radius introuvable")
+            return res, O
+        dc = Rp["rad_dist_center"]
     else:
         fib = O.depuis_scanner(np.asarray(fibula.vertices, float)) if fibula is not None else None
         Rp = reperes_tibia(O, fib)
@@ -834,15 +1131,23 @@ def analyser(m, type_os, fibula=None, tete_scanner=None, nom_serie="", systeme="
     res["torsion_deg"] = round(t_, 2) if t_ is not None else None
     tn = TORSION_NORMALE[type_os]
     statut = None
-    if t_ is not None:
+    if t_ is not None and tn["seuils"]:
         statut = "interne" if (t_ > tn["seuils"][1] if type_os == "femur" else t_ < tn["seuils"][0]) else \
             "externe" if (t_ < tn["seuils"][0] if type_os == "femur" else t_ > tn["seuils"][1]) else "normale"
     t_c = torsion(type_os, Rp, "cora3d")
     res["torsion"] = {"valeur_deg": res["torsion_deg"], "statut": statut, "nom": tn["nom"], "definition": tn["definition"],
                       "normale": {"m": tn["m"], "sd": tn["sd"], "seuils": tn["seuils"], "source": tn["source"]},
                       "definition_cora3d_deg": round(t_c, 2) if t_c is not None else None}
+    if type_os == "radius":
+        t_coude = torsion("radius", Rp, "coude")
+        res["torsion_coude_deg"] = round(t_coude, 2) if t_coude is not None else None
+        if t_ is not None and abs(t_ - TORSION_NORMALE["radius"]["m"]) > 15:
+            res["avertissements"].append(
+                f"torsion du radius de {t_:+.0f}° (normale 3,6 ± 6,4°, Kroner 2017) : sur des radiographies standard, les "
+                "angles de face seraient faussés de plus de 5° (Kwon et al. 2022) ; ici, chaque articulation est mesurée "
+                "dans son propre repère (coude : axe de la tête radiale ; carpe : grand axe de la surface carpienne)")
     if calibrer:
-        res["normales"] = normales(type_os)
+        res["normales"] = normales(type_os) if type_os in LITTERATURE else normales_radius(res["angles"])
     Minv = np.linalg.inv(M)
     res["reperes_scanner"] = {k: [round(float(x), 3) for x in (Minv[:3, :3] @ np.asarray(p) + Minv[:3, 3])]
                               for k, p in Rp.items() if p is not None}
@@ -908,11 +1213,52 @@ def axe_anatomique(O):
     return m1, unitaire(m2 - m1)
 
 
+def vues_radius(L):
+    """Vues de face et de profil du radius dans ses repères PROPRES, recalculés depuis les repères anatomiques (mêmes
+    formules que vuesRadius() de CORA 3D) : Y = axe mécanique (vers proximal) ; X = grand axe de la surface carpienne
+    (repère distal) ou axe médio-latéral de la tête radiale (repère proximal) ; Z = X × Y. Chaque articulation se lit
+    dans son repère, comme sur une radiographie centrée sur elle (la torsion de l'avant-bras ne fausse pas les angles).
+    Renvoie (face distale, profil distal, face proximale, profil proximal) : fonctions vecteur 3D → vecteur 2D."""
+    e2 = unitaire(L["rad_prox_center"] - L["rad_dist_center"])
+    mld = L["rad_dist_ml_lat"] - L["rad_dist_ml_med"]
+    s = 1.0 if mld[0] >= 0 else -1.0                                       # même sens que l'axe X de l'os
+
+    def vues(ml):
+        e1 = s * unitaire(ml - (ml @ e2) * e2)
+        e3 = np.cross(e1, e2)
+        return (lambda x: np.array([x @ e1, x @ e2])), (lambda x: np.array([x @ e3, x @ e2]))
+
+    Fd, Sd = vues(mld)
+    Fp, Sp = vues(L["rad_prox_ml_lat"] - L["rad_prox_ml_med"]) if "rad_prox_ml_lat" in L else (Fd, Sd)
+    return Fd, Sd, Fp, Sp
+
+
 def angles_articulaires(type_os, R, axe_d=None):
-    """Angles projetés sur les vues de face (x, y) et de profil (z, y) : mêmes formules que mesurer() de CORA 3D."""
+    """Angles projetés sur les vues de face (x, y) et de profil (z, y) : mêmes formules que mesurer() de CORA 3D.
+    Radius (Kwon et al. 2022, d'après Fox et al. 2006) : de face, un seul axe anatomique (milieux de la diaphyse à
+    25 et 75 %) ; de profil, deux axes, car le radius est naturellement arqué vers l'avant : proximal (milieux à 20 et
+    40 %) et distal (60 et 80 %). MPRA = angle médial proximal, LDRA = angle latéral distal (de face) ; CrPRA = angle
+    crânial proximal, CdDRA = angle caudal distal (de profil). procurvatum = angle entre les axes proximal et distal de
+    profil (+ = sommet de la courbure vers crânial) ; angulation_frontale = angle entre les MÊMES axes de face (+ =
+    valgus : la partie distale part vers latéral), ce sont les axes de la planification ; courbure_3d = angle vrai entre
+    ces deux axes en 3D (indépendant du repère). Chaque articulation se lit dans son repère propre (vues_radius) :
+    MPRA et CrPRA dans celui de la tête radiale, LDRA, CdDRA, procurvatum et angulation frontale dans celui du carpe."""
     L = {k: np.asarray(p, float) for k, p in R.items()}
     F = lambda k: _p2(L[k], "F")
     S = lambda k: _p2(L[k], "S")
+    if type_os == "radius":
+        Fd, Sd, Fp, Sp = vues_radius(L)
+        d25_75 = L["rad_shaft_75"] - L["rad_shaft_25"]                   # vers distal
+        dp, dd = L["rad_shaft_40"] - L["rad_shaft_20"], L["rad_shaft_80"] - L["rad_shaft_60"]
+        return {"MPRA": _angU(Fp(L["rad_head_med"] - L["rad_head_lat"]), Fp(d25_75)),
+                "LDRA": _angU(Fd(L["rad_dist_lat"] - L["rad_dist_med"]), -Fd(d25_75)),
+                "CrPRA": _angU(Sp(L["rad_head_cran"] - L["rad_head_caud"]), Sp(dp)),
+                "CdDRA": _angU(Sd(L["rad_dist_caud"] - L["rad_dist_cran"]), -Sd(dd)),
+                "procurvatum": _ang(Sd(dp), Sd(dd)),
+                # angle 3D entre les axes des segments proximal et distal : courbure totale, sans choix de repère
+                "courbure_3d": _angU(dp, dd),
+                "longueur": float(np.linalg.norm(L["rad_prox_center"] - L["rad_dist_center"])),
+                "angulation_frontale": _ang(Fd(dp), Fd(dd))}
     if type_os == "tibia":
         d = L["distal_center"] - L["eminence"]
         dF, dS = _p2(d, "F"), _p2(d, "S")
@@ -942,6 +1288,12 @@ TORSION_NORMALE = {
                         "(antéversion excessive = torsion interne) : Longo et al. 2022",
               "definition": "axe de la diaphyse ; axe du col = centre de la tête → base du col au niveau du petit "
                             "trochanter ; ligne condylaire caudale ; + = col dirigé vers crânial"},
+    "radius": {"nom": "torsion radiale", "m": 3.6, "sd": 6.4, "seuils": (3.6 - 2 * 6.4, 3.6 + 2 * 6.4),
+               "source": "Kroner et al. 2017 (CT, chiens moyens à grands sains : 3,6 ± 6,4°) ; Shih-Tzu : 20,9 ± 3,0° "
+                         "(Jeong et al. 2020) ; seuils = moyenne ± 2 écarts-types",
+               "definition": "axe mécanique du radius ; proximal : direction médio-latérale de la tête radiale "
+                             "(perpendiculaire à la direction radius → ulna au col) ; distal : grand axe de la surface "
+                             "carpienne ; + = externe (la partie distale tourne vers latéral)"},
     "tibia": {"nom": "torsion tibiale", "m": -4.0, "sd": None, "seuils": (-10.0, 2.0),
               "source": "Brühschwein et al. 2023 (3D-CT, tibias normaux ≈ 176°, soit 4° de torsion interne) ; "
                         "physiologique −3 à −6°, anormal < −10° (interne) ou > +2° (externe) : Longo et al. 2022",
@@ -958,6 +1310,17 @@ def torsion(type_os, R, definition="publiee"):
     Méthodes de Longo 2022).
     cora3d — définitions de CORA 3D (axe mécanique ; axe du col au ras de la tête ; tibia : axe bimalléolaire)."""
     L = {k: np.asarray(p, float) for k, p in R.items()}
+    if type_os == "radius":
+        # torsion du radius lui-même (définition des publications, CT) : direction médio-latérale de la tête radiale
+        # (perpendiculaire à la direction radius → ulna au col) → grand axe de la surface carpienne ; definition
+        # « coude » : depuis l'axe du coude (condyle de l'humérus), qui dépend aussi de la position de l'avant-bras
+        if not all(k in L for k in ("rad_dist_ml_med", "rad_dist_ml_lat")):
+            return None
+        axe = L["rad_prox_center"] - L["rad_dist_center"]               # vers proximal
+        a, b = ("hum_cond_lat", "hum_cond_med") if definition == "coude" else ("rad_prox_ml_lat", "rad_prox_ml_med")
+        if a not in L:
+            return None
+        return -_angle_autour(L[a] - L[b], L["rad_dist_ml_lat"] - L["rad_dist_ml_med"], axe)
     if type_os == "femur":
         if definition == "publiee" and all(k in L for k in ("neck_base_lt", "fem_axe_13", "fem_axe_12")):
             axe = L["fem_axe_13"] - L["fem_axe_12"]                     # vers proximal
@@ -1102,13 +1465,19 @@ def traiter_os(dossier, nom, journal=print, images=True):
     m = trimesh.load(f, process=True)
     ffib = dossier / f"fibula{suffixe}.stl"
     fib = trimesh.load(ffib, process=True) if type_os == "tibia" and ffib.exists() else None
+    voisins_os = {}
+    if type_os == "radius":                              # ulna (côtés), humérus (coude) et carpe (poignet)
+        for v_ in ("ulna", "humerus", "carpe"):
+            fv = dossier / f"{v_}{suffixe}.stl"
+            if fv.exists():
+                voisins_os[v_] = trimesh.load(fv, process=True)
     tete = charger_tete(dossier) if type_os == "femur" else None
     if tete is not None and np.min(np.linalg.norm(np.asarray(m.vertices) - tete, axis=1)) > 30:
         tete = None                                        # tête d'un autre os (autre côté) : ignorée
     rapport = lire_rapport(dossier)
     bords = rapport.get("os", {}).get(nom, {}).get("bords_volume")         # absent des anciens rapports
     systeme = rapport.get("parametres", {}).get("SYSTEME_COORDONNEES", "LPS")
-    res, O = analyser(m, type_os, fib, tete, dossier.name, systeme, f.name, bords)
+    res, O = analyser(m, type_os, fib, tete, dossier.name, systeme, f.name, bords, voisins_os=voisins_os)
     res["nom"] = nom
     res["stl_modifie"] = f.stat().st_mtime
     if res.get("complet"):
@@ -1119,6 +1488,9 @@ def traiter_os(dossier, nom, journal=print, images=True):
         if fib is not None:
             ecrire_binaire(dossier / f"cora_{nom}_fibula.bin", *maillage_dans_repere(fib, M))
             res["maillages"]["fibula"] = f"cora_{nom}_fibula.bin"
+        if "ulna" in voisins_os:
+            ecrire_binaire(dossier / f"cora_{nom}_ulna.bin", *maillage_dans_repere(voisins_os["ulna"], M))
+            res["maillages"]["ulna"] = f"cora_{nom}_ulna.bin"
     (dossier / f"cora_{nom}.json").write_text(json.dumps(res, ensure_ascii=False, indent=1), encoding="utf-8")
     if res.get("complet"):
         journal(f"  {nom} : complet, membre {res['cote']}, longueur {res['longueur_mm']:.0f} mm, "
@@ -1132,7 +1504,7 @@ def traiter_os(dossier, nom, journal=print, images=True):
 
 
 def traiter_serie(dossier, journal=print, images=True):
-    """Tous les fémurs et tibias d'un dossier de résultats."""
+    """Tous les fémurs, tibias et radius d'un dossier de résultats."""
     out = {}
     for nom in fichiers_cora(dossier):
         try:
@@ -1150,9 +1522,10 @@ def ecart_aux_normes(r):
 
 
 def choisir_cible(dossier, resultats=None):
-    """L'os à planifier pour ce cas (un dossier DICOM = un fémur OU un tibia) : l'os complet du scanner. S'il y en a
-    plusieurs : l'os le plus éloigné des normes ; si c'est le même os des deux côtés (scanner des deux membres), l'autre
-    côté devient la référence (membre controlatéral). Écrit cora_cas.json et le renvoie."""
+    """L'os à planifier pour ce cas : l'os complet du scanner (fémur, tibia ou radius). S'il y en a plusieurs : l'os le
+    plus éloigné des normes ; si c'est le même os des deux côtés (scanner des deux membres), l'autre côté est signalé
+    comme controlatéral (référence possible s'il est sain ; chez le chien A, les deux radius sont déformés : chacun se
+    planifie avec les valeurs normales). Écrit cora_cas.json et le renvoie."""
     dossier = Path(dossier)
     res = {}
     for nom in fichiers_cora(dossier):
@@ -1164,12 +1537,22 @@ def choisir_cible(dossier, resultats=None):
     candidats = [{"nom": n, "os": n.split("_")[0], "complet": bool(r.get("complet")), "raison": r.get("raison", ""),
                   "cote": r.get("cote"), "longueur_mm": r.get("longueur_mm"),
                   "ecart_normes": round(ecart_aux_normes(r), 2) if r.get("complet") else None} for n, r in res.items()]
-    complets = sorted((c for c in candidats if c["complet"]), key=lambda c: -c["ecart_normes"])
+    for c in candidats:                                   # radius : mesures résumées pour la carte de l'onglet CT
+        c["planifiable"] = c["os"] in P.CORA_PLANIFIABLES
+        r = res.get(c["nom"]) or {}
+        if c["os"] == "radius" and c["complet"]:
+            a_ = r.get("angles") or {}
+            c["mesures"] = {"courbure_3d_deg": round(a_["courbure_3d"], 1) if "courbure_3d" in a_ else None,
+                            "procurvatum_deg": round(a_["procurvatum"], 1) if "procurvatum" in a_ else None,
+                            "angulation_frontale_deg": round(a_["angulation_frontale"], 1)
+                            if "angulation_frontale" in a_ else None,
+                            "torsion_deg": r.get("torsion_deg")}
+    complets = sorted((c for c in candidats if c["complet"] and c["planifiable"]), key=lambda c: -c["ecart_normes"])
     cas = {"serie": dossier.name, "cible": None, "controlateral": None, "candidats": candidats, "raison": ""}
     if not complets:
-        cas["raison"] = ("aucun fémur ni tibia complet dans ce scanner : "
-                         + "; ".join(f"{c['nom']} : {c['raison']}" for c in candidats)) if candidats else \
-            "aucun fémur ni tibia segmenté dans ce scanner"
+        cas["raison"] = ("aucun fémur, tibia ni radius complet dans ce scanner : "
+                         + "; ".join(f"{c['nom']} : {c['raison']}" for c in candidats if c["planifiable"])) \
+            if any(c["planifiable"] for c in candidats) else "aucun fémur, tibia ni radius segmenté dans ce scanner"
     else:
         cas["cible"] = complets[0]["nom"]
         autres = [c for c in complets[1:] if c["os"] == complets[0]["os"]]
@@ -1178,8 +1561,10 @@ def choisir_cible(dossier, resultats=None):
         if len(complets) == 1:
             cas["raison"] = f"seul os complet du scanner ({complets[0]['nom']})"
         elif autres:
-            cas["raison"] = (f"les deux {complets[0]['os']}s sont complets : {complets[0]['nom']} est le plus éloigné des "
-                             f"normes ; {autres[0]['nom']} sert de membre controlatéral")
+            pluriel = {"femur": "fémurs", "tibia": "tibias", "radius": "radius"}.get(complets[0]["os"], complets[0]["os"])
+            cas["raison"] = (f"les deux {pluriel} sont complets : {complets[0]['nom']} est le plus éloigné des normes ; "
+                             f"{autres[0]['nom']} est le membre controlatéral (il se planifie aussi, avec les valeurs "
+                             "normales, s'il est déformé)")
         else:
             cas["raison"] = (f"plusieurs os complets ({', '.join(c['nom'] for c in complets)}) : {complets[0]['nom']} est "
                              "le plus éloigné des normes (choix modifiable)")

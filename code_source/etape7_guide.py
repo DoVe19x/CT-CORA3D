@@ -1301,12 +1301,18 @@ def os_corrige(man_os, plans, T):
     return prox + dist.transform(np.asarray(T, float)[:3, :])
 
 
+# Os voisins parallèles à l'os planifié, à ostéotomiser au niveau de la coupe (sinon ils bloquent la correction) :
+# fibula du tibia, ulna du radius. Valeur : (nom dans les textes, adjectif de la coupe, abord pour l'ostéotomiser).
+OS_A_OSTEOTOMISER = {"fibula": ("la fibula", "tibiale", "un court abord latéral"),
+                     "ulna": ("l'ulna", "radiale", "un court abord caudo-latéral")}
+
+
 def voisin_corrige(nom, vv, ff, plans, T):
-    """Os voisin après la correction planifiée : la fibula est ostéotomisée au niveau de la coupe et suit les deux
-    fragments ; la rotule et les fabelles suivent le fragment distal (ou restent en place du côté proximal)."""
+    """Os voisin après la correction planifiée : la fibula (ou l'ulna) est ostéotomisée au niveau de la coupe et suit les
+    deux fragments ; la rotule et les fabelles suivent le fragment distal (ou restent en place du côté proximal)."""
     T = np.asarray(T, float)
     p, n = plans[-1]
-    if nom == "fibula":
+    if nom in OS_A_OSTEOTOMISER:
         try:
             return depuis_manifold(os_corrige(vers_manifold(vv, ff), plans, T))
         except ValueError:
@@ -1508,11 +1514,11 @@ def balayage(mobile, fixe, direction, longueur=30.0):
 
 
 def controles_voisins(guide, geo, voisins, cart):
-    """Guide de coupe et broches contre les os voisins et le cartilage, fibula à ostéotomiser."""
+    """Guide de coupe et broches contre les os voisins et le cartilage, fibula (ou ulna) à ostéotomiser."""
     gv, gf = depuis_manifold(guide)
     lo, hi = gv.min(0) - 10, gv.max(0) + 10
     rp, Rs = P.GUIDE_BROCHE_MM / 2, geo["Rs"]
-    out = {"voisins": {}, "cartilage": None, "broches": {}, "fibula_a_osteotomiser": False}
+    out = {"voisins": {}, "cartilage": None, "broches": {}, "fibula_a_osteotomiser": False, "a_osteotomiser": []}
     dist_v = {}
     for nom, vv, ff in voisins:
         ds = DistanceSurface(vv, ff, zone=(lo, hi))
@@ -1543,15 +1549,16 @@ def controles_voisins(guide, geo, voisins, cart):
             r["cartilage"] = {"axe_broche_mm": round(float(arbre_c.query(seg_b)[0].min()), 2),
                               "axe_manchon_mm": round(float(arbre_c.query(seg_m)[0].min()), 2)}
         out["broches"][x["nom"]] = r
-    # fibula coupée par un plan de coupe près de l'ostéotomie : à ostéotomiser (sinon elle bloque la correction)
+    # fibula (ou ulna) coupée par un plan de coupe près de l'ostéotomie : à ostéotomiser (sinon elle bloque la correction)
     for nom, vv, ff in voisins:
-        if nom != "fibula":
+        if nom not in OS_A_OSTEOTOMISER:
             continue
         pres = vv[np.linalg.norm(vv - geo["K"], axis=1) < 60]
         for p_, n_ in geo["plans"]:
             c_ = (pres - p_) @ n_
-            if len(c_) and c_.min() < 0 < c_.max():
-                out["fibula_a_osteotomiser"] = True
+            if len(c_) and c_.min() < 0 < c_.max() and nom not in out["a_osteotomiser"]:
+                out["a_osteotomiser"].append(nom)
+    out["fibula_a_osteotomiser"] = "fibula" in out["a_osteotomiser"]
     out["limites"] = {"guide_voisin_mm": P.GUIDE_JEU_VOISIN_MM, "broche_voisin_axe_mm": round(rp + 0.7, 2),
                       "manchon_voisin_axe_mm": round(Rs + 0.5, 2), "broche_cartilage_axe_mm": 3.0,
                       "manchon_cartilage_axe_mm": round(Rs + 0.5, 2), "guide_cartilage_mm": 1.0}
@@ -1623,6 +1630,10 @@ def protocole(pr, cc, cv=None, cr=None):
         if x["profondeur"] == "complete":
             lignes.append(f"Couper par {nom_f} sur toute l'épaisseur de l'os (la lame traverse la corticale opposée à {D} mm "
                           "du haut de la tour) ; protéger les tissus mous de l'autre côté de l'os (écarteur de Hohmann).")
+        elif st.get("osteotomie_complete") and len(fentes) > 1:
+            # ostéotomie complète (dérotation) : la fente 1 a déjà traversé l'os ; celle-ci s'arrête au sommet du coin
+            lignes.append(f"Couper par {nom_f} jusqu'au sommet du coin, à {D} mm du haut de la tour (repérer cette "
+                          "profondeur sur la lame) : la lame y rejoint le trait de la fente 1 et le coin osseux se détache.")
         else:
             lignes.append(f"Couper par {nom_f} jusqu'à la charnière, à {D} mm du haut de la tour (repérer cette profondeur "
                           "sur la lame) : la corticale opposée est conservée.")
@@ -1630,8 +1641,9 @@ def protocole(pr, cc, cv=None, cr=None):
                   "moitiés, à la pince coupe-broche.")
     lignes.append(f"Retirer la moitié {p1} en la faisant glisser le long de ses broches, puis la moitié {p2}"
                   + (" ; retirer le coin osseux." if kind == "fermeture" else "."))
-    if cv and cv.get("fibula_a_osteotomiser"):
-        lignes.append("Ostéotomiser la fibula au niveau de la coupe tibiale (ostéotome ou scie, par un court abord latéral) : "
+    for nom in (cv or {}).get("a_osteotomiser") or (["fibula"] if (cv or {}).get("fibula_a_osteotomiser") else []):
+        quoi, coupe, abord_v = OS_A_OSTEOTOMISER[nom]
+        lignes.append(f"Ostéotomiser {quoi} au niveau de la coupe {coupe} (ostéotome ou scie, par {abord_v}) : "
                       "intacte, elle empêcherait la correction.")
     geste = "Fermer le coin jusqu'au contact des surfaces coupées" if kind == "fermeture" else "Ouvrir le coin"
     if abs(derot) >= 1:
