@@ -1,5 +1,7 @@
 # CT-CORA3D — du scanner au guide imprimable, dans une seule application (PMD2, ECAM)
 
+Projet de groupe : Dorian Verstappen, Imane Bikass, Mohamed-Amine Ahmidouch (voir [GROUPE.md](GROUPE.md)).
+
 CT-CORA3D réunit les deux applications du projet et les prolonge jusqu'aux pièces à imprimer :
 
 * **Segmentation CT** (reprise de `../CT-scan/`) : DICOM → os segmentés → un STL étanche par os ;
@@ -17,8 +19,10 @@ dossier DICOM du chirurgien ─► segmentation (étapes 1-5) ─► os détect�
                        étape 12 : guide de coupe + guide de réduction (étape 7) ─► STL à imprimer
 ```
 
-Les dossiers `CT-scan/` et `CORA3D/` ne sont pas modifiés. Les séries DICOM (≈ 1 Go) restent dans `CT-scan/` et sont
-lues de là ; les résultats de CT-CORA3D vont dans `CT-CORA3D/resultats/`.
+Les dossiers `CT-scan/` et `CORA3D/` ne sont pas modifiés. Les séries DICOM se placent dans `CT-CORA3D/dicom/` (sinon,
+elles sont lues dans `../CT-scan/`) ; les résultats de CT-CORA3D vont dans `CT-CORA3D/resultats/`. Le dossier `dicom/`
+n'est **jamais** envoyé sur GitHub (`.gitignore`) : il est trop lourd (≈ 17 Go) et contient des données cliniques.
+Après un `git pull`, chacun y copie ses propres séries DICOM.
 
 ## Lancer
 
