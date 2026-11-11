@@ -93,8 +93,8 @@ def prescription(u, v, theta, kind, R=8.0, derotation=0.0):
         T = Tang
     Ti = np.linalg.inv(T)
     e = 1.2 * 2 * R
-    prox = [(A - u * e, -face), (A - u * (e + 10), -face)]
-    dist = [(appliquer(Ti, A + u * e), Ti[:3, :3] @ -face), (appliquer(Ti, A + u * (e + 10)), Ti[:3, :3] @ -face)]
+    prox = [(A - u * e, -face)]                                          # une broche par fragment
+    dist = [(appliquer(Ti, A + u * e), Ti[:3, :3] @ -face)]
     r = lambda x: [round(float(y), 6) for y in x]
     br = [{"fragment": "proximal", "point_axe": r(p), "direction": r(d), "diametre_mm": 1.6} for p, d in prox] + \
          [{"fragment": "distal", "point_axe": r(p), "direction": r(d), "diametre_mm": 1.6} for p, d in dist]
@@ -109,7 +109,7 @@ def prescription(u, v, theta, kind, R=8.0, derotation=0.0):
         "plans_coupe": [{"point": r(p), "normale": r(n)} for p, n in plans],
         "correction": {"axe": r(k), "angle_deg": theta, "point": r(H), "derotation_deg": derotation,
                        "T_4x4": [r(l) for l in T]},
-        "broches_reduction": br, "broches": [br[0], br[2]],
+        "broches_reduction": br, "broches": [br[0], br[1]],
         "guide_reduction": {"broches_apres_correction": apres},
         "guide": {"face_appui": r(face), "axe_os": r(u), "axe_distal": r(v), "centre_section": r(A)},
     }
@@ -249,9 +249,9 @@ def test_synthetique():
                  f"ordre : {' puis '.join(C['ordre_retrait'])}")
         attendu = "distale" if kind == "fermeture" else "proximale"
         verifier(C["ordre_retrait"][0] == attendu, f"la moitié {attendu} sort en premier (elle s'éloigne de l'autre)")
-        verifier(abs(C["angle_paires_broches_deg"] - E7.angle_deg(-np.array(pr["guide"]["face_appui"]),
-                                                                   pr["broches_reduction"][2]["direction"])) < 0.01,
-                 f"angle entre les paires de broches = celui de la prescription ({C['angle_paires_broches_deg']}°)")
+        verifier(abs(C["angle_broches_deg"] - E7.angle_deg(-np.array(pr["guide"]["face_appui"]),
+                                                                   pr["broches_reduction"][1]["direction"])) < 0.01,
+                 f"angle entre les deux broches = celui de la prescription ({C['angle_broches_deg']}°)")
         verifier_fentes_et_trous(pr, dossier / "guide_coupe.stl", os_man)
         verifier_profondeur_et_chanfreins(pr, info, dossier / "guide_coupe.stl", os_man)
         verifier_reduction(info, dossier)

@@ -34,7 +34,7 @@ const S = {
   // (z, mm du CORA le long de l'os, + vers distal ; null = règle 1, ou règle 2 automatique si le CORA touche le cartilage),
   // profondeur de la charnière (y, mm de la corticale de la charnière, par type de coin), broches, chien en croissance,
   // inégalité de longueur (mm, + = membre opéré plus court que le membre opposé)
-  strat: { auto: true, decalage: null, charniere: { fermeture: CHARNIERE_RETRAIT, ouverture: CHARNIERE_RETRAIT }, broches: '2+2', croissance: false, inegalite: 0 },
+  strat: { auto: true, decalage: null, charniere: { fermeture: CHARNIERE_RETRAIT, ouverture: CHARNIERE_RETRAIT }, croissance: false, inegalite: 0 },
   guideParams: {},            // dimensions du guide générique changées pour ce cas (clé -> valeur) ; vide = valeurs par défaut
   preset: '',                 // préréglage clinique choisi
 };
@@ -68,7 +68,7 @@ const INTEGRE = window.parent !== window;
 
 // ------------------------------------------------------------ mise à jour --
 // cas et options de planification de la source courante
-const optsStrategie = () => ({ decalageCoupe: S.strat.decalage, charniere: { ...S.strat.charniere }, broches: S.strat.broches,
+const optsStrategie = () => ({ decalageCoupe: S.strat.decalage, charniere: { ...S.strat.charniere },
   croissance: S.strat.croissance, inegaliteLongueur: S.strat.inegalite, parametresGuide: { ...S.guideParams } });
 function casEtOptions() {
   if (S.source === 'fictif') { const c = casCourant(); return { cas: c, opts: { ...S.reglages[c.bone], ...optsStrategie() } }; }
@@ -632,10 +632,7 @@ function renderStrategie() {
     ? `≤ ${PONT_MAX} mm : pont d'os qui plie (charnière conservée). Au-delà : coin mixte, ostéotomie complète ; au centre, coin neutre (longueur conservée). Actuellement : ${O.coinMixte ? 'coin mixte' : O.charniereConservee ? 'charnière conservée' : 'ostéotomie complète'}, longueur ${O.deltaOperation >= 0 ? '+' : '−'}${fr(Math.abs(O.deltaOperation), 1)} mm.`
     : `Coin d'ouverture : la charnière reste au plus à ${CHARNIERE_OUVERTURE_MAX} mm de la corticale convexe (au-delà, la partie convexe devrait se chevaucher). Actuellement : ${O.charniereConservee ? 'charnière conservée' : 'ostéotomie complète'}, longueur +${fr(Math.abs(O.deltaOperation), 1)} mm.`);
   const broches = h('div', { class: 'case-group' }, h('span', { class: 'case-lbl' }, 'Broches de réduction'),
-    h('div', { class: 'seg coin', role: 'group', 'aria-label': 'Broches' }, Object.entries(CONFIG_BROCHES).map(([k, c]) => h('button', {
-      type: 'button', 'aria-pressed': String(Sg.broches === k), title: c.nom, onclick: () => { Sg.broches = k; replanStrat(); renderStrategie(); },
-    }, k === '2+2' ? '2 + 2' : k === '1+1' ? '1 + 1' : '1 + 2'))),
-    h('p', { class: 'strat-note' }, `${CONFIG_BROCHES[Sg.broches].nom}${O.placementBroches.ok ? '' : ' — placement incomplet, voir les alertes (étape 12)'}.`));
+    h('p', { class: 'strat-note' }, `${NOM_BROCHES}${O.placementBroches.ok ? '' : ' — placement incomplet, voir les alertes (étape 12)'}.`));
   const ineg = curseurStrat('s-ineg', 'Membre opéré plus court (+) ou plus long (−)', -20, 20, 1, Sg.inegalite,
     (x) => (x === 0 ? 'égal' : `${x > 0 ? '+' : '−'}${fr(Math.abs(x), 0)} mm`), (x) => { Sg.inegalite = x; replanStrat(); }, 'plus long', 'plus court');
   const croissance = h('label', { class: 'bascule' }, h('input', { type: 'checkbox', checked: Sg.croissance, onchange: (e) => { Sg.croissance = e.target.checked; replanStrat(); } }),

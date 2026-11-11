@@ -3,14 +3,14 @@ etape7_guide.py — guides imprimables à partir de la prescription CORA (format
 CT ou os fictif) : un guide de coupe et un guide de réduction.
 
 Rôle    : 1. GUIDE DE COUPE patient-spécifique : coque moulée sur l'os, fente(s) de scie dans le(s) plan(s) prescrit(s),
-             4 manchons de broches (2 par fragment). Il s'imprime d'une pièce, mais il est fait de deux moitiés
+             2 manchons de broches (1 par fragment). Il s'imprime d'une pièce, mais il est fait de deux moitiés
              (proximale, distale) reliées par 2 ponts sécables, aux extrémités de la 1re fente : après la coupe, on coupe
-             les ponts et chaque moitié glisse le long de SES deux broches, parallèles entre elles (les broches distales ne
-             sont pas parallèles aux proximales avant la correction). En fermeture, la 2e fente est une fente fermée de la
+             les ponts et chaque moitié glisse le long de SA broche (la broche distale n'est pas parallèle à la
+             proximale avant la correction). En fermeture, la 2e fente est une fente fermée de la
              moitié distale. Chaque fente est parallèle à la charnière : la profondeur de lame, du haut de la tour à la
              charnière (ou à la corticale opposée en coupe complète), est la même sur toute la fente ; elle est donnée
              dans le mode opératoire et sur le plan coté.
-          2. GUIDE DE RÉDUCTION séparé : barre à 4 manchons parallèles. Après la correction, les 4 broches sont
+          2. GUIDE DE RÉDUCTION séparé : barre à 2 manchons parallèles. Après la correction, les 2 broches sont
              parallèles ; on enfile la barre sur les broches jusqu'au contact de l'os : elle tient les fragments dans la
              position planifiée (6 degrés de liberté) pendant la fixation.
           3. Finitions : arêtes des tours arrondies, entrées chanfreinées (fentes, manchons).
@@ -632,8 +632,7 @@ def dans_secteur(pts, a, axe, c0, A):
 
 
 def lire_broches(pr):
-    """Broches de la prescription (v2.2 : 4 broches de réduction ; v2.1 : 2 broches), triées et nommées
-    P1, P2 (proximales, de la plus proche de l'ostéotomie à la plus éloignée), D1, D2 (distales)."""
+    """Broches de la prescription (une par fragment depuis le 11/11/2026), nommées P1 (proximale) et D1 (distale)."""
     src = pr.get("broches_reduction") or pr.get("broches") or []
     K = np.array(pr["guide"]["centre_section"], float)
     out = []
@@ -1333,8 +1332,8 @@ def broches_apres(pr, broches, T=None):
 
 
 def guide_reduction(pr, vc, fc, broches_c, journal=print, voisins_c=()):
-    """Guide de réduction : barre (enveloppe convexe des 4 broches, vue le long des broches, épaissie du rayon des
-    manchons) au-dessus de l'os corrigé et des os voisins corrigés, et 4 manchons parallèles avec butées sur l'os."""
+    """Guide de réduction : barre (enveloppe convexe des 2 broches, vue le long des broches, épaissie du rayon des
+    manchons) au-dessus de l'os corrigé et des os voisins corrigés, et 2 manchons parallèles avec butées sur l'os."""
     J, W, JV = P.GUIDE_JEU_MM, P.GUIDE_PAROI_MM, P.GUIDE_JEU_VOISIN_MM
     rh = (P.GUIDE_BROCHE_MM + P.GUIDE_JEU_BROCHE_MM) / 2
     Rs, k, alpha = rh + W, P.GUIDE_CONGE_MM, np.radians(P.GUIDE_DEPOUILLE_DEG)
@@ -1423,7 +1422,7 @@ def controles_coupe(pr, v, f, man_os, guide, moities, geo):
         heurt = balayage(m, autre, r) if nom == premiere and autre is not None else 0.0
         retrait[nom] = {"direction": [round(float(x), 4) for x in r], "points_testes": n, "points_bloques": touches,
                         "heurte_autre_moitie_mm3": round(heurt, 3), "libre": touches == 0 and heurt < FROTTEMENT_MM3}
-        # appui de la moitié seule (après la coupe des ponts, chaque moitié tient sur ses 2 broches) : surface au
+        # appui de la moitié seule (après la coupe des ponts, chaque moitié tient sur sa broche) : surface au
         # contact de l'os et couverture angulaire autour de l'os (une moitié posée sur une crête bascule)
         t_ = mv[mf]
         a_ = 0.5 * np.linalg.norm(np.cross(t_[:, 1] - t_[:, 0], t_[:, 2] - t_[:, 0]), axis=1)
@@ -1457,7 +1456,7 @@ def controles_coupe(pr, v, f, man_os, guide, moities, geo):
         hmax = max(t1["sec"]["hmax"], t2["sec"]["hmax"])
         ang = np.radians(angle_deg(t1["n"], t2["n"]))
         epaisseur_coin = round(float(2 * hmax * np.tan(ang / 2) - geo["ws"]), 2)
-    # broches : écart aux plans de coupe, aux extrémités de l'os, angle entre les paires
+    # broches : écart aux plans de coupe, aux extrémités de l'os, angle entre la proximale et la distale
     br = []
     s_u = (v - geo["K"]) @ geo["u"]
     s_v = (v - geo["K"]) @ geo["vd"]
@@ -1498,9 +1497,7 @@ def controles_coupe(pr, v, f, man_os, guide, moities, geo):
         "retrait": retrait, "appui_moities": appui_m, "fentes": fentes, "epaisseur_entre_fentes_mm": epaisseur_coin,
         "bras_ajoutes": geo["bras"], "manchons_isoles": geo["manchons_isoles"], "ilots_coque_ecartes_mm3": geo["ilots"],
         "broches": br,
-        "angle_paires_broches_deg": round(angle_deg(np.mean(dp, 0), np.mean(dd, 0)), 3),
-        "parallelisme_paire_proximale_deg": round(max(angle_deg(dp[0], x) for x in dp), 4),
-        "parallelisme_paire_distale_deg": round(max(angle_deg(dd[0], x) for x in dd), 4),
+        "angle_broches_deg": round(angle_deg(np.mean(dp, 0), np.mean(dd, 0)), 3),
         "inclinaison_max_broche_deg": round(float(np.degrees(np.arctan(P.GUIDE_JEU_BROCHE_MM / (P.GUIDE_EPAISSEUR_MM + P.GUIDE_GUIDAGE_MM)))), 2),
         "_moities": (m_prox, m_dist),
     }
@@ -1743,18 +1740,13 @@ def dimensions_guide(pr, geo, cc, guide, red=None, gred=None, broches_c=()):
         broches.append({"nom": x["nom"], "fragment": x["fragment"],
                         "distance_coupe_mm": round(min(abs(float((x["a"] - p) @ n)) for p, n in plans), 1),
                         "hauteur_manchon_mm": round(float(x["t_haut"] - x["t_os"]), 1)})
-    ecarts = {}
-    for fr_ in ("proximal", "distal"):
-        g_ = [x for x in geo["broches"] if x["fragment"] == fr_]
-        if len(g_) >= 2:
-            ecarts[fr_] = round(float(np.linalg.norm(g_[0]["a"] - g_[1]["a"])), 1)
     s_haut, s_bas = geo["etendue_coque"]
     d = {
         "parametres": valeurs_parametres(),
         "fentes": fentes,
         "angle_entre_fentes_deg": round(angle_deg(plans[0][1], plans[-1][1]), 2) if len(plans) == 2 else 0.0,
         "manchon_diametre_exterieur_mm": round(2 * geo["Rs"], 2), "trou_broche_mm": round(2 * geo["rh"], 2),
-        "broches": broches, "ecart_broches_mm": ecarts,
+        "broches": broches,
         "coque": {"longueur_mm": round(s_bas - s_haut, 1), "epaisseur_mm": round(geo["E"], 2), "jeu_mm": round(geo["J"], 2),
                   "secteur_deg": round(float(P.GUIDE_SECTEUR_DEG), 1)},
         "ponts": {"nombre": 2, "section_mm": [round(float(P.GUIDE_PAROI_MM), 2), round(float(geo["Hp"]), 2)]},

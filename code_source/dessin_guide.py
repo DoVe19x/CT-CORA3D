@@ -3,7 +3,7 @@ dessin_guide.py — plans 2D du guide (CT-CORA3D, étape 7), présentés comme d
 
 Rôle    : 1. plan GÉNÉRIQUE (plan_generique.svg / .pdf / .png) : le guide en schéma de principe (coupe dans le plan
              d'une fente, vue de la face d'appui, coupe d'un manchon), ses cotes en SYMBOLES (j, e, g, p, s, js, Øb, jb,
-             m, hp, α, eb, kd) et le tableau des paramètres (valeur par défaut, valeur de ce cas) : c'est le « modèle
+             m, hp, α, kd) et le tableau des paramètres (valeur par défaut, valeur de ce cas) : c'est le « modèle
              paramétrique » du guide, comme une pièce pilotée par une table.
           2. plan COTÉ du cas (plan_guide.svg / .pdf / .png) : le guide construit pour CET os, en projections
              orthogonales (vue de face A depuis la face d'appui, vue de gauche B, vue de dessus C, coupe E-E par les
@@ -53,7 +53,7 @@ CACHE = (0, (3 * PT, 1.2 * PT))                                             # tr
 LOGO = Path(__file__).resolve().parent / "logo_ecam.png"
 ECOLE = ("ECAM Brussels Engineering School", "Master en ingénierie biomédicale")
 PROJET = "Projet PMD2 · CT-CORA3D"     # projet de groupe : pas de nom d'auteur sur les plans
-PLANIF_DEFAUT = {"ecart_broches_mm": 10.0, "facteur_distance_broches": 1.2}   # planification (cœur JavaScript)
+PLANIF_DEFAUT = {"facteur_distance_broches": 1.2}   # planification (cœur JavaScript)
 STYLE = {"font.family": "DejaVu Sans", "font.size": 7, "svg.fonttype": "none", "pdf.fonttype": 42,
          "lines.scale_dashes": False}
 
@@ -674,7 +674,6 @@ SYMBOLES = [   # (symbole, clé, description courte, unité)
     ("jb", "jeu_broche_mm", "jeu du manchon", "mm"),
     ("hp", "pont_mm", "hauteur des ponts sécables", "mm"),
     ("c", "chanfrein_mm", "chanfreins d'entrée (fentes, manchons)", "mm"),
-    ("eb", "ecart_broches_mm", "écart entre 2 broches d'un fragment (planif.)", "mm"),
     ("kd", "facteur_distance_broches", "distance broche–coupe / largeur de l'os (planif.)", "×"),
     ("jv", "jeu_voisin_mm", "distance minimale aux os voisins", "mm"),
     ("mc", "marge_cartilage_mm", "écart supplémentaire au cartilage", "mm"),
@@ -763,16 +762,15 @@ def plan_generique(base, valeurs_cas, defauts, dims=None, titre_cas="", pr=None)
     ax.add_patch(Arc((-Wg, 1.2), 26, 26, theta1=-np.degrees(th), theta2=0, color=NOIR, lw=TRAIT_FIN))
     ax.text(-Wg + 14.0, -1.9, "θ", fontsize=8.5)
     rs, rh = 2.9, 0.9
-    for (x, y) in ((0, 14), (0, 25), (0, -16), (0, -27)):
+    for (x, y) in ((0, 14), (0, -16)):
         ax.add_patch(Circle((x, y), rs, fc="white", ec=NOIR, lw=TRAIT_FORT, zorder=4))
         ax.add_patch(Circle((x, y), rh, fc="white", ec=NOIR, lw=TRAIT_FORT, zorder=5))
         _ligne(ax, (x - rs - 1.5, y), (x + rs + 1.5, y), AXE, zorder=6)
     _ligne(ax, (0, -53), (0, 47), AXE, zorder=6)
     _cote(ax, (-rs, 1.2), (-rs, 14), (-14, 0), "d = kd × larg.", fond_blanc=True)
-    _cote(ax, (-rs, 14), (-rs, 25), (-14, 0), "eb", fond_blanc=True)
-    _cote(ax, (-rs, 25), (-rs, 44), (-14, 0), "m", fond_blanc=True)
-    _cote(ax, (-rs, -27), (-rs, -50), (-14, 0), "m", fond_blanc=True)
-    _note(ax, (rs * 0.7, 25 + rs * 0.7), "manchon Ø(Øb + jb + 2p)\ntrou Ø(Øb + jb)", (6, 9), taille=6.4)
+    _cote(ax, (-rs, 14), (-rs, 44), (-14, 0), "m", fond_blanc=True)
+    _cote(ax, (-rs, -16), (-rs, -50), (-14, 0), "m", fond_blanc=True)
+    _note(ax, (rs * 0.7, 14 + rs * 0.7), "manchon Ø(Øb + jb + 2p)\ntrou Ø(Øb + jb)", (6, 9), taille=6.4)
     ax.text(-Wg + 1.2, 40, "moitié proximale (1)", fontsize=6.4, zorder=6)
     ax.text(-Wg + 1.2, -47.5, "moitié distale (2)", fontsize=6.4, zorder=6)
     _cote(ax, (-Wg, -50), (Wg, -50), (0, -8), "= os + coque (± α)", taille=6.6)

@@ -132,7 +132,7 @@ function clearFragments() {
   FRAG.key = null; FRAG.gapLoops = null; FRAG.gap = null; FRAG.raw = null;
 }
 
-// Broches de réduction (Kirschner) : deux par fragment (système de réduction de CT-CORA3D ; une par fragment dans
+// Broches de réduction (Kirschner) : une par fragment (système de réduction de CT-CORA3D ; une par fragment dans
 // les prescriptions plus anciennes). Les distales sont forées avec l'inverse de la correction : toutes deviennent
 // parallèles quand la correction (angle + dérotation) est faite : le guide de réduction s'enfile alors sur elles.
 function buildPins(P, O) {

@@ -7,7 +7,7 @@
 //   R2  charnière conservée => guide sur la face du coin, règle 1, sans dérotation, pont ≤ 3 mm ;
 //   R3  coin réalisable => face d'appui à ≤ 60° de la face du coin ; sinon abord non usuel, guide sur la face du coin ;
 //   R4  le coin recommandé est réalisable dès qu'un des deux l'est ;
-//   R5  broches : nombre de la configuration (4, 2 ou 3) ; en 1+2, les 2 distales côte à côte au même niveau ;
+//   R5  broches : une proximale et une distale ;
 //   R6  broches parallèles après la correction ; R7 angle et translation résiduels nuls ;
 //   R8  niveau du trait et profondeur de charnière demandés respectés ; R9 angles après correction = os sain.
 // Écrit <sortie>/strategie.jsonl et <sortie>/rapport_strategie.md ; avec --exporter, prépare aussi un sous-ensemble de
@@ -52,12 +52,10 @@ const VARIANTES = [
   { nom: 'trait −15 mm', decalageCoupe: -15 }, { nom: 'trait +15 mm', decalageCoupe: 15 }, { nom: 'chien en croissance', croissance: true },
 ];
 for (const p of C.PRESETS_DEFORMITE) {
-  for (const broches of ['2+2', '1+1', '1+2']) {
-    for (const v of VARIANTES) {
-      cas.push({ serie: 'préréglages', preset: p.id, bone: p.os, frontal: p.frontal, sagittal: p.sagittal, thetaF: p.thetaF, thetaS: p.thetaS,
-        niveau: p.niveau, torsion: p.torsion || 0, broches, variante: v.nom,
-        opts: { charniere: v.charniere, decalageCoupe: v.decalageCoupe, croissance: v.croissance } });
-    }
+  for (const v of VARIANTES) {
+    cas.push({ serie: 'préréglages', preset: p.id, bone: p.os, frontal: p.frontal, sagittal: p.sagittal, thetaF: p.thetaF, thetaS: p.thetaS,
+      niveau: p.niveau, torsion: p.torsion || 0, variante: v.nom,
+      opts: { charniere: v.charniere, decalageCoupe: v.decalageCoupe, croissance: v.croissance } });
   }
 }
 for (let i = 0; i < +NB; i++) {
@@ -66,7 +64,7 @@ for (let i = 0; i < +NB; i++) {
   let F = Math.round(tire(0, 30)), S = sagittal === 'aucun' ? 0 : Math.round(tire(3, 25));
   if (F < 5 && S < 5) F = 5 + Math.round(tire(0, 20));
   const c = { serie: 'aléatoire', bone, frontal: choisis(C.FRONTAL), sagittal, thetaF: F, thetaS: S || 10,
-    torsion: Math.round(tire(-30, 30)), broches: choisis(['2+2', '1+1', '1+2']), variante: 'aléatoire', opts: {} };
+    torsion: Math.round(tire(-30, 30)), variante: 'aléatoire', opts: {} };
   c.niveau = +tire(R.niveaux[0], R.niveaux[1]).toFixed(3);
   c.opts = { charniere: rng() < 0.3 ? +tire(0.5, 8).toFixed(1) : undefined, decalageCoupe: rng() < 0.25 ? Math.round(tire(-20, 20)) : undefined, croissance: rng() < 0.15 };
   cas.push(c);
@@ -80,14 +78,8 @@ function verifierCoin(P, O, kind, c, E) {
   if (O.charniereConservee && (O.ecartFace > 1e-6 || O.regle !== 1 || Math.abs(O.derotation) >= C.DEROTATION_MIN || O.h > C.PONT_MAX + 1e-9)) E.push(`R2 ${tag} : charnière conservée incohérente`);
   if (O.faisable && O.ecartFace > C.ANGLE_ENTREE_COIN_MAX + 1e-6) E.push(`R3 ${tag} : face d'appui à ${O.ecartFace.toFixed(0)}° de la face du coin`);
   if (!O.faisable && (!O.abordNonUsuel || C.V.angle(O.face, O.faceCoin) > 1e-3)) E.push(`R3 ${tag} : coin non réalisable mais guide hors de la face du coin`);
-  const cfg = C.CONFIG_BROCHES[c.broches];
   const nP = O.brochesReduction.filter((b) => b.fragment === 'proximal').length, nD = O.brochesReduction.filter((b) => b.fragment === 'distal').length;
-  if (nP !== cfg.prox || nD !== cfg.dist) E.push(`R5 ${tag} : ${nP}+${nD} broches au lieu de ${cfg.prox}+${cfg.dist}`);
-  if (c.broches === '1+2' && nD === 2) {
-    const [a, b] = O.brochesReduction.filter((x) => x.fragment === 'distal');
-    const ecartAxial = Math.abs(C.V.dot(C.V.sub(a.point, b.point), P.axeDist.d));
-    if (ecartAxial > 0.5) E.push(`R5 ${tag} : broches distales pas au même niveau (${ecartAxial.toFixed(2)} mm le long de l'os)`);
-  }
+  if (nP !== 1 || nD !== 1) E.push(`R5 ${tag} : ${nP}+${nD} broches au lieu de 1+1`);
   const dirs = O.brochesApres.map((b) => C.V.norm(b.dir));
   const par = Math.max(...dirs.map((x) => C.V.angle(x, dirs[0])));
   if (par > 0.01) E.push(`R6 ${tag} : broches non parallèles après correction (${par.toFixed(4)}°)`);
@@ -108,12 +100,12 @@ const lignes = [];
 const t0 = Date.now();
 const exportes = [];
 cas.forEach((c, i) => {
-  const id = `${String(i + 1).padStart(4, '0')}_${c.bone}_${c.preset || c.serie.replace(/[ ,]+/g, '-')}_${c.broches}_${c.variante.replace(/[ ,]+/g, '-')}`;
+  const id = `${String(i + 1).padStart(4, '0')}_${c.bone}_${c.preset || c.serie.replace(/[ ,]+/g, '-')}_${c.variante.replace(/[ ,]+/g, '-')}`;
   const E = [], A = [], M = {};
   let P;
   try {
     P = C.planifier(MODELE, C.casDe(`${c.bone}-${c.frontal}-${c.sagittal}`), { thetaF: c.thetaF, thetaS: c.thetaS, niveau: c.niveau, torsion: c.torsion,
-      reference: 'sain', broches: c.broches, ...Object.fromEntries(Object.entries(c.opts).filter(([, x]) => x !== undefined)) });
+      reference: 'sain', ...Object.fromEntries(Object.entries(c.opts).filter(([, x]) => x !== undefined)) });
   } catch (e) {
     lignes.push({ id, cas: c, erreurs: [`exception : ${e.message}`], avertissements: [], mesures: {} });
     return;
@@ -138,8 +130,8 @@ cas.forEach((c, i) => {
   for (const k of kinds) for (const x of P.osteo[k].contraintes || []) if (x.niveau === 'bloquant') A.push(`contrainte ${k} : ${x.id}`);
   lignes.push({ id, cas: c, erreurs: E, avertissements: A, mesures: M });
   // sous-ensemble pour la construction des guides
-  if (EXPORTER && (c.serie === 'préréglages' && (c.variante === 'défaut' || (c.broches === '2+2' && ['charnière 6 mm', 'trait −15 mm'].includes(c.variante))))) {
-    const kinds = [P.recommandation.kind, ...(c.broches === '2+2' && c.variante === 'défaut' ? [P.recommandation.kind === 'fermeture' ? 'ouverture' : 'fermeture'] : [])];
+  if (EXPORTER && (c.serie === 'préréglages' && (c.variante === 'défaut' || ['charnière 6 mm', 'trait −15 mm'].includes(c.variante)))) {
+    const kinds = [P.recommandation.kind, ...(c.variante === 'défaut' ? [P.recommandation.kind === 'fermeture' ? 'ouverture' : 'fermeture'] : [])];
     for (const kind of kinds) {
       if (!P.osteo[kind]) continue;
       const d = path.join(OUT, 'guides', `${id}_${kind}`);
@@ -153,7 +145,7 @@ cas.forEach((c, i) => {
       for (const [nom, pos] of Object.entries(voisins)) { ecrireBin(path.join(d, `voisin_${nom}.bin`), pos, bones[nom].idx); fs.writeFileSync(path.join(d, `cartilage_${nom}.u8`), bones[nom].cart); }
       const O = P.osteo[kind], v = P.validation;
       const plan = { id: `${id}_${kind}`, bone: c.bone, frontal: c.frontal, sagittal: c.sagittal, F: c.thetaF, S: c.sagittal === 'aucun' ? 0 : c.thetaS, niveau: c.niveau,
-        torsion: c.torsion, kind, serie: c.serie, preset: c.preset, broches: c.broches, variante: c.variante, recommande: P.recommandation.kind,
+        torsion: c.torsion, kind, serie: c.serie, preset: c.preset, variante: c.variante, recommande: P.recommandation.kind,
         osteoPossible: true, theta: r6(P.theta), thetaVrai: r6(v.thetaVrai), ecartTheta: r6(v.ecartTheta),
         section: { largeur: r6(P.section.largeur), cvx: r6(P.section.cvx), ccv: r6(P.section.ccv), profondeur: r6(P.section.profondeur) } };
       if (O) {
@@ -184,7 +176,7 @@ R.push(`${n} cas (${series.map(([k, v]) => `${v} ${k}`).join(', ')}), en ${duree
 R.push('Pour chaque cas, les deux coins (fermeture et ouverture) sont planifiés et contrôlés.', '');
 R.push('| Règle | Contrôle | Erreurs |', '|---|---|---|');
 const TXT = { R1: 'guide jamais du côté de la charnière', R2: 'charnière conservée cohérente', R3: 'face d\'appui à ≤ 60° de la face du coin, sinon abord non usuel signalé',
-  R4: 'coin recommandé réalisable', R5: 'nombre et disposition des broches (1+2 : distales au même niveau)', R6: 'broches parallèles après correction',
+  R4: 'coin recommandé réalisable', R5: 'une broche proximale et une broche distale', R6: 'broches parallèles après correction',
   R7: 'angle et translation résiduels nuls', R8: 'niveau du trait et profondeur de charnière respectés', R9: 'angles après correction = os sain' };
 const errs = compte((l) => l.erreurs.map(regle));
 for (const r of Object.keys(TXT)) R.push(`| ${r} | ${TXT[r]} | ${errs.find(([k]) => k === r)?.[1] || 0} |`);
