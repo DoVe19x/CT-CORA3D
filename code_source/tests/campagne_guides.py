@@ -205,7 +205,7 @@ def controler(dossier, garder=False):
         couverture = float(np.percentile(ang, 98) - np.percentile(ang, 2)) if len(q) > 10 else 0.0
         M[f"appui_{nom}"] = round(aire, 1)
         M[f"couverture_{nom}"] = round(couverture, 1)
-        # après la coupe des ponts, chaque moitié est tenue par ses 2 broches parallèles : un faible appui propre n'est
+        # après la coupe des ponts, chaque moitié est tenue par sa broche : un faible appui propre n'est
         # qu'un avertissement ; aucune surface au contact de l'os est une erreur
         if aire < 30:
             E.append(f"appui : moitié {nom} sans contact avec l'os ({aire:.0f} mm²)")
@@ -354,14 +354,12 @@ def planification(dossier):
         for a in x.get("alertes") or []:
             if a.startswith("face du coin"):
                 abords[a.split("(")[1].split(")")[0]] += 1
-            elif "décalées" in a:
-                autres["paire de broches décalée de la ligne centrale"] += 1
+            elif "décalée" in a:
+                autres["broche décalée de la ligne centrale"] += 1
             elif "tournées" in a:
                 autres["broches tournées autour de l'os"] += 1
-            elif "côte à côte" in a:
-                autres["broches côte à côte (fragment court)"] += 1
-            elif "raccourcis" in a:
-                autres["manchons distaux raccourcis"] += 1
+            elif "raccourci" in a:
+                autres["manchon distal raccourci"] += 1
             elif "trop fin" in a:
                 autres["coin de fermeture trop fin pour deux fentes (ouverture conseillée)"] += 1
             elif "contact osseux" in a:

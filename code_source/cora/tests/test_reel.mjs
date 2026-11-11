@@ -93,7 +93,7 @@ for (const serie of series) {
         ok(Math.abs(O.torsionApres - P0.torsion.normale.m) < 0.1 && O.residuel < 0.01 && O.decalage < 0.5,
           `radius : torsion ${P0.torsion.avant.toFixed(1)}° → ${O.torsionApres.toFixed(2)}° (dérotation ${O.derotation.toFixed(1)}°), résiduel ${O.residuel.toFixed(4)}°, translation ${O.decalage.toFixed(3)} mm`);
         const dirs = O.brochesApres.map((bb) => V3n(bb.dir));
-        ok(Math.max(...dirs.map((d) => angDeg(d, dirs[0]))) < 1e-6, 'radius : les 4 broches parallèles après correction');
+        ok(Math.max(...dirs.map((d) => angDeg(d, dirs[0]))) < 1e-6, 'radius : les 2 broches parallèles après correction');
       }
     }
     console.log(`   θ entre les axes ${P0.theta.toFixed(2)}° (F ${P0.Fm.toFixed(2)}°, S ${P0.Sm.toFixed(2)}°), CORA ${P0.coraDansOs ? 'dans l\'os' : 'hors de l\'os'}, ostéotomie ${P0.osteoPossible ? 'calculable' : 'non calculée'}`);
@@ -139,23 +139,23 @@ for (const serie of series) {
     ok(pireTheta < 0.05, `θ retrouvé (réf. os avant déformité) : écart max ${pireTheta.toFixed(4)}°`);
     ok(pirePost < 0.1, `angles après correction = angles avant déformité : écart max ${pirePost.toFixed(4)}°`);
     ok(pireRes < 0.01 && pireTrans < 0.5, `angle résiduel max ${pireRes.toFixed(4)}°, translation résiduelle max ${pireTrans.toFixed(3)} mm`);
-    ok(pireBroches < 0.01, `broches : les 4 parallèles après correction (écart max ${pireBroches.toFixed(4)}°)`);
+    ok(pireBroches < 0.01, `broches : les 2 parallèles après correction (écart max ${pireBroches.toFixed(4)}°)`);
     console.log(`   réf. valeurs normales : écart max à θ vrai ${pireNorm.toFixed(2)}° (écart naturel de cet os aux normes)` +
       (bone === 'femur' ? ` ; niveau du CORA − niveau de l'apex : max ${pireNiveau.toFixed(1)} mm` : ''));
     ok(pireNorm < 10, `réf. valeurs normales : θ retrouvé à moins de 10°`);
 
     // 5. torsion de test (15° externe) + varus + procurvatum : la dérotation ramène la torsion de l'os sain, sans angle
-    //    ni translation résiduels ; les 4 broches de réduction sont parallèles après correction (et pas avant)
+    //    ni translation résiduels ; les 2 broches de réduction sont parallèles après correction (et pas avant)
     for (const kind of ['fermeture', 'ouverture']) {
       const Pt = C.planifier(model, C.casDe(`${bone}-varus-procurvatum`), { reference: 'sain', torsion: 15 });
       const O = Pt.osteo[kind];
       const dirs = O.brochesApres.map((bb) => V3n(bb.dir));
       const parall = Math.max(...dirs.map((d) => angDeg(d, dirs[0])));
       const avant = O.brochesReduction.map((bb) => V3n(bb.dir));
-      ok(Math.abs(O.torsionApres - Pt.torsion.sain) < 0.1 && O.residuel < 0.01 && O.decalage < 0.5 && parall < 1e-6 && angDeg(avant[0], avant[2]) > 5,
+      ok(Math.abs(O.torsionApres - Pt.torsion.sain) < 0.1 && O.residuel < 0.01 && O.decalage < 0.5 && parall < 1e-6 && angDeg(avant[0], avant[1]) > 5,
         `${kind}, torsion de test 15° : torsion ${Pt.torsion.avant.toFixed(1)}° → ${O.torsionApres.toFixed(2)}° (os sain ${Pt.torsion.sain.toFixed(2)}°), dérotation ${O.derotation.toFixed(2)}°, résiduel ${O.residuel.toFixed(4)}°, broches parallèles à ${parall.toExponential(1)}°`);
       const pr = C.prescription(Pt, kind);
-      if (!(pr.broches_reduction.length === 4 && pr.guide_reduction.broches_apres_correction.length === 4 && Math.abs(pr.correction.derotation_deg - O.derotation) < 0.01)) ok(false, 'prescription : système de réduction incomplet');
+      if (!(pr.broches_reduction.length === 2 && pr.guide_reduction.broches_apres_correction.length === 2 && Math.abs(pr.correction.derotation_deg - O.derotation) < 0.01)) ok(false, 'prescription : système de réduction incomplet');
     }
   }
 }

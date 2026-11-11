@@ -64,13 +64,13 @@ function lisezMoiExport(P, kind, presc, voisins = [], cartilage = false) {
     `Charnière  : corticale ${sens3(kind === 'fermeture' ? P.bis.ccv : P.bis.c, true)}, orientation ψ = ${fr(P.psi, 1)}° (0° = crânio-caudale)`,
     `Coupe      : ${O.plans.length} fente(s), profondeur ${fr(O.D, 1)} mm, ${kind === 'fermeture' ? 'base du coin' : 'ouverture'} ${fr(O.base, 2)} mm`,
     `Torsion    : ${Math.abs(O.derotation) >= DEROTATION_MIN ? `dérotation de ${fr(O.derotation, 1)}° (${fr(P.torsion.avant, 1)}° -> ${fr(O.torsionApres, 1)}°)` : `non corrigée (${fr(P.torsion.avant, 1)}°)`}`,
-    `Broches    : ${(O.brochesReduction || O.broches).length} × Ø ${fr(INSTRUMENT.broche)} mm (${(CONFIG_BROCHES[O.configBroches] || CONFIG_BROCHES['2+2']).nom}), ${fr(O.angleBroches, 2)}° entre les fragments (toutes parallèles après correction)`,
+    `Broches    : ${(O.brochesReduction || O.broches).length} × Ø ${fr(INSTRUMENT.broche)} mm (${NOM_BROCHES}), ${fr(O.angleBroches, 2)}° entre les fragments (toutes parallèles après correction)`,
     `Stratégie  : face d'appui ${nomDirection(O.face)}${O.abordNonUsuel ? ' (abord non usuel)' : ` (abord ${O.abord})`}, charnière à ${fr(O.h, 1)} mm, trait ${Math.abs(O.z) < 0.5 ? 'au CORA (règle 1)' : `à ${fr(O.z, 0)} mm du CORA (règle 2)`}`,
   ];
   if (R && !P.D && !P.anomalies.length) lignes.push('', 'ATTENTION : les angles articulaires de cet os sont dans les normes ; aucune correction n\'est indiquée. Cet export illustre la méthode, sans indication chirurgicale.');
   lignes.push('',
     'Fichiers',
-    `  prescription.json        contrat partie 1 -> partie 2 (format v2.2 : dérotation et 4 broches de réduction)`,
+    `  prescription.json        contrat partie 1 -> partie 2 (format v2.2 : dérotation et 2 broches de réduction)`,
     `  ${fos.padEnd(24)} os planifié (mm ; X latéral, Y proximal, Z caudal${R && R.miroir ? ' ; membre gauche mis en miroir' : ''})`,
     `  ${(P.bone + '_planifie.bin').padEnd(24)} même os, format de l'application (ordre des sommets conservé) : entrée de etape7_guide.py`,
     `  ${P.bone}_corrige_prevu.stl   os après la correction simulée (contrôle visuel)`);

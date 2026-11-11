@@ -173,8 +173,6 @@ export const INSTRUMENT = {
   lame: 0.6, jeuFente: 0.2,             // mm : épaisseur de lame (BP : 0,5–1 mm) et jeu de la fente
   broche: 1.6, jeuBroche: 0.2,          // mm : broche de Kirschner et jeu du manchon
   facteurBroches: 1.2,                  // distance broche–coupe préférée = 1,2 × largeur locale de l'os (si la place le permet)
-  ecartBroches: 10,                     // mm entre les deux broches d'un même fragment (guide de réduction)
-  ecartBrochesMin: 6.5,                 // mm : écart minimal (manchons Ø 5,8 mm accolés) pour un fragment court
   paroi: 2.0,                           // mm : parois des manchons et des tours de fente du guide (etape7_guide.py)
   jeuGuide: 0.3, coque: 3.0, guidage: 10.0,   // mm : jeu os-guide, épaisseur de coque, hauteur de guidage (parametres.py)
 };
@@ -202,7 +200,6 @@ export const PARAMS_GUIDE = [
   { cle: 'jeu_broche_mm', sym: 'jb', nom: 'Jeu du manchon', def: 0.2, min: 0.05, max: 0.6, pas: 0.05, unite: 'mm', groupe: 'Fentes et manchons', inst: 'jeuBroche' },
   { cle: 'pont_mm', sym: 'hp', nom: 'Hauteur des ponts sécables', def: 5, min: 2, max: 10, pas: 0.5, unite: 'mm', groupe: 'Fentes et manchons' },
   { cle: 'chanfrein_mm', sym: 'c', nom: 'Chanfreins d\'entrée (fentes, manchons)', def: 0.5, min: 0, max: 1.5, pas: 0.1, unite: 'mm', groupe: 'Fentes et manchons' },
-  { cle: 'ecart_broches_mm', sym: 'eb', nom: 'Écart préféré entre deux broches d\'un fragment', def: 10, min: 6.5, max: 20, pas: 0.5, unite: 'mm', groupe: 'Broches (planification)', plan: true, inst: 'ecartBroches' },
   { cle: 'facteur_distance_broches', sym: 'kd', nom: 'Distance broche–coupe préférée (× largeur de l\'os)', def: 1.2, min: 0.5, max: 3, pas: 0.1, unite: '×', groupe: 'Broches (planification)', plan: true, inst: 'facteurBroches' },
   { cle: 'jeu_voisin_mm', sym: 'jv', nom: 'Distance minimale aux os voisins', def: 1, min: 0.5, max: 4, pas: 0.5, unite: 'mm', groupe: 'Voisins et cartilage' },
   { cle: 'marge_cartilage_mm', sym: 'mc', nom: 'Écart supplémentaire de la coque au cartilage', def: 1, min: 0.5, max: 5, pas: 0.5, unite: 'mm', groupe: 'Voisins et cartilage' },
@@ -964,27 +961,18 @@ function manchonLibre(ev, d, tours, hauteur) {
   }
   return true;
 }
-// Configurations de broches de réduction : nombre de broches par fragment et disposition imposée.
-//   2+2 : 2 par fragment (le guide de réduction bloque les 6 degrés de liberté de chaque fragment) ;
-//   1+1 : 1 par fragment (un fragment peut tourner autour de sa propre broche : seuls les manchons du guide de
-//         réduction, au contact de l'os, s'y opposent) ;
-//   1+2 : 1 proximale (fragment long, tenu par le membre) + 2 distales côte à côte, au même niveau (« horizontales »).
-export const CONFIG_BROCHES = {
-  '2+2': { prox: 2, dist: 2, nom: '2 par fragment (4 broches)' },
-  '1+1': { prox: 1, dist: 1, nom: '1 par fragment (2 broches)' },
-  '1+2': { prox: 1, dist: 2, dispDist: 'transversale', nom: '1 proximale + 2 distales côte à côte (3 broches)' },
-};
-// Place les broches de réduction : 1 ou 2 par fragment (CONFIG_BROCHES), à une distance e de la coupe le long de l'os
-// (préférée : 1,2 × largeur, sinon plus près, jamais contre la tour de fente). Deux broches d'un même fragment : l'une
-// derrière l'autre (écart 10, 8 puis 6,5 mm) ou, si le fragment est court (ou si la configuration l'impose), côte à côte
-// au même niveau (écart 6,5 à 9 mm) ; le groupe est centré sur la ligne centrale du fragment, ou décalé de 2 à 4 mm (au
+// Broches de réduction : UNE par fragment (une proximale, une distale), choix du projet depuis le 11/11/2026.
+// Un fragment peut tourner autour de sa propre broche : seuls les manchons du guide de réduction, au contact de l'os,
+// s'y opposent.
+export const NOM_BROCHES = '1 par fragment (2 broches)';
+// Place les deux broches de réduction, chacune à une distance e de la coupe le long de l'os (préférée : 1,2 × largeur,
+// sinon plus près, jamais contre la tour de fente), sur la ligne centrale du fragment, ou décalée de 2 à 4 mm (au
 // plus 20 % de la largeur) en dernier recours, par exemple pour s'écarter de la trochlée sur un fragment distal court.
 // Direction : vers la face d'appui, tournée autour de l'os de β (0, ±5°… ±45°) pour éviter le cartilage et les os
 // voisins. Les broches distales sont forées avec l'inverse de la correction : toutes sont parallèles après la
 // correction. Chaque position est évaluée une seule fois (cache).
 function placerBroches(g) {
   const { u, face, Tinv, largeur } = g;
-  const cfg = g.config || CONFIG_BROCHES['2+2'];
   // direction des broches proximales : vers l'os depuis la face d'appui, tournée de β autour de l'os, puis inclinée de γ
   // le long de l'os (γ > 0 : pointe vers distal), seulement si le retrait du guide l'exige
   const dirProx = (beta, gamma = 0) => {
@@ -995,13 +983,6 @@ function placerBroches(g) {
   const es = [];
   for (let e = ePref; e >= 3; e -= 1) es.push(e);
   for (let e = ePref + 2; e <= ePref + 20; e += 2) es.push(e);
-  // dispositions essayées pour n broches dans un fragment ; « imposee » : seulement côte à côte (configuration 1+2)
-  const dispositionsPour = (n, imposee) => {
-    if (n === 1) return [{ type: 'unique', ecart: 0 }];
-    const axiales = [INSTRUMENT.ecartBroches, 8, INSTRUMENT.ecartBrochesMin].map((ecart) => ({ type: 'axiale', ecart }));
-    const transversales = [INSTRUMENT.ecartBrochesMin, 7.5, 9].map((ecart) => ({ type: 'transversale', ecart, imposee: imposee === 'transversale' }));
-    return imposee === 'transversale' ? transversales : imposee === 'axiale' ? axiales : [...axiales, ...transversales];
-  };
   const decalages = [0, 2, -2, 4, -4].filter((x) => Math.abs(x) <= 0.2 * largeur);
   const cache = new Map();
   const candidat = (frag, orient, dd, t, e, x) => {
@@ -1017,30 +998,21 @@ function placerBroches(g) {
   };
   const paire = (frag, orient, d, hauteurManchon) => {
     let meilleur = null;
-    const n = frag === 'proximal' ? cfg.prox : cfg.dist;
-    const dispositions = dispositionsPour(n, frag === 'proximal' ? cfg.dispProx : cfg.dispDist);
     const dd = frag === 'proximal' ? d : M3.mv(Tinv.R, d);
     const t = V.norm(V.cross(dd, frag === 'proximal' ? u : g.v));         // ⊥ à la broche et à l'os
-    for (const [iDisp, disp] of dispositions.entries()) {
-      // côte à côte plus large que 60 % de l'os : seulement si la configuration l'impose (et alors l'écart le plus petit)
-      if (disp.type === 'transversale' && disp.ecart > 0.6 * largeur && !(disp.imposee && iDisp === 0)) continue;
-      for (const x of decalages) {
-        for (const e of es) {
-          const cs = disp.type === 'unique' ? [candidat(frag, orient, dd, t, e, x)]
-            : disp.type === 'axiale' ? [candidat(frag, orient, dd, t, e, x), candidat(frag, orient, dd, t, e + disp.ecart, x)]
-              : [candidat(frag, orient, dd, t, e, x + disp.ecart / 2), candidat(frag, orient, dd, t, e, x - disp.ecart / 2)];
-          const ev = cs.map((c) => (c.ev.ok && !manchonLibre(c.ev, dd, g.tours, hauteurManchon) ? { ok: false, raison: 'manchon contre la tour de fente' } : c.ev));
-          const nOk = ev.filter((y) => y.ok).length;
-          const r = { ok: nOk === n, n, pts: cs.map((c) => c.pt), dir: dd, ev, e, ecart: disp.ecart, disposition: disp.type, decalage: x, nOk, hauteurManchon };
-          if (r.ok) return r;
-          if (!meilleur || nOk > meilleur.nOk) meilleur = r;
-        }
+    for (const x of decalages) {
+      for (const e of es) {
+        const c = candidat(frag, orient, dd, t, e, x);
+        const ev = [c.ev.ok && !manchonLibre(c.ev, dd, g.tours, hauteurManchon) ? { ok: false, raison: 'manchon contre la tour de fente' } : c.ev];
+        const r = { ok: ev[0].ok, pts: [c.pt], dir: dd, ev, e, decalage: x, nOk: ev[0].ok ? 1 : 0, hauteurManchon };
+        if (r.ok) return r;
+        if (!meilleur) meilleur = r;
       }
     }
-    return meilleur || { ok: false, n, pts: [], dir: dd, ev: [], e: 0, ecart: 0, disposition: dispositions[0].type, decalage: 0, nOk: 0, hauteurManchon };
+    return meilleur || { ok: false, pts: [], dir: dd, ev: [], e: 0, decalage: 0, nOk: 0, hauteurManchon };
   };
   // manchons de 15 mm (guidage ≈ 0,9°) ; si un manchon heurte la tour de fente (broches très inclinées d'un grand coin),
-  // ils sont raccourcis à 10 puis 8 mm (≈ 1,4°). La paire proximale garde 15 mm : calculée une fois par orientation.
+  // ils sont raccourcis à 10 puis 8 mm (≈ 1,4°). La broche proximale garde 15 mm : calculée une fois par orientation.
   // Retrait du guide de coupe : après la coupe des ponts, chaque moitié sort le long de ses broches. Il faut qu'au moins
   // une moitié s'éloigne de l'autre en sortant (sinon elles se heurtent dans la fente de séparation, 0,8 mm de jeu sur
   // 15 à 20 mm de course) : dérive vers l'autre moitié ≤ RETRAIT_DERIVE_MAX (≈ 2°) pour l'une des deux.
@@ -1321,7 +1293,6 @@ export function planifier(model, cas, opts = {}) {
   const versProx = C[1] < yMilieu;                    // CORA dans la moitié distale : la coupe remonte (règle 2)
   const zImpose = Number.isFinite(opts.decalageCoupe) ? opts.decalageCoupe : null;
   const hDemande = (kind) => { const x = typeof opts.charniere === 'number' ? opts.charniere : opts.charniere?.[kind]; return Number.isFinite(x) ? x : CHARNIERE_RETRAIT; };
-  const cfgBroches = CONFIG_BROCHES[opts.broches] ? opts.broches : '2+2';
   // trait de coupe à z mm du CORA le long de l'os : + vers distal (sur l'axe distal), − vers proximal (sur l'axe proximal)
   const pointCoupe = (z) => (z === 0 ? C : z > 0 ? V.add(C, V.mul(v, z)) : V.add(C, V.mul(u, z)));
   const coupeAu = (z, kind) => {
@@ -1468,9 +1439,8 @@ export function planifier(model, cas, opts = {}) {
     const centre = bone === 'radius'
       ? (frag, e) => { const q = centreAxe(frag, e), m = diaphysisMidpoint(main.pos, main.idx, q[1]); return Number.isFinite(m.mid3[0]) ? m.mid3 : q; }
       : centreAxe;
-    const cfgB = CONFIG_BROCHES[cfgBroches];
     const pl = placerBroches({
-      u, v, face, Tinv, largeur: secK.largeur, centre, config: cfgB, tours: toursFente(plans, face, main.pos, main.idx, secK.largeur, sections),
+      u, v, face, Tinv, largeur: secK.largeur, centre, tours: toursFente(plans, face, main.pos, main.idx, secK.largeur, sections),
       plansProx: [plans[0]], plansDist: [plans[plans.length - 1]], tousPlans: plans,
       ctx: { osPos: proche(main.pos), osNrm: proche(nrmOs, main.pos), art: proche(art), voisins: voisinsProches.map((x) => x.pts), demiLargeur: secK.largeur / 2 },
     });
@@ -1490,11 +1460,9 @@ export function planifier(model, cas, opts = {}) {
     if (Math.abs(pl.beta) > 0) alertesK.push(`broches tournées de ${pl.beta}° autour de l'os (cartilage ou os voisin évités)`);
     if (pl.gamma) alertesK.push(`broches inclinées de ${Math.abs(pl.gamma)}° le long de l'os (vers ${pl.gamma > 0 ? 'distal' : 'proximal'}) pour que le guide de coupe se retire en deux moitiés`);
     if (pl.retrait === false) alertesK.push('orientation des broches imposée par le cartilage ou les os voisins : les deux moitiés du guide de coupe ne peuvent pas sortir l\'une sans heurter l\'autre');
-    if (pl.pd.ok && pl.pd.hauteurManchon < 15) alertesK.push(`manchons distaux raccourcis à ${pl.pd.hauteurManchon} mm (broches très inclinées : guidage moins précis)`);
+    if (pl.pd.ok && pl.pd.hauteurManchon < 15) alertesK.push(`manchon distal raccourci à ${pl.pd.hauteurManchon} mm (broche très inclinée : guidage moins précis)`);
     for (const [nomF, pr_] of [['proximal', pl.pp], ['distal', pl.pd]]) {
-      const impose = (nomF === 'proximal' ? cfgB.dispProx : cfgB.dispDist) === 'transversale';
-      if (pr_.ok && pr_.disposition === 'transversale' && !impose) alertesK.push(`fragment ${nomF} court : ses 2 broches sont côte à côte (écart ${pr_.ecart} mm)`);
-      if (pr_.ok && pr_.decalage) alertesK.push(`broches du fragment ${nomF} décalées de ${Math.abs(pr_.decalage)} mm de la ligne centrale de l'os (cartilage ou os voisin évités)`);
+      if (pr_.ok && pr_.decalage) alertesK.push(`broche du fragment ${nomF} décalée de ${Math.abs(pr_.decalage)} mm de la ligne centrale de l'os (cartilage ou os voisin évités)`);
     }
     const charniereConservee = ab.charniere && regle === 1 && Math.abs(alpha) < DEROTATION_MIN && cp.h <= PONT_MAX + 1e-9;
     const coinMixte = kind === 'fermeture' && cp.h > PONT_MAX + 1e-9;
@@ -1527,11 +1495,11 @@ export function planifier(model, cas, opts = {}) {
       faisable: ab.faisable, abordNonUsuel: !!ab.nonUsuel, ecartFace: ab.ecart, voisinSurLame: bloqueePar,
       angleFaceCharniere: V.angle(V.norm(V.perp(face, u)), V.norm(V.perp(V.neg(faceCoin), u))),
       h: cp.h, hMax: cp.hMax, coinMixte, ouvertureCharniere: !charniereConservee && kind === 'fermeture' ? 2 * cp.h * Math.sin(theta * RAD / 2) : 0,
-      dCart: cp.dCart, contraintes, configBroches: cfgBroches,
+      dCart: cp.dCart, contraintes,
       charniere: H, plans, T, Tang, k, corr: theta, face, broches, brochesReduction, brochesApres,
-      placementBroches: { beta: pl.beta, eProx: pl.pp.e, eDist: pl.pd.e, ecartProx: pl.pp.ecart, ecartDist: pl.pd.ecart,
-        dispositionProx: pl.pp.disposition, dispositionDist: pl.pd.disposition, decalageProx: pl.pp.decalage, decalageDist: pl.pd.decalage,
-        retraitLibre: pl.retrait !== false, gamma: pl.gamma || 0, nProx: pl.pp.pts.length, nDist: pl.pd.pts.length,
+      placementBroches: { beta: pl.beta, eProx: pl.pp.e, eDist: pl.pd.e,
+        decalageProx: pl.pp.decalage, decalageDist: pl.pd.decalage,
+        retraitLibre: pl.retrait !== false, gamma: pl.gamma || 0,
         ok: !!(pl.pp.ok && pl.pd.ok) },
       alertes: alertesK, sectionCoupe: secK,
       derotation: alpha, axeDerotation: axeDer, torsionApres: mesuresTorsion(bone, Lc).torsion3D, torsionApresAngle: torApresAngle, torsionCible: torCible,
@@ -1577,7 +1545,7 @@ export function planifier(model, cas, opts = {}) {
     cora: C, coraC: Cc, cc, coraDansOs, theta, Fm, Sm, typeF, typeS, theta2D, phi, psi,
     bis: { b, c, ccv: V.neg(c), n: nACA },
     osteo, osteoPossible, validation, recommandation,
-    optionsStrategie: { decalageCoupe: zImpose, charniere: opts.charniere ?? null, broches: cfgBroches, croissance: !!opts.croissance, inegaliteLongueur: opts.inegaliteLongueur ?? null },
+    optionsStrategie: { decalageCoupe: zImpose, charniere: opts.charniere ?? null, croissance: !!opts.croissance, inegaliteLongueur: opts.inegaliteLongueur ?? null },
     voisins: voisinsPos, articulaire: masque, alertesPlanif: alertes,
   };
 }
@@ -1629,7 +1597,7 @@ export function prescription(P, kind, extra = {}) {
       // os voisin sur le trajet de la lame par la face du coin (« la fibula »…) : l'étape 7 ne construit alors pas de guide
       voisin_sur_lame: O.abordNonUsuel ? (O.voisinSurLame || null) : null,
       charniere_profondeur_mm: r(O.h ?? CHARNIERE_RETRAIT, 2), coin_mixte: !!O.coinMixte,
-      configuration_broches: O.configBroches || '2+2',
+      configuration_broches: '1+1',
       recommandation: P.recommandation ? { type_coin: P.recommandation.kind, critere_decisif: P.recommandation.decisif } : null,
       osteotomie_complete: O.charniereConservee === undefined ? O.regle === 2 || Math.abs(O.derotation) >= DEROTATION_MIN : !O.charniereConservee },
     charniere: { point: p3(O.charniere), direction: p3(P.bis.n), d_mm: r(O.d), marge_mm: r(O.h ?? CHARNIERE_RETRAIT, 2),
@@ -1646,12 +1614,11 @@ export function prescription(P, kind, extra = {}) {
       T_4x4: RT.toRows4(O.T).map((l) => l.map((x) => r(x, 6))), T_angulaire_4x4: RT.toRows4(O.Tang).map((l) => l.map((x) => r(x, 6))) },
     broches: O.broches.map((bb) => ({ fragment: bb.fragment, point_axe: p3(bb.point), direction: p3(V.norm(bb.dir)), diametre_mm: INSTRUMENT.broche })),
     angle_entre_broches_deg: r(O.angleBroches),
-    // système de réduction (CT-CORA3D) : 4 broches (2 par fragment) forées à travers le guide de coupe ; après la
+    // système de réduction (CT-CORA3D) : 2 broches (1 par fragment) forées à travers le guide de coupe ; après la
     // correction planifiée, elles sont toutes parallèles et le guide de réduction s'enfile dessus (6 degrés de liberté)
     broches_reduction: O.brochesReduction.map((bb) => ({ fragment: bb.fragment, point_axe: p3(bb.point), direction: p3(V.norm(bb.dir)), diametre_mm: INSTRUMENT.broche,
       hauteur_manchon_mm: bb.hauteurManchon || 15 })),
     placement_broches: { rotation_deg: O.placementBroches.beta, inclinaison_deg: O.placementBroches.gamma || 0, distance_coupe_mm: [r(O.placementBroches.eProx, 1), r(O.placementBroches.eDist, 1)],
-      disposition: [O.placementBroches.dispositionProx, O.placementBroches.dispositionDist], ecart_mm: [O.placementBroches.ecartProx, O.placementBroches.ecartDist],
       contraintes_respectees: O.placementBroches.ok },
     guide_reduction: { broches_apres_correction: O.brochesApres.map((bb) => ({ fragment: bb.fragment, point_axe: p3(bb.point), direction: p3(V.norm(bb.dir)) })) },
     torsion: {
