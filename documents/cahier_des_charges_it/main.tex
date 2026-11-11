@@ -1,7 +1,5 @@
 % Cahier des charges informatique du projet PMD2 CT-CORA3D (ECAM, Master en ingénierie biomédicale)
 % Compilateur Overleaf : pdfLaTeX (Menu, Compiler).
-% les plans 2D sont des PDF de version 1.7 : on l'autorise pour éviter un avertissement à la compilation
-\ifdefined\pdfminorversion \pdfminorversion=7 \fi
 \documentclass[11pt,a4paper]{article}
 
 \usepackage[utf8]{inputenc}
@@ -12,7 +10,6 @@
 \usepackage{lmodern}
 \usepackage[margin=2.3cm]{geometry}
 \usepackage{graphicx}
-\usepackage{pdflscape} % pages en paysage pour les plans 2D (la page tourne aussi à l'écran)
 \usepackage[labelsep=colon]{caption}
 \usepackage{xcolor}
 \usepackage{tabularx}
@@ -52,17 +49,6 @@
 % échelle « 2:1 » : sans l'espace que babel ajoute devant les deux-points
 \DeclareRobustCommand{\echelle}{{\NoAutoSpacing 2:1}}
 
-% un plan 2D (feuille A3) sur une page entière en paysage : #1 fichier, #2 légende, #3 étiquette
-% (trim retire les marges blanches de la feuille autour du cadre)
-\newcommand{\planpleinepage}[3]{%
-  \begin{landscape}
-    \centering\vspace*{\fill}
-    \captionsetup{type=figure}% légende de figure hors flottant ; le lien « figure n » arrive en haut du plan
-    \includegraphics[width=\linewidth,height=0.9\textheight,keepaspectratio,trim=13mm 5.5mm 6mm 5.5mm,clip]{#1}
-    \caption{#2}\label{#3}
-    \vspace*{\fill}
-  \end{landscape}}
-
 \begin{document}
 
 % ------------------------------------------------------------------ page de titre
@@ -78,7 +64,7 @@
   {\large Dorian Verstappen\\ Imane Bikass\\ Mohamed-Amine Ahmidouch\par}\vspace{1cm}
   {\large Projet PMD2, Master en ingénierie biomédicale\par}\vspace{0.2cm}
   {\large ECAM Brussels Engineering School, année académique 2026-2027\par}\vspace{0.2cm}
-  {\large Version 1.1 du \today\par}
+  {\large Version 1.2 du \today\par}
 \end{titlepage}
 
 \tableofcontents
@@ -88,7 +74,7 @@
 \section{Objet du document}
 
 Ce document décrit les exigences \textbf{informatiques} du logiciel CT-CORA3D : sur quoi il doit fonctionner, comment
-il est construit, quelles données il lit et produit, comment il protège les données cliniques et comment sa qualité
+il est construit, quelles données il lit et produit, comment il est sécurisé et comment sa qualité
 est vérifiée. Il complète le cahier des charges fonctionnel, qui décrit ce que le logiciel doit faire pour le
 chirurgien (planifier une ostéotomie du fémur ou du tibia et concevoir les guides chirurgicaux).
 
@@ -224,11 +210,12 @@ miroir, comme un membre droit.
 \section{Plans 2D du guide générique}
 \label{sec:plans}
 
-Tous les guides sont dérivés d'un même modèle paramétrique, le \textbf{guide générique}. Ses deux plans 2D, le guide
-de coupe (figure~\ref{fig:plancoupe}) et le guide de réduction (figure~\ref{fig:planreduction}), sont dessinés dans
-le logiciel de dessin assisté par ordinateur \textbf{CADCraft}. Ils ne sont pas tracés à la main : un script Python
-reprend les valeurs par défaut du logiciel, calcule la géométrie et envoie les commandes de dessin à CADCraft. Les
-plans restent ainsi cohérents avec le code et peuvent être redessinés à tout moment.
+Tous les guides sont dérivés d'un même modèle paramétrique, le \textbf{guide générique}. Ses deux plans 2D (guide
+de coupe et guide de réduction) se trouvent dans le cahier des charges fonctionnel. Cette section décrit seulement
+comment ils sont produits. Ils sont dessinés dans le logiciel de dessin assisté par ordinateur \textbf{CADCraft}, mais
+ils ne sont pas tracés à la main : un script Python reprend les valeurs par défaut du logiciel, calcule la géométrie
+et envoie les commandes de dessin à CADCraft. Les plans restent ainsi cohérents avec le code et peuvent être
+redessinés à tout moment.
 
 \begin{tabularx}{\textwidth}{@{}lX@{}}
 \toprule
@@ -249,19 +236,8 @@ Vérification & relecture du PDF ; barre de contrôle de 50~mm sur chaque plan, 
 \bottomrule
 \end{tabularx}
 
-% les deux plans : une page en paysage chacun, avec des marges latérales réduites pour agrandir le plan
-\newgeometry{left=1.2cm,right=1.2cm,top=2.3cm,bottom=2.3cm}
-\setlength{\headwidth}{\textwidth}
-\planpleinepage{images/plan_guide_coupe.pdf}{Plan 2D du guide de coupe générique (plan CTC3D-GEN-01) : vue de la
-  face d'appui et coupes B-B, C-C et D-D. Plan réduit pour tenir sur la page : l'échelle \echelle{} vaut pour la
-  feuille A3 imprimée à 100~\%.}{fig:plancoupe}
-\planpleinepage{images/plan_guide_reduction.pdf}{Plan 2D du guide de réduction générique (plan CTC3D-GEN-02) : coupe
-  A-A, vue de dessus et coupe B-B. Plan réduit pour tenir sur la page : l'échelle \echelle{} vaut pour la feuille A3
-  imprimée à 100~\%.}{fig:planreduction}
-\restoregeometry
-\setlength{\headwidth}{\textwidth}
-
 % ------------------------------------------------------------------ 7
+\reserver{9\baselineskip}
 \section{Exigences non fonctionnelles}
 
 \begin{longtable}{@{}p{1.2cm}p{4.2cm}p{9.8cm}@{}}
@@ -282,23 +258,24 @@ Vérification & relecture du PDF ; barre de contrôle de 50~mm sur chaque plan, 
 \ligne{NF8}{Maintenabilité}{Code commenté en français, une étape par fichier, réglages regroupés dans
   \fichier{parametres.py}, documentation à jour.}
 \ligne{NF9}{Ergonomie}{Interface en français, explication de chaque étape, thème clair et sombre.}
-\ligne{NF10}{Confidentialité}{Les données ne quittent jamais l'ordinateur (voir section~\ref{sec:securite}).}
+\ligne{NF10}{Données locales}{Les données restent sur l'ordinateur : rien n'est envoyé sur internet (voir
+  section~\ref{sec:securite}).}
 \bottomrule
 \end{longtable}
 
 % ------------------------------------------------------------------ 8
-\section{Sécurité et confidentialité des données}
+\section{Sécurité}
 \label{sec:securite}
 
-Les scanners viennent de vrais patients : leurs en-têtes DICOM contiennent le nom du propriétaire de l'animal.
+Le logiciel traite des scanners de chiens : ces données ne relèvent pas des normes qui protègent les données médicales
+humaines, et le logiciel ne les rend donc pas anonymes. La sécurité porte sur le fonctionnement du logiciel :
 \begin{itemize}
   \item Le serveur n'écoute que l'adresse 127.0.0.1 : il n'est pas accessible depuis le réseau.
+  \item Il ne donne accès qu'aux fichiers de l'interface et du dossier des résultats.
   \item Aucune donnée n'est envoyée sur internet ; il n'y a ni compte ni mot de passe.
-  \item Le nom du propriétaire n'est jamais recopié dans les livrables (plans, rapports, cahiers des charges) ; les
-        dossiers des cas cliniques portent des identifiants anonymes.
-  \item Le dépôt GitHub du projet est privé. Le fichier \fichier{.gitignore} exclut le dossier \fichier{dicom/} (trop
-        lourd et confidentiel) et les résultats des vrais patients ; seuls les cas de démonstration (os fictif, lévrier)
-        sont partagés.
+  \item Le dépôt GitHub du projet est public. Le fichier \fichier{.gitignore} en exclut le dossier \fichier{dicom/},
+        trop lourd (environ 17~Go), et les résultats des autres scanners ; le dépôt contient les cas de
+        démonstration (os fictif, lévrier).
 \end{itemize}
 
 % ------------------------------------------------------------------ 9
@@ -316,7 +293,7 @@ Les scanners viennent de vrais patients : leurs en-têtes DICOM contiennent le n
 
 \subsection{Pour le développeur}
 \begin{enumerate}
-  \item Cloner le dépôt GitHub privé et copier ses propres scanners dans \fichier{dicom/}.
+  \item Cloner le dépôt GitHub (public) et copier ses propres scanners dans \fichier{dicom/}.
   \item Installer Python 3.10 ou plus récent, puis les bibliothèques de \fichier{application/requirements.txt}.
   \item Après une modification de l'onglet CORA, réassembler l'interface avec \fichier{build\_app.py}.
   \item Après chaque modification, relancer les tests, puis reconstruire l'application autonome.
@@ -344,7 +321,7 @@ Règle du groupe : tous les tests doivent passer avant chaque envoi sur GitHub.
 \section{Gestion de version et documentation}
 
 \begin{itemize}
-  \item \textbf{Git et GitHub} : dépôt privé, branche principale \fichier{main}, un commit par modification cohérente,
+  \item \textbf{Git et GitHub} : dépôt public, branche principale \fichier{main}, un commit par modification cohérente,
         messages en français.
   \item \textbf{Mac et Windows} : le fichier \fichier{.gitattributes} règle les fins de ligne des scripts des deux
         systèmes.
