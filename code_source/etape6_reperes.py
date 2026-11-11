@@ -1072,6 +1072,8 @@ def analyser(m, type_os, fibula=None, tete_scanner=None, nom_serie="", systeme="
         else:
             fib = O.depuis_scanner(np.asarray(fibula.vertices, float)) if fibula is not None else None
             Rp = reperes_tibia(O, fib)
+            if Rp.get("distal_center") is None or Rp.get("eminence") is None:
+                break
             y_new = O.vers_scanner(Rp["eminence"]) - O.vers_scanner(Rp["distal_center"])
             x_new = O.vers_scanner(Rp["caud_lat"]) - O.vers_scanner(Rp["caud_med"]) if "caud_lat" in Rp else O.R[0]
         x_new = x_new if x_new @ O.R[0] > 0 else -x_new
@@ -1097,8 +1099,11 @@ def analyser(m, type_os, fibula=None, tete_scanner=None, nom_serie="", systeme="
     else:
         fib = O.depuis_scanner(np.asarray(fibula.vertices, float)) if fibula is not None else None
         Rp = reperes_tibia(O, fib)
-        dc = Rp["distal_center"]
         res["qualite"] = {"fibula": fibula is not None}
+        if Rp.get("distal_center") is None:
+            res.update(complet=False, raison="surface articulaire distale du tibia introuvable (vérifier la segmentation : seuil de l'os, tibia collé au talus)")
+            return res, O
+        dc = Rp["distal_center"]
     # nouvelle origine = simple translation : les repères sont décalés, pas recalculés
     decalage = np.array([dc[0], O.ybot, dc[2]])
     O.o = O.vers_scanner(decalage)
