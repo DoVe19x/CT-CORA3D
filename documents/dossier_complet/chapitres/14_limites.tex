@@ -39,9 +39,10 @@ faire. Il se termine par la conclusion du projet.
   \item \textbf{Tout reste sur l'ordinateur.} Le serveur n'écoute que \code{127.0.0.1} et l'application n'envoie rien
   sur Internet.
   \item \textbf{Les en-têtes DICOM contiennent des noms.} Le nom de l'animal, parfois celui du propriétaire, et un
-  identifiant sont recopiés dans \fichier{rapport.md}, \fichier{rapport.json} et le journal. Les résultats d'exemple du
-  dépôt GitHub en contiennent : il faut les rendre anonymes avant de partager le dépôt plus largement (supprimer ces
-  fichiers ne suffit pas, ils restent dans l'historique Git).
+  identifiant sont recopiés dans \fichier{rapport.md}, \fichier{rapport.json} et le journal. Le dépôt GitHub est
+  public : il ne contient que les cas de démonstration (l'os fictif et le lévrier, dont l'en-tête ne porte qu'un
+  libellé de jeu de données). Les scanners et les résultats des autres chiens restent sur l'ordinateur (fichier
+  \fichier{.gitignore}).
   \item \textbf{Le serveur ne vérifie pas l'origine des demandes.} Une page web ouverte sur le même ordinateur pourrait,
   en théorie, lui envoyer une commande. Il faudrait un jeton tiré au hasard au démarrage et un contrôle de l'origine.
   \item \textbf{OneDrive} copie le projet sur les serveurs de l'école : c'est acceptable pour les données d'exemple ;
