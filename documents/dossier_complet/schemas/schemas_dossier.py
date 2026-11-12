@@ -203,7 +203,7 @@ def construction_guide():
          "guides"),
         ("Surface et solide", "matière trop fine retirée,<br>isosurface F = 0<br>→ solide exact", "guides"),
         ("Booléens exacts", "fentes, trous, chanfreins,<br>séparation des moitiés,<br>ponts (manifold3d)", "guides"),
-        ("Guide de réduction", "barre et 4 manchons parallèles<br>sur l'os corrigé (trait<br>de scie compensé)", "guides"),
+        ("Guide de réduction", "barre et 2 manchons parallèles<br>sur l'os corrigé (trait<br>de scie compensé)", "guides"),
         ("Contrôles indépendants", "jeu mesuré, retrait, appui,<br>étanchéité, voisins…", "afaire"),
         ("Fichiers", F("guide_coupe.stl") + ", " + F("guide_reduction.stl") + "<br>" + F("guide.json") + ", plans 2D", "planification"),
     ]

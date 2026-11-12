@@ -77,7 +77,7 @@ CT-CORA3D.app/Contents/MacOS/CT-CORA3D            (ct_cora3d_app.py)
 |---|---|
 | macOS | `~/Applications/CT-CORA3D.app` (application autonome) ou `CT-CORA3D.app` (lanceur de développement) |
 | Windows | raccourci « CT-CORA3D » (application autonome, `creer_app_windows.bat`) ou `Lancer sur Windows.bat` (développement) |
-| Ligne de commande | `../../.venv/bin/python serveur.py` (options `--port`, `--sans-fenetre`, `--dossier`, `--resultats`, `--sans-veille`, `--suivre-parent`) |
+| Ligne de commande | `python serveur.py` (options `--port`, `--sans-fenetre`, `--dossier`, `--resultats`, `--sans-veille`, `--suivre-parent`) |
 
 Windows : le serveur tourne avec `pythonw.exe` (pas de console) ; journal `%LOCALAPPDATA%\CTCORA3D\CTCORA3D.log`.
 
@@ -93,7 +93,7 @@ minutes (15/10/2026 : 1 435 fichiers sur 11 163 en ligne uniquement).
 
 | Requête | Rôle |
 |---|---|
-| `GET /api/etat`, `/api/config`, `/api/serie`, `/api/coupe`, `/api/point`, `/api/maillage` | onglet 1 (comme l'application CT-scan) ; `/api/serie` donne aussi l'état CORA de chaque fémur / tibia |
+| `GET /api/etat`, `/api/config`, `/api/serie`, `/api/coupe`, `/api/point`, `/api/maillage` | onglet 1 ; `/api/serie` donne aussi l'état CORA de chaque fémur / tibia |
 | `POST /api/action` | `inventaire`, `ouvrir`, `segmenter`, `nommer`, `separer`, `oublier` (calculs dans le fil principal) |
 | `POST /api/action` (`guide`) | onglet CORA, étape 12 : `{prescription, sommets, triangles, voisins?, articulaire?, serie?, nom_os?}` (os planifié en base64 : float32, uint32 ; `voisins` = `[{nom, sommets, triangles}]` fibula, rotule, fabelles tels que planifiés ; `articulaire` = 1 octet par sommet, ≥ 128 = cartilage) → `etape7_guide.py` dans le fil de calcul ; résultat dans `resultats/<série>/guide_<os>_<coin>/` (os fictif : `resultats/_os_fictif/…`), dossier renvoyé par `/api/etat` (`travail.resultat`) |
 | `GET /api/cora/cas` | l'os à planifier : os complet détecté dans la série ouverte dans l'onglet 1 (sinon la dernière segmentée), raison du choix, autres os et pourquoi ils sont ignorés (`cora_cas.json`) |
@@ -115,7 +115,7 @@ refaite pour ces os.
 | `ct_cora3d_app.py` | point d'entrée de l'application autonome : fenêtre, ou serveur de calcul avec `--serveur` |
 | `fenetre.py` | fenêtre native de l'application (pywebview) ; page d'attente quand le serveur démarre en même temps ; `--verifier`, `--installer` pour les lanceurs |
 | `interface/index.html` | page d'accueil à deux onglets (thème, quitter, liaison des onglets) |
-| `interface/ct/` | onglet 1 : `index.html`, `app.js`, `style.css`, icône (repris de CT-scan, intégré) |
+| `interface/ct/` | onglet 1 : `index.html`, `app.js`, `style.css`, icône |
 | `interface/cora/index.html` | onglet 2 : **fichier produit** par `code_source/cora/build_app.py` (ne pas modifier à la main) |
 | `interface/vendor/` | Three.js r170 (licence MIT) pour l'onglet 1 |
 | `lancer_mac.sh`, `lanceurs/` | lanceur macOS de développement (`creer_app_mac.sh` reconstruit `CT-CORA3D.app` du projet) ; application autonome (`creer_app_autonome.sh`, recette PyInstaller `ct_cora3d.spec`) |
@@ -125,6 +125,6 @@ refaite pour ces os.
 ## Essai sans fenêtre
 
 ```bash
-../../.venv/bin/python serveur.py --sans-fenetre --sans-veille --port 8765
+python serveur.py --sans-fenetre --sans-veille --port 8765
 # puis http://127.0.0.1:8765/ dans un navigateur
 ```
