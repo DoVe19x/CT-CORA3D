@@ -5,10 +5,10 @@ test_reperes.py — vérifie la détection automatique des repères (etape6_repe
    aléatoires, et en miroir (membre gauche). On vérifie : côté reconnu, repères robustes à moins de 1,5 mm des vrais,
    angles frontaux à moins de 1,5°, torsion à moins de 3°, et résultat identique quelle que soit la pose (le repère de
    l'os ne dépend que de l'os).
-2. Os réels segmentés (s'ils existent : resultats/ de CT-CORA3D, sinon de CT-scan) : os coupés refusés, os complets
+2. Os réels segmentés (exemples/ : séries du lévrier) : os coupés refusés, os complets
    analysés, angles dans les normes (lévrier sain), et invariance par déplacement / miroir.
 
-Usage (depuis code_source/) : ../../.venv/bin/python tests/test_reperes.py
+Usage (depuis code_source/) : python tests/test_reperes.py
 """
 import sys
 import time
@@ -93,7 +93,7 @@ def test_modele():
 
 
 def dossier_resultats():
-    for d in (ICI.parent.parent / "resultats", ICI.parent.parent.parent / "CT-scan" / "resultats"):
+    for d in (ICI.parent.parent / "exemples",):                       # séries du lévrier livrées avec le projet
         if (d / "greyhound_hindlimb_hip_to_knee" / "femur.stl").exists():
             return d
     return None

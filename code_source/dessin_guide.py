@@ -1,11 +1,11 @@
 """
 dessin_guide.py — plans 2D du guide (CT-CORA3D, étape 7), présentés comme des plans de pièce industrielle.
 
-Rôle    : 1. plan GÉNÉRIQUE (plan_generique.svg / .pdf / .png) : le guide en schéma de principe (coupe dans le plan
+Rôle    : 1. plan GÉNÉRIQUE (plan_generique.pdf / .png) : le guide en schéma de principe (coupe dans le plan
              d'une fente, vue de la face d'appui, coupe d'un manchon), ses cotes en SYMBOLES (j, e, g, p, s, js, Øb, jb,
              m, hp, α, kd) et le tableau des paramètres (valeur par défaut, valeur de ce cas) : c'est le « modèle
              paramétrique » du guide, comme une pièce pilotée par une table.
-          2. plan COTÉ du cas (plan_guide.svg / .pdf / .png) : le guide construit pour CET os, en projections
+          2. plan COTÉ du cas (plan_guide.pdf / .png) : le guide construit pour CET os, en projections
              orthogonales (vue de face A depuis la face d'appui, vue de gauche B, vue de dessus C, coupe E-E par les
              manchons), le guide de réduction (vue D, le long des broches), une vue isométrique, les cotes, la
              nomenclature avec les repères des pièces, le tableau des cotes du cas et le mode opératoire.
@@ -634,7 +634,7 @@ def _echelle_txt(e):
 
 def _enregistrer(fig, base):
     sortis = []
-    for ext, kw in ((".svg", {}), (".pdf", {}), (".png", {"dpi": 170})):
+    for ext, kw in ((".pdf", {}), (".png", {"dpi": 170})):         # PDF vectoriel ; le SVG (jusqu'à 11 Mo) a été retiré
         chemin = Path(str(base) + ext)
         fig.savefig(chemin, **kw)
         sortis.append(chemin.name)

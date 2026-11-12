@@ -15,16 +15,13 @@ __pycache__/
 # Fichiers intermédiaires de LaTeX (dossier complet)
 documents/dossier_complet/construction/
 
-# Images DICOM : JAMAIS sur GitHub. Le dossier dicom/ est trop lourd (≈ 17 Go) et contient de vraies données
-# cliniques (noms des propriétaires dans les en-têtes). Chacun garde ses séries sur son ordinateur.
+# Images DICOM : jamais sur GitHub. Le dossier dicom/ est trop lourd (≈ 17 Go) : chacun garde ses séries sur son
+# ordinateur. Les en-têtes des scanners de Zurich portent aussi le nom du propriétaire de l'animal.
 dicom/
 *.dcm
 DICOMDIR
 *.zip
 
-# Résultats : seuls les cas de démonstration vont sur GitHub. Tout autre dossier de resultats/ (vrais patients, comme
-# les chiens de Zurich) reste sur l'ordinateur : rapport.json y contient le nom du propriétaire (lu dans le DICOM).
-resultats/*
-!resultats/_os_fictif/
-!resultats/greyhound_hindlimb_*/
-!resultats/_campagne_*/
+# Résultats : tout ce que produit l'application reste sur l'ordinateur. Les exemples partagés (séries du lévrier,
+# guides de l'os fictif) sont dans exemples/ ; l'application les copie dans resultats/ au démarrage.
+resultats/

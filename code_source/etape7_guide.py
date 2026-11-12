@@ -55,6 +55,7 @@ from scipy.spatial import cKDTree
 from vtkmodules.util import numpy_support as ns
 
 import parametres as P
+from etape4_maillage import ecrire_stl   # STL binaire, en-tête avec le nom et la version du programme
 
 # --------------------------------------------------------------------------- guide générique (paramètres)
 # Le guide est un modèle PARAMÉTRIQUE : ses dimensions de conception sont des paramètres (valeurs par défaut dans
@@ -188,16 +189,6 @@ def lire_maillage(chemin):
 def ecrire_bin(chemin, v, f):
     Path(chemin).write_bytes(np.array([len(v), len(f)], np.uint32).tobytes() + np.asarray(v, np.float32).tobytes()
                              + np.asarray(f, np.uint32).tobytes())
-
-
-def ecrire_stl(chemin, v, f, nom="CT-CORA3D"):
-    """STL binaire (normales calculées)."""
-    tri = np.asarray(v, np.float32)[np.asarray(f)]
-    n = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
-    n /= np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-12)
-    d = np.zeros(len(tri), dtype=[("n", "<f4", 3), ("v", "<f4", (3, 3)), ("a", "<u2")])
-    d["n"], d["v"] = n, tri
-    Path(chemin).write_bytes(nom.encode()[:80].ljust(80, b" ") + np.uint32(len(tri)).tobytes() + d.tobytes())
 
 
 def polydata(v, f):
@@ -1829,7 +1820,7 @@ def _generer(pr, maillage_os, dossier, journal, image, voisins, articulaire, pc)
     cart = v[m_cart] if m_cart is not None else None
     guide, moities, ponts, geo = guide_coupe(pr, v, f, journal, voisins, cart)
     guide, n_jeu = assurer_jeu(guide, v, f, geo["J"])
-    guide, gv, gf, etat = exporter(guide, dossier / "guide_coupe.stl", "CT-CORA3D guide de coupe")
+    guide, gv, gf, etat = exporter(guide, dossier / "guide_coupe.stl", "guide de coupe")
     etat["sommets_repousses_au_jeu"] = n_jeu
     journal("[étape 7] contrôles du guide de coupe…")
     cc = controles_coupe(pr, v, f, man_os, guide, moities, geo)
@@ -1846,7 +1837,7 @@ def _generer(pr, maillage_os, dossier, journal, image, voisins, articulaire, pc)
         M = np.asarray(rs["os_vers_scanner"], float)
         sv = gv @ M[:3, :3].T + M[:3, 3]
         ecrire_stl(dossier / "guide_coupe_scanner.stl", sv, gf[:, ::-1] if np.linalg.det(M[:3, :3]) < 0 else gf,
-                   "CT-CORA3D guide de coupe (repere scanner)")
+                   "guide de coupe (repere du scanner)")
         fichiers.append("guide_coupe_scanner.stl")
 
     # os corrigé (correction réelle : trait de scie compensé en fermeture), puis guide de réduction séparé
@@ -1859,7 +1850,7 @@ def _generer(pr, maillage_os, dossier, journal, image, voisins, articulaire, pc)
     if man_os is not None:
         man_c = os_corrige(man_os, geo["plans"], T)
         vc, fc = depuis_manifold(man_c)
-        ecrire_stl(dossier / "os_corrige.stl", vc, fc, "CT-CORA3D os corrige (prevision)")
+        ecrire_stl(dossier / "os_corrige.stl", vc, fc, "os corrige (prevision)")
         ecrire_bin(dossier / "os_corrige.bin", vc, fc)
         fichiers.append("os_corrige.stl")
     if man_c is not None and min(nb_fr.values()) >= 1:
@@ -1871,7 +1862,7 @@ def _generer(pr, maillage_os, dossier, journal, image, voisins, articulaire, pc)
             raison_reduction = str(exc)
         if red is not None:
             red, n_jeu_r = assurer_jeu(red, vc, fc, P.GUIDE_JEU_MM)
-            red, rv, rf, etat = exporter(red, dossier / "guide_reduction.stl", "CT-CORA3D guide de reduction")
+            red, rv, rf, etat = exporter(red, dossier / "guide_reduction.stl", "guide de reduction")
             etat["sommets_repousses_au_jeu"] = n_jeu_r
             cr = controles_reduction(red, vc, fc, broches_c, gred, man_c, voisins_c)
             cr.update(etat)
@@ -1952,7 +1943,7 @@ def _generer(pr, maillage_os, dossier, journal, image, voisins, articulaire, pc)
 
     info = {
         "generateur": "CT-CORA3D étape 7 (etape7_guide.py)",
-        "date": time.strftime("%Y-%m-%d %H:%M"),
+        "programme": P.PROGRAMME, "date": time.strftime("%Y-%m-%d %H:%M"),
         "os": pr.get("os"), "type_coin": pr["strategie"]["type_coin"],
         "prescription": {"schema_version": pr.get("schema_version"), "theta_deg": pr["deformite"]["theta_deg"],
                          "derotation_deg": pr.get("correction", {}).get("derotation_deg", 0)},

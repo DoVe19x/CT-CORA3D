@@ -14,6 +14,12 @@ import sys
 from pathlib import Path
 
 
+# --------------------------------------------------------------------------- version
+# Version du programme, écrite dans chaque fichier produit (rapport.json, guide.json, en-tête des STL) et étiquetée
+# dans Git (git tag v<VERSION>). À augmenter à chaque livraison.
+VERSION = "1.0"
+PROGRAMME = f"CT-CORA3D {VERSION}"
+
 # --------------------------------------------------------------------------- dossiers
 def _racine():
     """Dossier CT-CORA3D/. Application autonome (PyInstaller, « CT-CORA3D.app ») : le code est dans le paquet de
@@ -33,12 +39,15 @@ def _racine():
 
 
 RACINE = _racine()                                        # dossier CT-CORA3D/
-# dossier fouillé par défaut : CT-CORA3D/dicom/ (depuis le 09/11/2026) ; sinon l'ancien dossier voisin CT-scan/ ;
-# à défaut, le dossier CT-CORA3D lui-même. Un autre dossier se choisit dans l'application. dicom/ n'est jamais envoyé
-# sur GitHub (.gitignore) : il contient de vraies données cliniques.
-DOSSIER_DICOM = next((d for d in (RACINE / "dicom", RACINE.parent / "CT-scan") if d.is_dir()), RACINE)
-RESULTATS = RACINE / "resultats"                          # un sous-dossier par série : resultats/<série>/
-IGNORES = {"resultats", "code_source", "application", "__pycache__"}   # sous-dossiers jamais fouillés
+# dossier fouillé par défaut : CT-CORA3D/dicom/ ; à défaut, le dossier CT-CORA3D lui-même. Un autre dossier se choisit
+# dans l'application. dicom/ n'est jamais envoyé sur GitHub (.gitignore) : il est trop lourd (≈ 17 Go).
+DOSSIER_DICOM = RACINE / "dicom" if (RACINE / "dicom").is_dir() else RACINE
+RESULTATS = RACINE / "resultats"                          # un sous-dossier par série : resultats/<série>/ (jamais sur GitHub)
+# Exemples livrés avec le projet (sur GitHub) : séries du lévrier déjà segmentées et guides de démonstration. Ils ne
+# sont jamais modifiés : au démarrage, l'application copie dans resultats/ ceux qui n'y sont pas encore, et travaille
+# sur la copie.
+EXEMPLES = RACINE / "exemples"
+IGNORES = {"resultats", "exemples", "code_source", "application", "documents", "__pycache__"}   # jamais fouillés
 
 # --------------------------------------------------------------------------- étape 1 : lecture DICOM
 EPAISSEUR_MAX_MM = 1.0           # BP §3.1 : coupes ≤ 1 mm (au-delà : avertissement, le calcul continue)
