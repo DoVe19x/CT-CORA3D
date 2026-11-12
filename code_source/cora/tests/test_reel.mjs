@@ -1,7 +1,7 @@
 // =============================================================================
 // test_reel.mjs — planification CORA sur les os segmentés (fémur, tibia, radius du CT)
 // -----------------------------------------------------------------------------
-// Lit resultats/<série>/cora_<os>.json et cora_<os>.bin (écrits par etape6_reperes.py) et vérifie :
+// Lit exemples/<série>/ (ou le dossier donné) : cora_<os>.json et cora_<os>.bin (écrits par etape6_reperes.py) et vérifie :
 //   1. l'os tel quel, référence « valeurs normales » : planification sans erreur, angles comparés aux normes ;
 //   2. déformités de test sur l'os réel (6 cas : varus / valgus × aucun / procurvatum / recurvatum), référence =
 //      l'os avant déformité (membre controlatéral idéal) : θ, F, S retrouvés, angles post-opératoires = normaux,
@@ -16,7 +16,7 @@
 //      (2, 3 et torsion) supposent un os sain : elles ne s'appliquent pas à ces radius déjà arqués de 30° (un axe droit
 //      y sort de l'os, le CORA tomberait hors de la section).
 //
-// Usage : node tests/test_reel.mjs [dossier resultats]   (défaut : ../../resultats)
+// Usage : node tests/test_reel.mjs [dossier]   (défaut : ../../exemples ; resultats/ pour vos propres séries)
 // =============================================================================
 import fs from 'fs';
 import zlib from 'zlib';
@@ -25,7 +25,7 @@ import { fileURLToPath } from 'url';
 import * as C from '../app/cora_simple.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const RES = path.resolve(process.argv[2] || path.join(ROOT, '..', '..', 'resultats'));
+const RES = path.resolve(process.argv[2] || path.join(ROOT, '..', '..', 'exemples'));
 let echecs = 0;
 const V3n = (a) => { const l = Math.hypot(...a); return a.map((x) => x / l); };
 const angDeg = (a, b) => Math.acos(Math.min(1, Math.max(-1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2]))) * 180 / Math.PI;

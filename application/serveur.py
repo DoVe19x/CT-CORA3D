@@ -11,7 +11,8 @@ Rôle      : sert l'interface (dossier interface/ : page d'accueil à deux ongle
             « Planification CORA » lit les os segmentés (/api/cora/…) ou garde l'os fictif du modèle.
 Lancement : double-clic sur « CT-CORA3D.app » (macOS) ou « Lancer sur Windows.bat », ou
             ../../.venv/bin/python serveur.py [--port N] [--sans-fenetre] [--dossier CHEMIN]
-Résultats : CT-CORA3D/resultats/<série>/ (les mêmes fichiers que lancer_tout.py).
+Résultats : CT-CORA3D/resultats/<série>/ (les mêmes fichiers que lancer_tout.py) ; les exemples livrés
+            (CT-CORA3D/exemples/) y sont copiés au démarrage.
 Arrêt     : automatique à la fermeture de la fenêtre (après le calcul en cours), ou bouton « Quitter ».
 
 Les calculs tournent dans le fil principal (VTK l'exige sur macOS) ; le serveur HTTP tourne à côté et ne fait que
@@ -33,10 +34,11 @@ import threading
 import time
 import traceback
 import webbrowser
-from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
+
+import shutil
 
 import numpy as np
 
@@ -369,7 +371,7 @@ def guide(d):
     dossier = dossier_guide(d)
     dossier.mkdir(parents=True, exist_ok=True)
     (dossier / "prescription.json").write_text(json.dumps(pr, ensure_ascii=False, indent=2), encoding="utf-8")
-    E7.ecrire_stl(dossier / "os_planifie.stl", v, f, "CT-CORA3D os planifie")
+    E7.ecrire_stl(dossier / "os_planifie.stl", v, f, "os planifie")
     E7.ecrire_bin(dossier / "os_planifie.bin", v, f)
     # os voisins à éviter (fibula du tibia, ulna du radius ; rotule et fabelles du fémur), dans le repère de l'os planifié,
     # et cartilage articulaire (1 octet par sommet de l'os) : envoyés par l'interface quand ils sont connus (os fictif,
@@ -378,9 +380,10 @@ def guide(d):
     for x in d.get("voisins") or []:
         vv = np.frombuffer(base64.b64decode(x["sommets"]), np.float32).reshape(-1, 3).astype(float)
         ff = np.frombuffer(base64.b64decode(x["triangles"]), np.uint32).reshape(-1, 3).astype(np.int64)
+        nom = re.sub(r"[^a-z0-9_]", "", str(x.get("nom", "voisin")).lower()) or "voisin"   # nom de fichier sûr
         if len(vv) and len(ff) and ff.max() < len(vv):
-            voisins.append((str(x.get("nom", "voisin")), vv, ff))
-            E7.ecrire_bin(dossier / f"voisin_{x.get('nom', 'voisin')}.bin", vv, ff)
+            voisins.append((nom, vv, ff))
+            E7.ecrire_bin(dossier / f"voisin_{nom}.bin", vv, ff)
     art = np.frombuffer(base64.b64decode(d["articulaire"]), np.uint8) if d.get("articulaire") else None
     if art is not None and len(art) != len(v):
         art = None
@@ -733,6 +736,17 @@ class Gestionnaire(BaseHTTPRequestHandler):
     def log_message(self, *_):
         pass
 
+    def autorise(self):
+        """Seule l'interface de l'application peut parler au serveur : l'en-tête Host doit désigner ce serveur local
+        (protège d'un site web qui ferait pointer son nom vers 127.0.0.1) et une requête venue d'une page (en-tête
+        Origin) doit venir de ce même serveur (protège d'une page ouverte dans un navigateur sur le même ordinateur)."""
+        port = self.server.server_address[1]
+        locaux = {f"127.0.0.1:{port}", f"localhost:{port}"}
+        if self.headers.get("Host", "") not in locaux:
+            return False
+        origine = self.headers.get("Origin")
+        return origine in (None, "null") or origine.removeprefix("http://") in locaux
+
     def envoyer(self, code, corps, type_="application/json; charset=utf-8", entetes=None):
         if isinstance(corps, (dict, list)) or corps is None:
             corps = json.dumps(corps, ensure_ascii=False, default=lambda o: o.tolist() if hasattr(o, "tolist") else str(o)).encode("utf-8")
@@ -755,6 +769,8 @@ class Gestionnaire(BaseHTTPRequestHandler):
         return json.loads(self.rfile.read(n) or b"{}")
 
     def do_GET(self):
+        if not self.autorise():
+            return self.erreur(403, "requête refusée (origine inconnue)")
         VIE["dernier_signe"] = time.time()
         url = urlparse(self.path)
         q = {k: v[0] for k, v in parse_qs(url.query).items()}
@@ -837,6 +853,8 @@ class Gestionnaire(BaseHTTPRequestHandler):
             return self.erreur(500, str(exc))
 
     def do_POST(self):
+        if not self.autorise():
+            return self.erreur(403, "requête refusée (origine inconnue)")
         VIE["dernier_signe"] = time.time()
         chemin = urlparse(self.path).path
         try:
@@ -993,6 +1011,23 @@ def ouvrir_navigateur(url):
     webbrowser.open(url)
 
 
+def installer_exemples():
+    """Copie dans resultats/ les exemples livrés avec le projet (exemples/ : séries du lévrier, guides de l'os fictif)
+    qui n'y sont pas encore. L'application ne travaille que dans resultats/ : les exemples restent intacts."""
+    if not P.EXEMPLES.is_dir():
+        return
+    P.RESULTATS.mkdir(parents=True, exist_ok=True)
+    for d in sorted(x for x in P.EXEMPLES.iterdir() if x.is_dir() and not x.name.startswith(".")):
+        cible = P.RESULTATS / d.name
+        if not cible.exists():
+            shutil.copytree(d, cible)
+            print(f"exemple copié dans resultats/ : {d.name}", flush=True)
+        elif d.name == "_os_fictif":                     # guides de démonstration de l'os fictif absents de la copie
+            for g in d.iterdir():
+                if g.is_dir() and not (cible / g.name).exists():
+                    shutil.copytree(g, cible / g.name)
+
+
 def port_libre():
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
@@ -1013,6 +1048,7 @@ def main(argv=None):
         P.RESULTATS = Path(x.resultats).expanduser().resolve()
     if x.suivre_parent:
         suivre_parent()
+    installer_exemples()
     port = x.port or port_libre()
     httpd = Serveur(("127.0.0.1", port), Gestionnaire)
     SERVEUR["httpd"] = httpd

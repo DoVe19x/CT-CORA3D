@@ -285,15 +285,16 @@ def bords_touches(seg, etiquettes):
     return out
 
 
-def ecrire_stl(chemin, pts, faces, titre="PMD2"):
-    """STL binaire (80 octets d'en-tête, nombre de triangles, puis normale + 3 sommets par triangle)."""
-    v = pts[faces].astype(np.float32)
+def ecrire_stl(chemin, pts, faces, titre=""):
+    """STL binaire (80 octets d'en-tête : programme, version et titre ; nombre de triangles ; puis normale + 3 sommets
+    par triangle). Sert aussi à l'étape 7 (guides) et au serveur."""
+    v = np.asarray(pts, np.float32)[np.asarray(faces)]
     n = np.cross(v[:, 1] - v[:, 0], v[:, 2] - v[:, 0])
     n /= np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-12)
     donnees = np.zeros(len(faces), dtype=[("n", "<f4", 3), ("v", "<f4", (3, 3)), ("attr", "<u2")])
     donnees["n"], donnees["v"] = n, v
     with open(chemin, "wb") as f:
-        f.write(titre.encode("ascii", "replace")[:80].ljust(80, b" "))
+        f.write(f"{P.PROGRAMME} {titre}".strip().encode("ascii", "replace")[:80].ljust(80, b" "))
         f.write(np.uint32(len(faces)).tobytes())
         f.write(donnees.tobytes())
 
@@ -308,7 +309,7 @@ def ecrire_seg_nrrd(seg, chemin):
     data = lab.astype(np.uint8 if type_ == "unsigned char" else np.uint16)
     A = seg.affine
     vec = lambda v: "(" + ",".join(f"{x:.10g}" for x in v) + ")"
-    lignes = ["NRRD0004", "# fichier écrit par CT-scan/code_source (PMD2)", f"type: {type_}", "dimension: 3",
+    lignes = ["NRRD0004", f"# fichier écrit par {P.PROGRAMME}", f"type: {type_}", "dimension: 3",
               "space: left-posterior-superior", f"sizes: {lab.shape[2]} {lab.shape[1]} {lab.shape[0]}",
               f"space directions: {vec(A[:3, 0])} {vec(A[:3, 1])} {vec(A[:3, 2])}", "kinds: domain domain domain",
               "encoding: gzip", f"space origin: {vec(A[:3, 3])}",
@@ -386,7 +387,7 @@ def exporter(seg, dossier, journal=print, seulement=None, precedent=None):
             journal(f"  ⚠ {nom} : maillage impossible ({exc})")
             continue
         chemin = dossier / f"{nom}.stl"
-        ecrire_stl(chemin, pts, faces, f"PMD2 CT-scan : {nom} ({mesures['systeme']}, mm)")
+        ecrire_stl(chemin, pts, faces, f"{nom} ({mesures['systeme']}, mm)")
         mesures.update({"fichier": chemin.name, "etiquettes": [int(e) for e in etiq], "libelle": libelle(nom)})
         bilan[nom] = mesures
         etat = "étanche" if mesures["etanche"] and mesures["orientation_coherente"] else "⚠ NON ÉTANCHE"

@@ -21,11 +21,10 @@ import random
 import sys
 import tempfile
 import time
-from math import erf, sqrt
+from math import sqrt
 from pathlib import Path
 
 import numpy as np
-import pydicom
 from pydicom.dataset import FileDataset, FileMetaDataset
 from pydicom.uid import CTImageStorage, ExplicitVRLittleEndian, generate_uid
 from scipy import ndimage as ndi

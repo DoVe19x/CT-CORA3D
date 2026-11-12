@@ -14,7 +14,7 @@ test_guide.py — vérifie la construction des guides imprimables (etape7_guide.
    Puis le coin de fermeture avec un os voisin (cylindre de 4 mm de rayon à 1,5 mm de l'os, qui empiète sur le secteur
    de la coque) et une bande de cartilage sous l'extrémité distale de la coque : jeu ≥ 1 mm au voisin, aucune
    interpénétration, coque hors du cartilage, aucune alerte.
-2. Os réels segmentés (facultatif : si node et resultats/*/cora_<os>.json existent) : prescriptions exportées par le
+2. Os réels segmentés (facultatif : si node et exemples/*/cora_<os>.json existent) : prescriptions exportées par le
    cœur de calcul JavaScript (fémur, coin de fermeture + torsion de test ; tibia valgus, coin de fermeture conseillé),
    guides sans alerte ; tibia valgus, coin d'ouverture forcé (face latérale, fibula sur le trajet de la lame) : guide
    refusé (GuideImpossible : il occuperait l'espace entre le tibia et la fibula).
@@ -299,7 +299,7 @@ EXPORT_JS = r"""
 import fs from 'fs'; import path from 'path';
 const [ROOT, OUT] = process.argv.slice(2);
 const C = await import(path.join(ROOT, 'code_source/cora/app/cora_simple.js'));
-const RES = path.join(ROOT, 'resultats');
+const RES = path.join(ROOT, 'exemples');
 const lire = (f) => { const b = fs.readFileSync(f), ab = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength); const [nv, nf] = new Uint32Array(ab, 0, 2); return { pos: new Float32Array(ab, 8, nv * 3).slice(), idx: new Uint32Array(ab, 8 + nv * 12, nf * 3).slice() }; };
 const faits = [];
 // tibia valgus : fermeture (face médiale, conseillée) ; ouverture forcée : face latérale, fibula sur le trajet de la lame
@@ -322,7 +322,7 @@ console.log(faits.join(', '));
 def test_reel():
     print("\n2. Os réels segmentés (prescriptions exportées par le cœur de calcul JavaScript)")
     node = shutil.which("node")
-    if not node or not list(P.RESULTATS.glob("*/cora_*.json")):
+    if not node or not list(P.EXEMPLES.glob("*/cora_*.json")):
         print("  (ignoré : node ou résultats de l'étape 6 absents)")
         return
     tmp = Path(tempfile.mkdtemp(prefix="guides_reels_"))

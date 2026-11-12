@@ -5,7 +5,7 @@ Usage : <python du projet> figures_maths.py            (écrit les PDF dans figu
         <python du projet> figures_maths.py angle_vrai   (une seule figure, par son nom)
 Python du projet : ~/Library/Application Support/CTCORA3D/venv/bin/python (numpy, scipy, matplotlib, trimesh).
 
-Les figures « réelles » relisent les os du lévrier dans ../../resultats/ (repère de l'os : X latéral, Y proximal,
+Les figures « réelles » relisent les os du lévrier dans ../../exemples/ (repère de l'os : X latéral, Y proximal,
 Z caudal ; membre gauche mis en miroir) ; les autres sont des constructions géométriques exactes, avec les mêmes
 formules que le programme (code_source/). Aucune donnée du patient n'est lue.
 """
@@ -19,7 +19,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 from matplotlib import font_manager as fm  # noqa: E402
-from matplotlib.patches import Arc, FancyArrowPatch, Polygon, Rectangle, Wedge, Circle  # noqa: E402
+from matplotlib.patches import Arc, FancyArrowPatch, Polygon, Rectangle, Circle  # noqa: E402
 from scipy import ndimage  # noqa: E402
 from scipy.spatial import ConvexHull  # noqa: E402
 from scipy.stats import norm  # noqa: E402
@@ -27,7 +27,7 @@ from scipy.stats import norm  # noqa: E402
 ICI = Path(__file__).resolve().parent
 SORTIE = ICI / "figures"
 PROJET = ICI.parent.parent
-RES = PROJET / "resultats"
+RES = PROJET / "exemples"
 
 # ------------------------------------------------------------------------------------------- style commun
 POLICES = Path.home() / "Library/TinyTeX/texmf-dist/fonts/opentype/public/libertinus-fonts"
@@ -258,21 +258,8 @@ def ransac_cercle():
 
 # ------------------------------------------------------------------------------------------- os réels
 def dossier_serie(serie, nom_os):
-    """Dossier des résultats d'une série pour les figures. Si l'analyse de l'os manque dans la copie de travail (série
-    re-segmentée dont l'analyse a échoué, par exemple), les fichiers sont pris dans le dernier commit git et copiés dans
-    construction/resultats_git/ (ignoré par git) : les figures restent cohérentes et reproductibles."""
-    d = RES / serie
-    if (d / f"cora_{nom_os}.json").exists():
-        return d
-    import subprocess
-    cache = ICI / "construction" / "resultats_git" / serie
-    cache.mkdir(parents=True, exist_ok=True)
-    for nom in (f"cora_{nom_os}.json", f"cora_{nom_os}.bin", f"cora_{nom_os}_fibula.bin", f"{nom_os}.stl"):
-        r = subprocess.run(["git", "-C", str(PROJET), "show", f"HEAD:resultats/{serie}/{nom}"], capture_output=True)
-        if r.returncode == 0:
-            (cache / nom).write_bytes(r.stdout)
-    print(f"   ({serie} : analyse du {nom_os} absente de la copie de travail ; version du dernier commit)")
-    return cache
+    """Dossier d'une série du lévrier livrée avec le projet (exemples/<série>/)."""
+    return RES / serie
 
 
 def os_reel(nom_serie, nom_os):

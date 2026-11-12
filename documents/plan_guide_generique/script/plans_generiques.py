@@ -13,7 +13,7 @@ Usage (depuis ce dossier script/) :
 Les fichiers .dwg, .dxf et .pdf sont écrits dans le dossier parent (documents/plan_guide_generique/).
 Modules Python nécessaires : shapely et pymupdf (pip install shapely pymupdf).
 """
-import base64, json, math, shutil
+import json, math, shutil
 from pathlib import Path
 from shapely.geometry import Polygon, box
 from shapely.ops import unary_union

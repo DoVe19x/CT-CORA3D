@@ -253,7 +253,7 @@ def controler(seg, volume, bilan, dossier, debut, avec_sensibilite=True, avec_im
     segments = [{"etiquette": int(e), "nom": n, "volume_cm3": round(float(taille[e]) * vox / 1000, 2),
                  "raison": seg.raisons.get(e, "")} for e, n in sorted(seg.noms.items()) if e < len(taille)]
     params = {k: getattr(P, k) for k in dir(P) if k.isupper() and isinstance(getattr(P, k), (int, float, str, tuple))}
-    r = {"date": datetime.now().isoformat(" ", "seconds"), "duree_s": round(float(__import__("time").time() - debut), 1),
+    r = {"programme": P.PROGRAMME, "date": datetime.now().isoformat(" ", "seconds"), "duree_s": round(float(__import__("time").time() - debut), 1),
          "serie": volume.infos, "parametres": params, "durees_segmentation_s": seg.duree_s, "os": bilan,
          "segments": segments, "reperes": seg.reperes,
          "avertissements": list(volume.avertissements) + list(seg.avertissements)}

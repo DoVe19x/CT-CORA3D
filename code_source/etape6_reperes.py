@@ -1019,7 +1019,7 @@ def analyser(m, type_os, fibula=None, tete_scanner=None, nom_serie="", systeme="
                                 np.asarray(m.area_faces), O.R[1], longueur, bords)
     tronque = {"proximal": coupes["haut"]["coupe"], "distal": coupes["bas"]["coupe"]}
     res = {"schema": VERSION, "os": type_os, "serie": nom_serie, "fichier_stl": fichier, "systeme": systeme,
-           "date": datetime.now().isoformat(timespec="seconds"), "longueur_mm": round(longueur, 1),
+           "programme": P.PROGRAMME, "date": datetime.now().isoformat(timespec="seconds"), "longueur_mm": round(longueur, 1),
            "cote": "droit" if droit else "gauche", "raisons": raisons, "tronque": tronque, "couvercles": coupes,
            "avertissements": []}
     # côté vu par le scanner (LPS : +x = gauche du patient ; un membre droit a son côté latéral vers −x)

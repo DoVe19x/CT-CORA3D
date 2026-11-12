@@ -1033,8 +1033,8 @@ function boiteGuide3D(P, O, ctx) {
       para('<b>Plan coté</b> de ce guide (vues orthogonales, cotes en mm, échelle indiquée sur A3) et <b>plan générique</b> (le modèle paramétrique : cotes en symboles, tableau des paramètres, formules des dimensions qui découlent de l\'os). Cliquez sur l\'image pour l\'agrandir.'),
       h('a', { href: fichierGuide(Gd.dossier, 'plan_guide.png'), target: '_blank', rel: 'noopener' }, h('img', { class: 'plan2d', src: fichierGuide(Gd.dossier, 'plan_guide.png'), alt: 'Plan coté du guide de coupe' })),
       h('div', { class: 'ligne-btn' },
-        fichier('plan_guide.pdf', 'Plan coté (PDF)'), fichier('plan_guide.svg', 'Plan coté (SVG)'),
-        fichier('plan_generique.pdf', 'Plan générique (PDF)'), fichier('plan_generique.svg', 'Plan générique (SVG)'), fichier('plan_generique.png', 'Plan générique (PNG)')),
+        fichier('plan_guide.pdf', 'Plan coté (PDF)'),
+        fichier('plan_generique.pdf', 'Plan générique (PDF)'), fichier('plan_generique.png', 'Plan générique (PNG)')),
       Object.keys(I.parametres_modifies || {}).length ? h('p', { class: 'src' }, `Dimensions changées pour ce cas : ${Object.entries(I.parametres_modifies).map(([k, v]) => `${k} = ${fr(v, 2)}`).join(', ')}.`) : null));
   }
   out.push(boite('def', 'Mode opératoire', h('ol', {}, I.protocole.map((l) => h('li', {}, l)))));

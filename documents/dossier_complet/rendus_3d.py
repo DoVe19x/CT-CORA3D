@@ -2,7 +2,7 @@
 rendus_3d.py — rendus 3D soignés des guides pour le dossier complet (couverture, chapitre 11).
 
 Usage : <python du projet> rendus_3d.py        (écrit figures/rendu_*.png, fond transparent)
-Données : resultats/_os_fictif/guide_tibia_ouverture/ et guide_tibia_fermeture/ (os fictif, aucune donnée de patient) :
+Données : exemples/_os_fictif/guide_tibia_ouverture/ et guide_tibia_fermeture/ (os fictif, aucune donnée de patient) :
 os planifié, fibula, moitiés du guide de coupe, ponts, os corrigé et guide de réduction ; position des broches (avant et
 après la correction) lue dans guide.json. Repère de l'os : X latéral, Y proximal, Z caudal (mm).
 """
@@ -15,7 +15,7 @@ import pyvista as pv
 
 pv.OFF_SCREEN = True
 ICI = Path(__file__).resolve().parent
-BASE = ICI.parent.parent / "resultats" / "_os_fictif"
+BASE = ICI.parent.parent / "exemples" / "_os_fictif"
 CAS = BASE / "guide_tibia_ouverture"
 SORTIE = ICI / "figures"
 
