@@ -33,7 +33,7 @@ def hd(r):
 # ------------------------------------------------------------------ paramètres du modèle (défauts de CT-CORA3D)
 l_os = 16.0; R = l_os / 2
 j, e, alpha, g, p, s, js = 0.30, 3.0, 75.0, 10.0, 2.0, 0.60, 0.20
-Ob, jb, hp, eb, kd, er, lr, tb, m = 1.6, 0.20, 5.0, 10.0, 1.2, 4.0, 12.0, 6.0, 8.0
+Ob, jb, hp, kd, er, lr, tb, m = 1.6, 0.20, 5.0, 1.2, 4.0, 12.0, 6.0, 8.0   # une broche par fragment
 r_conge = 0.8
 theta = 20.0
 Ri, Ro = R + j, R + j + e                     # 8,3 et 11,3
@@ -50,7 +50,7 @@ th = math.radians(theta)
 t2 = (math.cos(th), -math.sin(th))            # direction de PC2 (z, y) depuis la charnière
 n2 = (-math.sin(th), -math.cos(th))           # normale de PC2 vers le côté distal
 nP = (-n2[0], -n2[1])                         # normale de PC2 vers le côté proximal
-yP1, yP2 = d, d + eb
+yP1 = d                                       # broche proximale
 def pt(base, *pairs):
     z, y = base
     for k, v in pairs:
@@ -61,9 +61,8 @@ def base_distale(off):                        # pied de l'axe d'une broche dista
     u = (Ro - Hz - off * n2[0]) / t2[0]
     return u, pt(H, (off, n2), (u, t2))
 uD1, BD1 = base_distale(d)
-uD2, BD2 = base_distale(d + eb)
-TD1, TD2 = pt(BD1, (g, t2)), pt(BD2, (g, t2))
-y_top, y_bot = yP2 + m, round(BD2[1] - m, 1)
+TD1 = pt(BD1, (g, t2))
+y_top, y_bot = yP1 + m, round(BD1[1] - m, 1)
 xc = Ro * math.sin(math.radians(alpha))       # demi-largeur de la coque vue de face (10,9)
 a75 = math.radians(alpha)
 K = 2.0                                       # échelle 2:1
@@ -201,11 +200,11 @@ def cartouche(titre, designation, numero, echelle="2:1"):
     lab([276.5, 35.0], "Matière"); texte([276.5, 30.6], "PA12 (frittage laser) ou résine stérilisable", 2.3)
     lab([351.5, 35.0], "Tolérances générales"); texte([351.5, 30.6], "± 0,1 (impression 3D)", 2.3)
     lab([276.5, 26.0], "Dessiné par"); texte([276.5, 21.6], "D. Verstappen, I. Bikass, M.-A. Ahmidouch", 2.3)
-    lab([351.5, 26.0], "Date"); texte([351.5, 21.6], "10/11/2026", 2.3)
+    lab([351.5, 26.0], "Date"); texte([351.5, 21.6], "12/11/2026", 2.3)
     lab([276.5, 17.0], "N° de plan"); texte([276.5, 11.8], numero, 3)
     lab([336.5, 17.0], "Échelle"); texte([336.5, 11.8], echelle, 3)
     lab([356.5, 17.0], "Format"); texte([356.5, 11.8], "A3", 3)
-    lab([371.5, 17.0], "Rév."); texte([371.5, 11.8], "A", 3)
+    lab([371.5, 17.0], "Rév."); texte([371.5, 11.8], "B", 3)
     lab([386.5, 17.0], "Projection")
     couche("CARTOUCHE")                                                 # symbole de la projection européenne
     pline([[389, 11.2], [389, 15.2], [397, 14.3], [397, 12.1]])
@@ -269,9 +268,9 @@ def plan_coupe():
     y_pied = pt(H, (u_pied, t2), (t_t / 2, nP))[1]
     ligne([VA(-xc, y_pied), VA(xc, y_pied)])
     ligne([VA(-L_t / 2, yt2b), VA(-xc, y_pied)]); ligne([VA(L_t / 2, yt2b), VA(xc, y_pied)])
-    for yP in (yP1, yP2):
+    for yP in (yP1,):
         cercle(VA(0, yP), K * Om / 2); cercle(VA(0, yP), K * Oh / 2); croix(VA(0, yP), K * Om / 2 + 3); couche("CONTOUR")
-    for B, T in ((BD1, TD1), (BD2, TD2)):
+    for B, T in ((BD1, TD1),):
         couche("CONTOUR")
         X("ellipse", {"center": VA(0, T[1]), "major": [K * Om / 2, 0], "ratio": math.cos(th)})
         X("ellipse", {"center": VA(0, T[1]), "major": [K * Oh / 2, 0], "ratio": math.cos(th)})
@@ -298,8 +297,7 @@ def plan_coupe():
     dlin(VA(-L_f / 2, 11), VA(L_f / 2, 11), VA(0, 11), "<> (l + 2)")
     dlin(VA(-xc, y_bot), VA(xc, y_bot), VA(0, y_bot - 4), "<>")
     dlin(VA(0, 0), VA(0, yP1), VA(-xc - 14, yP1 / 2), "<> (d)", 90)
-    dlin(VA(0, yP1), VA(0, yP2), VA(-xc - 14, (yP1 + yP2) / 2), "<> (eb)", 90)
-    dlin(VA(0, yP2), VA(-xc, y_top), VA(-xc - 14, (yP2 + y_top) / 2), "<> (m)", 90)
+    dlin(VA(0, yP1), VA(-xc, y_top), VA(-xc - 14, (yP1 + y_top) / 2), "<> (m)", 90)
     dlin(VA(-xc, y_bot), VA(-xc, y_top), VA(-xc - 20.5, 0), "<>", 90)
 
     # ---------------- COUPE B-B (plan x = 0)
@@ -308,9 +306,9 @@ def plan_coupe():
                         pt(origine, (u1, tdir), (v1, ndir)), pt(origine, (u0, tdir), (v1, ndir))])
     matiere = [box(Ri, y_bot, Ro, y_top), box(Ri, -t_t / 2, z_top, t_t / 2), rect_local(H, t2, nP, 12.0, u_top, -t_t / 2, t_t / 2)]
     vides = [box(-20, -w_f / 2, 40, w_f / 2), rect_local(H, t2, nP, 0.0, 45.0, -w_f / 2, w_f / 2)]
-    for yP in (yP1, yP2):
+    for yP in (yP1,):
         matiere.append(box(Ri, yP - Om / 2, z_top, yP + Om / 2)); vides.append(box(-20, yP - Oh / 2, 40, yP + Oh / 2))
-    for off, u_b in ((d, uD1), (d + eb, uD2)):
+    for off, u_b in ((d, uD1),):
         axe0 = pt(H, (off, n2))
         matiere.append(rect_local(axe0, t2, n2, u_b - 6.0, u_b + g, -Om / 2, Om / 2))
         vides.append(rect_local(axe0, t2, n2, u_b - 9.0, u_b + g + 1.0, -Oh / 2, Oh / 2))
@@ -321,9 +319,9 @@ def plan_coupe():
     ligne([VB(H), VB(pt(H, (u_top + 6, (1, 0))))]); ligne([VB(H), VB(pt(H, (u_top + 6, t2)))])
     couche("AXES")
     ligne([VB((0, y_top + 4)), VB((0, y_bot - 4))])
-    for yP in (yP1, yP2):
+    for yP in (yP1,):
         ligne([VB((Ri - 3, yP)), VB((z_top + 3, yP))])
-    for off, u_b in ((d, uD1), (d + eb, uD2)):
+    for off, u_b in ((d, uD1),):
         axe0 = pt(H, (off, n2)); ligne([VB(pt(axe0, (6.0, t2))), VB(pt(axe0, (u_b + g + 3, t2)))])
     couche("CONTOUR"); X("circle", {"center": VB(H), "radius": 0.8})
     couche("TEXTE")
@@ -336,14 +334,13 @@ def plan_coupe():
     couche("COTES")
     he = dlin(VB((Ri, 8)), VB((Ro, 8)), VB((Ro + 4, 8 + 1.5)), "<> (e)", 0)
     deplacer(he, [VB((Ro + 5.2, 9.5))[0], VB((0, 9.5))[1] + 2.05])
-    dlin(VB((Ro, y_top)), VB((z_top, yP2 + Om / 2)), VB(((Ro + z_top) / 2, y_top + 4)), "<> (g)", 0)
+    dlin(VB((Ro, y_top)), VB((z_top, yP1 + Om / 2)), VB(((Ro + z_top) / 2, y_top + 4)), "<> (g)", 0)
     dlin(VB((z_top, -t_t / 2)), VB((z_top, t_t / 2)), VB((z_top + 4, 0)), "<>", 90)
     dlin(VB((z_top, -w_f / 2)), VB((z_top, w_f / 2)), VB((z_top + 13, 0)), "<>", 90)
     dlin(VB((z_top, yP1 - Om / 2)), VB((z_top, yP1 + Om / 2)), VB((z_top + 4, yP1)), "Ø<>", 90)
     dlin(VB((z_top, yP1 - Oh / 2)), VB((z_top, yP1 + Oh / 2)), VB((z_top + 13, yP1)), "Ø<>", 90)
     Q = pt(H, (7.0, t2))
     dali(VB(Q), VB(pt(Q, (d, n2))), VB(pt(Q, (d / 2, n2), (-4, t2))), "<> (d)")
-    dali(VB(pt(Q, (d, n2))), VB(pt(Q, (d + eb, n2))), VB(pt(Q, (d + eb / 2, n2), (-4, t2))), "<> (eb)")
     hl = dlin(VB((Hz, 0)), VB((z_top, 0)), VB(((Hz + z_top) / 2, 12)), "<> (profondeur de lame)", 0)
     deplacer(hl, [VB((Hz, 12))[0] + 6.0, VB((0, 12))[1] + 2.05])
     ha = hd(X("dimangular", {"vertex": VB(H), "p1": VB(pt(H, (24, (1, 0)))), "p2": VB(pt(H, (24, t2))),
@@ -398,8 +395,8 @@ def plan_coupe():
     dlin(VD(0, 0), VD(-L_t / 2, z_top), VD(-L_t / 2 - 5, z_top / 2), "<>", 90)
 
     # ---------------- repères, tableau, notes, nomenclature, cartouche
-    ballon(VA(6, 33), [128.0, 226.0], 1)
-    ballon(VA(6, -40), [128.0, 76.0], 2)
+    ballon(VA(6, yP1 + 4), [128.0, 226.0], 1)
+    ballon(VA(6, y_bot + 6), [128.0, 76.0], 2)
     ballon(VA(L_t / 2 - 1, 0.0), [124.0, 172.0], 3)
     ballon(VD(L_t / 2 - 1, z_top - 1), [OD[0] + 28.0, OD[1] + 14.0], 3)
     PARAMS = [("j", "jeu entre l'os et la coque", "0,30", "mm"), ("e", "épaisseur de la coque", "3,0", "mm"),
@@ -409,7 +406,7 @@ def plan_coupe():
               ("s", "épaisseur de la lame de scie", "0,60", "mm"), ("js", "jeu de la fente", "0,20", "mm"),
               ("Øb", "diamètre des broches", "1,6", "mm"), ("jb", "jeu du manchon", "0,20", "mm"),
               ("hp", "hauteur des ponts sécables", "5,0", "mm"), ("c", "chanfrein d'entrée (fentes, manchons)", "0,50", "mm"),
-              ("eb", "écart entre 2 broches d'un fragment", "10,0", "mm"), ("kd", "distance à la coupe / largeur de l'os", "1,2", "×"),
+              ("kd", "distance à la coupe / largeur de l'os", "1,2", "×"),
               ("jv", "distance minimale aux os voisins", "1,00", "mm"), ("mc", "écart supplémentaire au cartilage", "1,0", "mm")]
     bas = tableau_parametres(PARAMS, "Paramètres du guide de coupe (valeurs par défaut)")
     NOTES = ("Notes\\P"
@@ -419,14 +416,14 @@ def plan_coupe():
              "2. Cotes en mm : dimension réelle suivie du paramètre entre parenthèses. Rayon intérieur de la coque : "
              "R os + j ; haut des tours et des manchons à R os + j + e + g de l'axe de l'os.\\P"
              "3. Fente : largeur s + js, longueur l + 2. Tour : épaisseur s + js + 2p, hauteur g au-dessus de la coque.\\P"
-             "4. Manchon : diamètre extérieur Øb + jb + 2p, trou Øb + jb. Broches à d = kd × l de la coupe puis à eb ; la "
-             "coque dépasse de m les broches extrêmes. Broches distales parallèles à PC2.\\P"
+             "4. Manchon : diamètre extérieur Øb + jb + 2p, trou Øb + jb. Une broche par fragment, à d = kd × l de la coupe ; la "
+             "coque dépasse de m chaque broche. Broche distale parallèle à PC2.\\P"
              "5. Moitiés 1 et 2 séparées par la fente 1 (PC1) et reliées par deux ponts sécables p × hp (pièce 3), "
              "coupés à la pince après la coupe de l'os (coupe D-D).\\P"
              "6. Tolérances générales ± 0,1. Congés r, chanfreins c à l'entrée des fentes et des manchons, dépouille δ.\\P"
              "7. Repères communs aux deux plans : la pièce 4 (guide de réduction) figure sur le plan CTC3D-GEN-02.")
     couche("TEXTE"); mtexte([300.0, bas - 4], NOTES, 2.1, 105.0)
-    nomenclature([("5", "4", "Broche de Kirschner Ø1,6", "Inox", "du commerce (non fournie)"),
+    nomenclature([("5", "2", "Broche de Kirschner Ø1,6", "Inox", "du commerce (non fournie)"),
                   ("3", "2", "Pont sécable", "PA12", "venu de matière, à couper"),
                   ("2", "1", "Guide de coupe : moitié distale", "PA12", "guide_coupe.stl"),
                   ("1", "1", "Guide de coupe : moitié proximale", "PA12", "guide_coupe.stl (pièces 1 à 3)")])
@@ -438,15 +435,15 @@ def plan_coupe():
 def plan_reduction():
     nouveau_document(); cadre()
     z0 = R                                                              # extrémité des manchons (contact avec l'os)
-    yR = [-(d + eb), -d, d, d + eb]                                     # broches parallèles après correction
+    yR = [-d, d]                                                        # 2 broches parallèles après correction
     Rs = Om / 2
-    L_b = yR[-1] + Rs                                                   # demi-longueur de la barre (32,1)
+    L_b = yR[-1] + Rs                                                   # demi-longueur de la barre (22,1)
     OA2, OT, OBB = (125.0, 172.0), (125.0, 117.0), (262.0, 172.0)
     FA = lambda y, z: [OA2[0] + K * y, OA2[1] + K * (z - z0)]          # coupe A-A : y vers la droite, z vers le haut
     FT = lambda y, x: [OT[0] + K * y, OT[1] + K * x]                   # vue de dessus : y vers la droite, x vers le haut
     FB = lambda x, z: [OBB[0] + K * x, OBB[1] + K * (z - z0)]          # coupe B-B : x vers la droite, z vers le haut
 
-    # ---------------- COUPE A-A (plan x = 0, par les axes des 4 broches)
+    # ---------------- COUPE A-A (plan x = 0, par les axes des 2 broches)
     corps = unary_union([box(-L_b, z0 + er, L_b, z0 + er + tb)] + [box(y - Rs, z0, y + Rs, z0 + lr) for y in yR])
     corps = corps.buffer(r_conge, join_style=1).buffer(-r_conge, join_style=1)      # congés r aux raccords barre / manchons
     corps = corps.difference(unary_union([box(y - Oh / 2, z0 - 1, y + Oh / 2, z0 + lr + 1) for y in yR]))
@@ -457,12 +454,10 @@ def plan_reduction():
         ligne([FA(y, z0 - 3), FA(y, z0 + lr + 3)])
     couche("TEXTE")
     texte([FA(-L_b, 0)[0], FA(0, z0 + lr)[1] + 29], "COUPE A-A", 5)
-    texte([FA(-L_b, 0)[0], FA(0, z0 + lr)[1] + 23], "par les axes des 4 broches, après correction, échelle 2:1", 3)
+    texte([FA(-L_b, 0)[0], FA(0, z0 + lr)[1] + 23], "par les axes des 2 broches, après correction, échelle 2:1", 3)
     couche("COTES")
     dlin(FA(-L_b, z0), FA(-L_b, z0 + lr), FA(-L_b - 5, z0 + lr / 2), "<> (lr)", 90)
-    dlin(FA(yR[0], z0 + lr), FA(yR[1], z0 + lr), FA((yR[0] + yR[1]) / 2, z0 + lr + 4), "<> (eb)", 0)
-    dlin(FA(yR[2], z0 + lr), FA(yR[3], z0 + lr), FA((yR[2] + yR[3]) / 2, z0 + lr + 4), "<> (eb)", 0)
-    dlin(FA(yR[1], z0 + lr), FA(yR[2], z0 + lr), FA(0, z0 + lr + 4), "<> (2d)", 0)
+    dlin(FA(yR[0], z0 + lr), FA(yR[1], z0 + lr), FA(0, z0 + lr + 4), "<> (2d)", 0)
 
     # ---------------- VUE DE DESSUS (le long des broches)
     couche("CONTOUR")
@@ -477,12 +472,12 @@ def plan_reduction():
     coupe_trait(FT(0, Rs + 4), FT(0, Rs + 9), (1, 0), "B", (4, 0))        # plan B-B (milieu de la barre), vue vers +y
     coupe_trait(FT(0, -Rs - 4), FT(0, -Rs - 9), (1, 0), "B", (4, 0))
     couche("TEXTE")
-    texte([FT(-L_b, 0)[0], FT(0, Rs)[1] + 22], "VUE DE DESSUS", 5)
-    texte([FT(-L_b, 0)[0], FT(0, Rs)[1] + 16], "le long des broches, échelle 2:1", 3)
+    texte([FT(-L_b, 0)[0], FT(0, Rs)[1] + 30], "VUE DE DESSUS", 5)
+    texte([FT(-L_b, 0)[0], FT(0, Rs)[1] + 24], "le long des broches, échelle 2:1", 3)
     couche("COTES")
     dlin(FT(-L_b, -Rs), FT(L_b, -Rs), FT(0, -Rs - 16), "<>", 0)
-    hm = hd(X("dimdiameter", {"center": FT(yR[2], 0), "point": FT(yR[2] + Rs * math.cos(math.radians(60)), Rs * math.sin(math.radians(60)))}))
-    hh = hd(X("dimdiameter", {"center": FT(yR[3], 0), "point": FT(yR[3] + Oh / 2 * math.cos(math.radians(55)), Oh / 2 * math.sin(math.radians(55)))}))
+    hm = hd(X("dimdiameter", {"center": FT(yR[0], 0), "point": FT(yR[0] + Rs * math.cos(math.radians(60)), Rs * math.sin(math.radians(60)))}))
+    hh = hd(X("dimdiameter", {"center": FT(yR[1], 0), "point": FT(yR[1] + Oh / 2 * math.cos(math.radians(55)), Oh / 2 * math.sin(math.radians(55)))}))
     horizontal(hm); horizontal(hh)
 
     # ---------------- COUPE B-B (milieu de la barre, y = 0), vue vers le manchon P1
@@ -512,17 +507,17 @@ def plan_reduction():
     deplacer(hr, [FB(0, 0)[0] + 6.5, FB(0, 0)[1] + 5.0])
 
     # ---------------- repères, tableau, notes, nomenclature, cartouche
-    ballon(FA(-yR[1] / 2 - 4, z0 + er), [OA2[0] + 25.0, OA2[1] - 13.0], 4)
+    ballon(FA(d / 2 - 4, z0 + er), [OA2[0] + 25.0, OA2[1] - 13.0], 4)
     PARAMS = [("Øb", "diamètre des broches", "1,6", "mm"), ("jb", "jeu du manchon", "0,20", "mm"),
               ("p", "paroi des manchons", "2,0", "mm"), ("j", "jeu entre l'os et les manchons", "0,30", "mm"),
               ("r", "rayon des congés", "0,80", "mm"), ("δ", "dépouille", "5", "°"),
-              ("eb", "écart entre 2 broches d'un fragment", "10,0", "mm"), ("kd", "distance à la coupe / largeur de l'os", "1,2", "×"),
+              ("kd", "distance à la coupe / largeur de l'os", "1,2", "×"),
               ("jv", "distance minimale aux os voisins", "1,00", "mm"), ("er", "distance de la barre à l'os", "4,0", "mm"),
               ("lr", "longueur des manchons", "12,0", "mm"), ("tb", "épaisseur de la barre", "6,0", "mm")]
     bas = tableau_parametres(PARAMS, "Paramètres du guide de réduction (valeurs par défaut)")
     NOTES = ("Notes\\P"
-             "1. Modèle générique du guide de réduction (pièce 4), dessiné pour les 4 broches parallèles après la "
-             "correction : 2 broches par fragment, à d = kd × l de la coupe puis à eb (os de largeur l = 16 mm, non "
+             "1. Modèle générique du guide de réduction (pièce 4), dessiné pour les 2 broches parallèles après la "
+             "correction : une broche par fragment, à d = kd × l de la coupe (os de largeur l = 16 mm, non "
              "représenté ; d = 19,2 mm).\\P"
              "2. Cotes en mm : dimension réelle suivie du paramètre entre parenthèses.\\P"
              "3. Manchons parallèles de longueur lr, trou Øb + jb, paroi p. Le guide s'enfile sur les broches jusqu'au "
@@ -532,7 +527,7 @@ def plan_reduction():
              "5. Tolérances générales ± 0,1 (impression 3D). Congés r aux raccords de la barre et des manchons.\\P"
              "6. Repères communs aux deux plans : les pièces 1 à 3 (guide de coupe) figurent sur le plan CTC3D-GEN-01.")
     couche("TEXTE"); mtexte([300.0, bas - 4], NOTES, 2.1, 105.0)
-    nomenclature([("5", "4", "Broche de Kirschner Ø1,6", "Inox", "du commerce (non fournie)"),
+    nomenclature([("5", "2", "Broche de Kirschner Ø1,6", "Inox", "du commerce (non fournie)"),
                   ("4", "1", "Guide de réduction", "PA12", "guide_reduction.stl")])
     cartouche("GUIDE DE RÉDUCTION GÉNÉRIQUE", "Guide de réduction (pièce 4), sans os, paramètres par défaut", "CTC3D-GEN-02")
     exporter("guide_reduction_generique")

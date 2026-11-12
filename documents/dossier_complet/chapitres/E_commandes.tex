@@ -15,7 +15,7 @@ python lancer_tout.py --liste                  # inventaire des séries DICOM
 python lancer_tout.py                          # toutes les séries, étapes 1 à 6
 python lancer_tout.py --serie hip_to_knee      # une série (un morceau de nom unique suffit)
 python lancer_tout.py --dossier "D:/CT chien 12" --sortie "D:/resultats" --seuil 250
-python etape6_reperes.py ../resultats/greyhound_hindlimb_knee_to_ankle --os tibia
+python etape6_reperes.py ../exemples/greyhound_hindlimb_knee_to_ankle --os tibia
 python etape7_guide.py --prescription prescription.json --os os.bin --sortie dossier \
                        --voisin fibula=fibula.bin --cartilage cartilage.u8
 \end{lstlisting}

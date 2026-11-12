@@ -4,7 +4,7 @@ Ce dossier contient le programme. L'application (`../application/`) appelle exac
 commande `lancer_tout.py` aussi.
 
 * **Python** (étapes 1 à 7) : Python 3.10 ou plus récent ; numpy, scipy, pydicom, SimpleITK, VTK, trimesh, pyvista,
-  matplotlib, manifold3d (liste : `../application/requirements.txt`). Étapes 1 à 5 reprises de `../../CT-scan/` ;
+  matplotlib, manifold3d (liste : `../application/requirements.txt`). Étapes 1 à 5 reprises de l'application CT-scan du projet ;
   étapes 6 (repères) et 7 (guides imprimables) nouvelles.
 * **JavaScript** (`cora/`) : la planification CORA (onglet 2), reprise de `../../CORA3D/` et étendue aux os segmentés.
   Aucune dépendance (Three.js est embarqué) ; tests sous Node ≥ 22.
@@ -13,25 +13,25 @@ commande `lancer_tout.py` aussi.
 
 ```bash
 cd code_source
-../../.venv/bin/python lancer_tout.py --liste                 # inventaire des séries DICOM (défaut : ../../CT-scan)
-../../.venv/bin/python lancer_tout.py                         # toutes les séries, étapes 1 à 6 (≈ 115 s pour les 3)
-../../.venv/bin/python lancer_tout.py --serie hip_to_knee     # une série (un morceau de nom unique suffit)
-../../.venv/bin/python lancer_tout.py --dossier "D:/CT chien 12" --sortie "D:/resultats" --seuil 250 --ras
-../../.venv/bin/python tests/test_chaine.py                   # test automatique sur un fantôme synthétique (≈ 3 s)
+python lancer_tout.py --liste                 # inventaire des séries DICOM (défaut : ../dicom)
+python lancer_tout.py                         # toutes les séries, étapes 1 à 6 (≈ 115 s pour les 3)
+python lancer_tout.py --serie hip_to_knee     # une série (un morceau de nom unique suffit)
+python lancer_tout.py --dossier "D:/CT chien 12" --sortie "D:/resultats" --seuil 250 --ras
+python tests/test_chaine.py                   # test automatique sur un fantôme synthétique (≈ 3 s)
 
-../../.venv/bin/python etape6_reperes.py                      # étape 6 seule, sur tous les dossiers de ../resultats
-../../.venv/bin/python etape6_reperes.py ../resultats/greyhound_hindlimb_knee_to_ankle --os tibia
-../../.venv/bin/python tests/test_reperes.py                  # détection des repères : modèle + os réels (≈ 12 s)
+python etape6_reperes.py                      # étape 6 seule, sur tous les dossiers de ../resultats
+python etape6_reperes.py ../exemples/greyhound_hindlimb_knee_to_ankle --os tibia
+python tests/test_reperes.py                  # détection des repères : modèle + os réels (≈ 12 s)
 
-../../.venv/bin/python etape7_guide.py --prescription P.json --os os.bin --sortie dossier \
+python etape7_guide.py --prescription P.json --os os.bin --sortie dossier \
       [--voisin fibula=fibula.bin] [--cartilage cartilage.u8]                               # guides (≈ 15 à 40 s)
-../../.venv/bin/python tests/test_guide.py                    # guides : os synthétique + os réels (≈ 25 s ; --rapide)
+python tests/test_guide.py                    # guides : os synthétique + os réels (≈ 25 s ; --rapide)
 
 node tests/campagne_strategie.mjs <dossier> [n] [graine] [--exporter]  # stratégie : 17 préréglages + n cas au hasard,
                                                               # règles R1 à R9 (≈ 30 s pour n = 300) ; --exporter :
                                                               # sous-ensemble de cas dans <dossier>/guides/
 node tests/campagne_export.mjs <dossier> [coins|aleatoire|tout] [n] [graine]    # campagne : cas planifiés (os fictif)
-../../.venv/bin/python tests/campagne_guides.py <dossier> --processus 4       # guides + contrôles « de chirurgien »
+python tests/campagne_guides.py <dossier> --processus 4       # guides + contrôles « de chirurgien »
 #   --filtre <texte>, --reprendre (cas absents du .jsonl), --rapport (rapport seul, depuis resultats_campagne.jsonl)
 
 cd cora
@@ -287,7 +287,7 @@ broches de verrouillage), la pièce du coin séparée et les gravures de la v3 (
 12–15 à 9–10 étapes, et les tests de 90 à 24 s.
 
 Entrées : `prescription.json` (format v2.2, étape 12 de l'onglet CORA) et maillage de l'os planifié (repère de l'os).
-Sorties dans `resultats/<série>/guide_<os>_<coin>/` (os fictif : `resultats/_os_fictif/…`) : `guide_coupe.stl` (à
+Sorties dans `resultats/<série>/guide_<os>_<coin>/` (os fictif : `resultats/_os_fictif/…` ; démonstrations dans `../exemples/`, refaites par `refaire_exemples.py`) : `guide_coupe.stl` (à
 imprimer d'une pièce), `guide_coupe_scanner.stl` (même guide dans le repère du scanner), `guide_reduction.stl`,
 `os_corrige.stl`, `guide.json` (contrôles et mode opératoire), `guide.png`, les plans 2D, et des `.bin` pour
 l'affichage dans l'application (moitiés, ponts, guide de réduction, os corrigé).
@@ -298,9 +298,9 @@ l'affichage dans l'application (moitiés, ponts, guide de réduction, os corrig�
 | Os voisins | fibula, rotule, fabelles (repère de l'os planifié) : jeu dur ≥ 1 mm (distance signée calculée sur une sous-grille autour de chaque os voisin), pas de matière sous eux dans les directions de pose et de retrait (ils entrent dans les cartes de hauteur), ni dans l'espace entre l'os et le voisin (`EntreOs`) |
 | Bras | si le cartilage ou un os voisin coupe la coque, les manchons isolés (et la 2e tour d'un coin de fermeture) sont reliés au reste du guide par des capsules du rayon des manchons, par-dessus l'os et hors du trajet de la lame ; connexité vérifiée sur la grille avec les fentes creusées |
 | Fentes | 1 (ouverture) ou 2 (fermeture) fentes de 0,8 mm (lame 0,6 + 0,2), exactement dans les plans prescrits, parallèles à la charnière quand c'est possible ; longueur = largeur de l'os + 2 mm ; haut des tours à g = 10 mm au-dessus de la coque (os + j + e + g au point le plus haut de l'os dans la fente : inclinaison de la lame ≤ 0,9°), arêtes arrondies, entrée chanfreinée (0,5 mm à 45°). La profondeur de lame, du haut de la tour à la charnière (ou à la corticale opposée en coupe complète), est calculée et donnée au chirurgien |
-| Manchons | broches Ø 1,6 mm (trous 1,8 mm), 1 ou 2 par fragment selon la configuration (2 + 2, 1 + 1, 1 + 2), guidage 13 mm (ou la hauteur prescrite par la planification si elle est plus courte, jamais moins de 7,3 mm) ; les distales sont forées avec l'inverse de la correction |
+| Manchons | broches Ø 1,6 mm (trous 1,8 mm), une par fragment, guidage 13 mm (ou la hauteur prescrite par la planification si elle est plus courte, jamais moins de 7,3 mm) ; les distales sont forées avec l'inverse de la correction |
 | Moitiés et ponts | séparées par la 1re fente (dalle de l'épaisseur de la fente sur toute la hauteur), sauf 2 ponts sécables de 2 × 5 mm en haut des parois d'extrémité de cette fente ; en fermeture, la 2e fente est une fente fermée de la moitié distale. Après la coupe, on coupe les ponts et chaque moitié glisse le long de **ses** broches, parallèles entre elles ; la moitié qui s'éloigne de l'autre sort en premier (fermeture : distale ; ouverture : proximale) |
-| Guide de réduction | barre (enveloppe convexe des broches vue le long des broches) à ≥ 4 mm de l'os corrigé et des os voisins corrigés, et 4 manchons parallèles qui s'appuient sur l'os corrigé (6 degrés de liberté) ; construit dans la position corrigée réelle (trait de scie compensé en fermeture : T − s·n₁) |
+| Guide de réduction | barre (enveloppe convexe des broches vue le long des broches) à ≥ 4 mm de l'os corrigé et des os voisins corrigés, et 2 manchons parallèles qui s'appuient sur l'os corrigé (6 degrés de liberté) ; construit dans la position corrigée réelle (trait de scie compensé en fermeture : T − s·n₁) |
 
 **Guide générique** (`PARAMETRES_GUIDE`, `parametres_du_cas`, `dimensions_guide`) : 20 dimensions de conception (jeu,
 coque, guidage, paroi, lame, jeu de fente, broche, jeu du manchon, marge, secteur, ponts, chanfreins, dépouille, congés,
@@ -382,7 +382,7 @@ fictif (fémur et tibia, varus / valgus × aucun / procurvatum / recurvatum, F 5
 −30 à +30°, fermeture et ouverture ; 320 cas tirés au hasard avec une graine jamais utilisée pendant le développement) :
 **640 sans erreur** (avant les corrections : 46 sur 480, 10 %). Broches placées et retrait garanti 640/640, règle 2 dans
 178 cas, angles après correction à 0,016° près, jeu guide–os 0,29 à 0,32 mm, guide à ≥ 1 mm des os voisins et à
-≥ 1,5 mm du cartilage. Détails : `../resultats/_campagne_os_fictif/`.
+≥ 1,5 mm du cartilage.
 
 ## cora/ — la planification CORA (JavaScript)
 
@@ -406,7 +406,7 @@ Reprise de `../../CORA3D/code_source/` (originaux intacts) ; même structure (`a
   de l'os avant déformité de test), la correction ajoute une dérotation autour d'un axe que la correction garde aligné
   (fermeture : axe distal, avant la fermeture ; ouverture : axe réaligné, après), ajustée par la méthode de la sécante.
   Seuil : 1°. Déformité de test : torsion τ réglable.
-* **Système de réduction** : broches 2 + 2 (défaut), 1 + 1 ou 1 + 2 (deux distales côte à côte au même niveau)
+* **Système de réduction** : une broche par fragment (une proximale, une distale)
   (`CONFIG_BROCHES`), les distales forées avec l'inverse de la correction ; toutes parallèles après correction ; guide
   de réduction construit à l'étape 7.
 * **Stratégie chirurgicale** (`planifier`, section 7) :
@@ -432,8 +432,8 @@ Reprise de `../../CORA3D/code_source/` (originaux intacts) ; même structure (`a
   - broches (`placerBroches`, `evaluerBroche`, `manchonLibre`) : bicorticales, ≥ 2 mm des plans de leur fragment et
     pointe hors du trajet de la lame de l'autre trait (≥ 1,6 mm, sans le traverser), ≥ 3 mm du cartilage (manchon :
     rayon + 0,5 mm), ≥ 2 mm des sommets des os voisins jusqu'à 8 mm au-delà de la corticale opposée (5 mm prévus + 3 mm
-    d'erreur de forage ; manchon : rayon + 1 mm), manchon hors des tours de fente, entrée ≤ 50° de la normale ; recherche : rotation β (0 à ± 45°), distance à la coupe, disposition (l'une
-    derrière l'autre 10 / 8 / 6,5 mm, côte à côte 6,5 à 9 mm), décalage de la paire (0, ± 2, ± 4 mm), manchons distaux
+    d'erreur de forage ; manchon : rayon + 1 mm), manchon hors des tours de fente, entrée ≤ 50° de la normale ; recherche : rotation β (0 à ± 45°), distance à la coupe, décalage de
+    la broche (0, ± 2, ± 4 mm), manchon distal
     15 / 10 / 8 mm ; une moitié du guide doit pouvoir sortir sans heurter l'autre (dérive ≤ 0,03), au besoin en inclinant
     les broches de γ = ± 10 ou ± 20° le long de l'os ; évaluations en cache.
   - prescription : `strategie.regle_paley`, `abord`, `osteotomie_complete`, `translation_osteotomie_mm`,
@@ -487,7 +487,7 @@ passe toujours sans changement.
 variantes, 300 cas tirés au hasard), les deux coins de chaque cas : 606 sans erreur sur les règles R1 à R9 (guide jamais
 du côté de la charnière, abords, coin recommandé réalisable, broches, parallélisme, résiduels nuls, niveau et charnière
 demandés, angles après correction). Guides de 102 de ces cas : 102 sans erreur.
-Rapports : `../resultats/_campagne_strategie/`.
+Rapport : `tests/rapports/campagne_strategie/`.
 
 ## Points nommés (`resultats/<série>/graines.json`)
 

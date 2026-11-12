@@ -64,7 +64,7 @@
   {\large Dorian Verstappen\\ Imane Bikass\\ Mohamed-Amine Ahmidouch\par}\vspace{1cm}
   {\large Projet PMD2, Master en ingénierie biomédicale\par}\vspace{0.2cm}
   {\large ECAM Brussels Engineering School, année académique 2026-2027\par}\vspace{0.2cm}
-  {\large Version 1.2 du \today\par}
+  {\large Version 1.3 du \today\par}
 \end{titlepage}
 
 \tableofcontents
@@ -172,6 +172,7 @@ Chaque étape de la chaîne est un fichier Python séparé, que l'on peut aussi 
 \fichier{documents/plan\_guide\_generique/} & plans 2D du guide générique (DWG, DXF, PDF) et script qui les dessine
   dans CADCraft \\ \midrule
 \fichier{code\_source/parametres.py} & tous les réglages (seuils, marges, dimensions des guides) au même endroit \\ \midrule
+\fichier{exemples/} & séries du lévrier et guides de démonstration (sur GitHub, jamais modifiés) \\ \midrule
 \fichier{code\_source/lancer\_tout.py} & étapes 1 à 6 en une seule commande, pour toutes les séries \\ \midrule
 \fichier{code\_source/tests/}, \fichier{code\_source/cora/tests/} & tests automatiques \\ \midrule
 \fichier{application/lanceurs/} & lanceurs Mac et Windows, construction de l'application autonome \\
@@ -185,7 +186,12 @@ Chaque étape de la chaîne est un fichier Python séparé, que l'on peut aussi 
 aussi ajouter des points nommés pour aider la segmentation (\fichier{graines.json}).
 
 \paragraph{Sorties.} Tous les résultats d'une série vont dans \fichier{resultats/<série>/} ; ceux d'un guide dans un
-sous-dossier \fichier{guide\_<os>\_<coin>/}.
+sous-dossier \fichier{guide\_<os>\_<coin>/}. Ce dossier reste sur l'ordinateur (il n'est pas sur GitHub).
+
+\paragraph{Exemples.} Le dossier \fichier{exemples/} contient les séries du lévrier déjà segmentées et des guides de
+démonstration. Il est sur GitHub et n'est jamais modifié : au démarrage, l'application copie dans
+\fichier{resultats/} les exemples qui n'y sont pas encore. Les tests lisent \fichier{exemples/}, qui ne change
+pas ; \fichier{code\_source/refaire\_exemples.py} reconstruit les guides de démonstration après une modification.
 
 \begin{tabularx}{\textwidth}{@{}lX@{}}
 \toprule
@@ -274,8 +280,8 @@ humaines, et le logiciel ne les rend donc pas anonymes. La sécurité porte sur 
   \item Il ne donne accès qu'aux fichiers de l'interface et du dossier des résultats.
   \item Aucune donnée n'est envoyée sur internet ; il n'y a ni compte ni mot de passe.
   \item Le dépôt GitHub du projet est public. Le fichier \fichier{.gitignore} en exclut le dossier \fichier{dicom/},
-        trop lourd (environ 17~Go), et les résultats des autres scanners ; le dépôt contient les cas de
-        démonstration (os fictif, lévrier).
+        trop lourd (environ 17~Go), et le dossier \fichier{resultats/} ; les exemples partagés sont dans
+        \fichier{exemples/}.
 \end{itemize}
 
 % ------------------------------------------------------------------ 9
@@ -311,7 +317,9 @@ humaines, et le logiciel ne les rend donc pas anonymes. La sécurité porte sur 
 \fichier{test\_guide.py} & guides : jeu avec l'os, étanchéité, retrait des deux moitiés, guide de réduction \\ \midrule
 \fichier{test\_cas.mjs} & planification sur l'os fictif, avec des déformations connues à retrouver \\ \midrule
 \fichier{test\_reel.mjs} & planification sur des os segmentés : angles, correction, broches parallèles \\ \midrule
-\fichier{campagne\_strategie.mjs} & 606 cas : règles chirurgicales (côté du guide, abord, coin recommandé, broches) \\
+\fichier{test\_parametres.py} & mêmes paramètres du guide (valeurs par défaut et bornes) en Python et en JavaScript \\ \midrule
+\fichier{campagne\_strategie.mjs} & 222 cas : règles chirurgicales (côté du guide, abord, coin recommandé, une broche
+  par fragment) \\
 \bottomrule
 \end{longtable}
 
@@ -327,7 +335,7 @@ Règle du groupe : tous les tests doivent passer avant chaque envoi sur GitHub.
         systèmes.
   \item \textbf{OneDrive} : le dossier du projet est synchronisé ; on évite de travailler sur deux ordinateurs en même
         temps.
-  \item \textbf{Documentation} : \fichier{LISEZ-MOI.md} (installation et utilisation), \fichier{code\_source/README.md}
+  \item \textbf{Documentation} : \fichier{README.md} (présentation, installation, tests), \fichier{code\_source/README.md}
         (fonctionnement de chaque étape), \fichier{GROUPE.md} (membres du groupe) et le dossier technique en LaTeX.
 \end{itemize}
 

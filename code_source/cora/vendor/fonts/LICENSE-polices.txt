@@ -1,0 +1,7 @@
+Polices embarquées dans l'interface CORA (fichiers .woff2 de ce dossier)
+
+Archivo : Copyright 2020 The Archivo Project Authors (https://github.com/Omnibus-Type/Archivo)
+JetBrains Mono : Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
+
+Ces polices sont distribuées sous la licence SIL Open Font License, version 1.1.
+Texte complet de la licence : https://openfontlicense.org/open-font-license-official-text/
