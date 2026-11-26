@@ -120,32 +120,24 @@ nombres au dessin.
 
 \section{D'où viennent les dimensions du guide}
 
-Chaque dimension par défaut indique sa source dans le fichier \texttt{parametres.py} du logiciel. Il y a trois
-sources.
+Chaque dimension par défaut est écrite, avec sa justification, dans le fichier \texttt{parametres.py} du logiciel.
+Elles viennent de deux sources.
 
-\paragraph{1. Le document Best\_Position (BP), contrat du projet.} Il donne les ordres de grandeur ; nous avons pris
-une valeur dans chaque intervalle.
-
-\begin{center}
-  \begin{tabularx}{\textwidth}{@{}Xll@{}}
-  \toprule
-  \textbf{Paramètre} & \textbf{Document BP} & \textbf{Valeur choisie} \\ \midrule
-  Jeu entre l'os et la coque (j) & 0,2 à 0,5~mm & 0,3~mm \\
-  Épaisseur de la coque (e) & 3 à 4~mm & 3~mm \\
-  Épaisseur de la lame de scie (s) & 0,5 à 1~mm & 0,6~mm \\
-  Diamètre des broches de Kirschner (\O{}b) & exemple : 1,6~mm & 1,6~mm \\
-  \bottomrule
-  \end{tabularx}
-\end{center}
-
-\paragraph{2. Les guides sur mesure décrits dans les publications vétérinaires.} Le principe général vient de là :
+\paragraph{1. Les guides sur mesure décrits dans les publications vétérinaires.} Le principe général vient de là :
 une coque qui épouse l'os, une fente qui tient la lame, des broches qui gardent la correction en mémoire, puis un guide
 de réduction qui s'enfile sur les broches. Avec des guides de réduction, les publications rapportent une torsion
 corrigée à environ 2° de la cible (Hall 2019 pour le fémur, Jeon 2023 pour le tibia, Bright 2024, De Armond 2022).
 
-\paragraph{3. Nos propres choix, chacun justifié par un calcul ou par la faisabilité.}
+\paragraph{2. Nos propres choix, chacun justifié par un calcul ou par la faisabilité.}
 
 \begin{itemize}
+  \item \textbf{Jeu entre l'os et la coque j = 0,3~mm} : assez grand pour poser le guide malgré l'écart entre la
+        surface segmentée et l'os réel (moins de 0,3~mm visé) et la tolérance d'impression (± 0,1~mm), assez petit pour
+        que le guide ne bouge pas une fois posé.
+  \item \textbf{Épaisseur de la coque e = 3~mm} : une coque plus fine plierait en PA12 ; plus épaisse, elle serait
+        encombrante dans la plaie.
+  \item \textbf{Lame de scie s = 0,6~mm} : épaisseur courante d'une lame de scie oscillante fine ; elle se change si
+        le chirurgien utilise une autre lame.
   \item \textbf{Hauteur de guidage g = 10~mm} : avec un jeu de fente de 0,2~mm, la lame ne peut s'incliner que de
         atan(0,2 / 10), soit environ 1,1°.
   \item \textbf{Jeu de fente js = 0,2~mm et jeu des manchons jb = 0,2~mm} : valeurs de départ, à régler en
@@ -234,8 +226,7 @@ guide de réduction, au contact de l'os, qui s'y opposent.
 \end{enumerate}
 
 \paragraph{Pourquoi des broches de Kirschner de 1,6~mm ?} Ce sont des broches lisses, courantes en orthopédie
-vétérinaire, disponibles dans toutes les cliniques et peu coûteuses. Le diamètre de 1,6~mm est l'exemple donné par le
-document Best\_Position. Il fait un petit trou dans l'os (il ne le fragilise pas et ne gêne pas les vis de la plaque),
+vétérinaire, disponibles dans toutes les cliniques et peu coûteuses. Le diamètre de 1,6~mm fait un petit trou dans l'os (il ne le fragilise pas et ne gêne pas les vis de la plaque),
 tout en restant assez rigide pour tenir le guide et servir de repère. Le diamètre est un paramètre (Øb, de 1 à
 3,2~mm) : on peut le changer pour un très petit ou un très grand chien.
 

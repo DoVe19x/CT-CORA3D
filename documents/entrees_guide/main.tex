@@ -1,0 +1,190 @@
+% Données d'entrée du guide de coupe de CT-CORA3D (projet PMD2, ECAM)
+% Compilateur Overleaf : pdfLaTeX.
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\frenchsetup{StandardItemLabels=true, CustomiseFigTabCaptions=false}
+\usepackage{lmodern}
+\usepackage{newunicodechar} % lettres grecques tapées directement dans le texte
+\newunicodechar{α}{\ensuremath{\alpha}}
+\newunicodechar{δ}{\ensuremath{\delta}}
+\newunicodechar{Ø}{\O}
+\newunicodechar{θ}{\ensuremath{\theta}}
+\newunicodechar{−}{\ensuremath{-}}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{graphicx}
+\usepackage[labelsep=colon]{caption}
+\addto\captionsfrench{\renewcommand{\tablename}{Tableau}}
+\usepackage{xcolor}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+\usepackage[hidelinks]{hyperref}
+
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
+\emergencystretch=3em
+
+\definecolor{ecam}{RGB}{30,60,140}
+\titleformat{\section}{\Large\bfseries\color{ecam}}{\thesection.}{0.6em}{}
+\titleformat{\subsection}{\large\bfseries\color{ecam}}{\thesubsection}{0.6em}{}
+\setlist{itemsep=2pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.6em plus 0.2em}
+\renewcommand{\arraystretch}{1.2}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small Données d'entrée du guide de coupe}
+\rhead{\small CT-CORA3D, projet PMD2, ECAM}
+\cfoot{\thepage}
+
+\newcommand{\echelle}{{\NoAutoSpacing 2:1}}
+
+\newcommand{\champ}[1]{\texttt{\small #1}}
+
+\begin{document}
+
+\begin{center}
+  \includegraphics[width=0.22\textwidth]{images/logo_ecam.png}\par\vspace{0.4cm}
+  {\LARGE\bfseries\color{ecam} Données d'entrée du guide de coupe\par}\vspace{0.2cm}
+  {\large CT-CORA3D : ce que la planification transmet à la construction du guide\par}\vspace{0.3cm}
+  {\normalsize Dorian Verstappen, Imane Bikass, Mohamed-Amine Ahmidouch\par}
+  {\normalsize Master en ingénierie biomédicale, ECAM Brussels Engineering School, \today\par}
+\end{center}
+
+\section{La question}
+
+Le logiciel est fait de deux parties. La \textbf{partie 1} lit le scanner, segmente les os, place les repères
+anatomiques et planifie l'ostéotomie par la méthode du CORA. La \textbf{partie 2} (étape 7 du programme, fichier
+\champ{etape7\_guide.py}) construit les guides imprimables. Ce document liste les données que la partie 1 transmet à
+la partie 2, et à quoi chacune sert pour créer le guide de coupe.
+
+\begin{figure}[h]
+  \centering
+  \begin{tikzpicture}[node distance=0.6cm and 0.5cm, every node/.style={font=\small},
+      bloc/.style={draw=ecam, thick, rounded corners, fill=ecam!8, align=center, minimum height=1.2cm, text width=3.4cm},
+      fich/.style={draw=gray!70, thick, rounded corners, fill=gray!10, align=center, minimum height=1.2cm, text width=3.6cm},
+      fl/.style={-{Stealth}, thick, ecam}]
+    \node[bloc] (p1) {\textbf{Partie 1}\\ segmentation,\\ repères, planification};
+    \node[fich, right=of p1] (f) {\champ{prescription.json}\\ maillage de l'os\\ os voisins, cartilage};
+    \node[bloc, right=of f] (p2) {\textbf{Partie 2}\\ étape 7 : guides\\ imprimables};
+    \draw[fl] (p1) -- (f); \draw[fl] (f) -- (p2);
+  \end{tikzpicture}
+  \caption{Les données passent d'une partie à l'autre par des fichiers.}
+\end{figure}
+
+Toutes les coordonnées sont en millimètres, dans le \textbf{repère de l'os} : X latéral, Y proximal, Z caudal. Un
+membre gauche est traité en miroir, comme un membre droit.
+
+\section{Réponse courte}
+
+Pour créer le guide de coupe, il faut six données :
+\begin{enumerate}
+  \item l'\textbf{os} à couper (sa surface en 3D) ;
+  \item le ou les \textbf{plans de coupe} ;
+  \item la \textbf{charnière} ;
+  \item la \textbf{face d'appui} du guide ;
+  \item les \textbf{deux broches} (une proximale, une distale) ;
+  \item la \textbf{correction} (angle et dérotation), qui oriente la broche distale.
+\end{enumerate}
+Tout le reste (tours de fente, manchons, ponts, épaisseurs, jeux) se déduit des paramètres du guide générique.
+
+\section{Le fichier de prescription}
+
+La partie 1 écrit un fichier \champ{prescription.json} (format v2.2). L'étape 7 en lit les champs suivants.
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.3cm}>{\raggedright\arraybackslash}p{5.4cm}>{\raggedright\arraybackslash}p{5.6cm}@{}}
+\toprule
+\textbf{Champ} & \textbf{Contenu} & \textbf{Sert à} \\ \midrule \endhead
+\champ{plans\_coupe} : \champ{point}, \champ{normale}, \champ{profondeur}
+  & un plan (coin d'ouverture) ou deux plans (coin de fermeture) ; arrêt de la lame à la charnière ou coupe complète
+  & placer et orienter les fentes, calculer la profondeur de lame \\ \midrule
+\champ{charniere} : \champ{point}, \champ{direction}
+  & charnière de la correction (ACA), à 2~mm à l'intérieur de la corticale
+  & rendre chaque fente parallèle à la charnière ; profondeur de lame \\ \midrule
+\champ{correction} : \champ{T\_4x4}, \champ{angle\_deg}, \champ{derotation\_deg}
+  & déplacement du fragment distal : angle de correction et dérotation
+  & os corrigé, guide de réduction, orientation de la broche distale \\ \midrule
+\champ{deformite} : \champ{theta\_deg}
+  & angle vrai de la déformation en 3D
+  & contrôles \\ \midrule
+\champ{guide} : \champ{face\_appui}, \champ{axe\_os}, \champ{axe\_distal}, \champ{centre\_section}
+  & face sur laquelle se pose le guide, axes des deux fragments, centre de la section coupée
+  & direction de pose, zone d'appui de la coque, secteur de ± α autour de la face d'appui \\ \midrule
+\champ{broches\_reduction} : \champ{fragment}, \champ{point\_axe}, \champ{direction}, \champ{diametre\_mm},
+  \champ{hauteur\_manchon\_mm}
+  & les deux broches : P1 (proximale) et D1 (distale)
+  & manchons du guide ; chaque moitié se retire le long de sa broche \\ \midrule
+\champ{strategie} : \champ{type\_coin}, \champ{abord}, \champ{abord\_non\_usuel}, \champ{voisin\_sur\_lame},
+  \champ{osteotomie\_complete}, \champ{regle\_paley}
+  & choix chirurgicaux de la planification
+  & refuser le guide si un os voisin (la fibula) est sur le trajet de la lame ; mode opératoire \\ \midrule
+\champ{parametres\_guide} (facultatif)
+  & dimensions du guide générique changées pour ce cas
+  & remplacent les valeurs par défaut de \champ{parametres.py} \\ \midrule
+\champ{os\_segmente} : \champ{repere\_scanner} (facultatif)
+  & passage du repère de l'os au repère du scanner
+  & écrire aussi le guide dans le repère du scanner \\
+\bottomrule
+\end{longtable}
+
+\section{Les maillages}
+
+En plus de la prescription, l'étape 7 reçoit des surfaces en 3D (sommets et triangles), toutes dans le repère de
+l'os planifié.
+
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+\textbf{Donnée} & \textbf{Contenu} & \textbf{Sert à} \\ \midrule
+\champ{os\_planifie.bin} & surface de l'os à couper & mouler la coque sur l'os, au jeu j près \\
+\champ{voisin\_<nom>.bin} & os voisins : fibula, rotule, fabelles & garder le guide à au moins jv = 1~mm d'eux \\
+cartilage articulaire & une valeur par sommet de l'os (articulaire ou non) & arrêter la coque à plus de j + e + mc du cartilage \\
+\bottomrule
+\end{tabularx}
+
+\section{Exemple : fémur de l'os fictif}
+
+Valeurs de la prescription du guide de démonstration\\ \champ{exemples/\_os\_fictif/guide\_femur\_fermeture/}
+(arrondies au dixième).
+
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+\textbf{Donnée} & \textbf{Valeur} \\ \midrule
+Type de coin, abord & fermeture, abord latéral, règle 2 de Paley \\
+Angle vrai θ & 21,4° (aucune dérotation) \\
+Plan de coupe 1 & point (−7,2 ; 53,5 ; 4,4), normale (0 ; −1 ; 0), coupe complète \\
+Charnière & point (−7,2 ; 53,5 ; 4,4), direction (−0,7 ; 0 ; −0,7) \\
+Face d'appui & (0,9 ; 0 ; −0,5) \\
+Centre de la section & (0,5 ; 51,6 ; −2,9) \\
+Broche proximale P1 & point (−0,3 ; 76,6 ; −3,4), direction (−0,9 ; 0 ; 0,5) \\
+Broche distale D1 & point (−3,4 ; 38,4 ; −1,4), direction (−0,8 ; 0,3 ; 0,4) \\
+\bottomrule
+\end{tabularx}
+
+La broche distale n'est pas parallèle à la proximale : elle est forée avec l'inverse de la correction. Après la
+correction de 21,4°, les deux broches deviennent parallèles et le guide de réduction s'enfile sur elles.
+
+\section{Ce que l'étape 7 en déduit}
+
+\begin{itemize}
+  \item \textbf{Coque} : moulée sur \champ{os\_planifie.bin}, autour de la face d'appui, entre les deux broches plus
+        m = 8~mm de chaque côté.
+  \item \textbf{Fentes} : une par plan de coupe, de longueur égale à la largeur de l'os dans ce plan plus 2~mm,
+        parallèles à la charnière.
+  \item \textbf{Profondeur de lame} : distance du sommet de la tour à la charnière, ou à la corticale opposée en coupe
+        complète.
+  \item \textbf{Manchons} : un par broche, coaxial à la broche.
+  \item \textbf{Deux moitiés et ponts} : séparées par la première fente, reliées par deux ponts sécables.
+  \item \textbf{Guide de réduction} : construit sur l'os corrigé (T appliquée), autour des deux broches devenues
+        parallèles.
+\end{itemize}
+
+\end{document}

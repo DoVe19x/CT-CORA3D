@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulation ostéotomie – test T ≤ T_max</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.42.0/dist/tabler-icons.min.css">
+<style>
+:root{--surface-1:#F4F3EE;--text-primary:#2C2C2A;--text-secondary:#5F5E5A;--text-muted:#B4B2A9;--border:#D3D1C7;--bg-accent:#E6F1FB;--text-accent:#185FA5;--border-accent:#378ADD;--radius:8px}
+body{margin:0;background:#ffffff;color:var(--text-primary);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:16px}
+button{font:inherit;font-size:13px;padding:5px 12px;border:1px solid var(--border);border-radius:var(--radius);background:#fff;color:var(--text-primary);cursor:pointer}
+button:hover{border-color:var(--border-accent)}
+button:disabled{opacity:0.4;cursor:default}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.grp{background:var(--surface-1);border-radius:var(--radius);padding:8px 12px;margin-bottom:8px}
+.grp .t{font-size:12px;color:var(--text-secondary);margin-bottom:4px;font-weight:500}
+.row{display:flex;align-items:center;gap:10px;margin:4px 0;font-size:13px;color:var(--text-secondary)}
+.row label{min-width:210px}
+.row input{flex:1}
+.row .v{min-width:70px;text-align:right;color:var(--text-primary);font-weight:500}
+.seg{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:4px 0}
+.seg button.on{background:var(--bg-accent);color:var(--text-accent);border-color:var(--border-accent)}
+.pills{display:flex;gap:5px;flex-wrap:wrap;margin:6px 0 8px}
+.pill{font-size:12px;padding:3px 9px;border-radius:var(--radius);border:1px solid var(--border);color:var(--text-secondary)}
+.pill.on{background:var(--bg-accent);color:var(--text-accent);border-color:var(--border-accent)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin-top:10px}
+.card{background:var(--surface-1);border-radius:var(--radius);padding:8px 10px}
+.card .l{font-size:11.5px;color:var(--text-secondary)}
+.card .n{font-size:16px;font-weight:500;color:var(--text-primary)}
+.out{margin-top:10px;background:var(--surface-1);border-radius:var(--radius);padding:10px 12px;font-size:13px;line-height:1.6;color:var(--text-primary)}
+svg{display:block;width:100%;height:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h2 class="sr-only">Simulation de la planification d'une ostéotomie : test T = 2·d₁·tan(ω/2) ≤ T_max qui décide de la règle 2 ou 3.</h2>
+<div class="grp"><div class="t">Données (scanner + valeurs de référence)</div>
+<div class="row"><label>aLDFA mesuré sur le chien</label><input type="range" id="m" min="105" max="125" step="1" value="117"><span class="v" id="mv">117°</span></div>
+<div style="font-size:12px;color:var(--text-secondary)">Normale Labrador : 97 ± 3,2° (Petazzoni, tableau 3) → ω = mesuré − normale</div></div>
+<div class="grp"><div class="t">Choix du chirurgien</div>
+<div class="seg"><span style="font-size:13px;color:var(--text-secondary);min-width:210px">Type d'ostéotomie</span><button data-t="ouv" class="on">Ouverture</button><button data-t="neu">Neutre</button><button data-t="fer">Fermeture</button></div>
+<div class="row"><label>d₁ : CORA ↔ plan de coupe (0 = règle 1)</label><input type="range" id="d1" min="0" max="45" step="1" value="25"><span class="v" id="d1v">25 mm</span></div>
+<div class="row"><label>T_max : tolérance (% de la largeur W)</label><input type="range" id="tp" min="0" max="60" step="1" value="20"><span class="v" id="tpv">20 %</span></div></div>
+<div class="seg"><span style="font-size:13px;color:var(--text-secondary);min-width:70px">Afficher</span>
+<button data-l="axes" class="on">Axes et CORA</button><button data-l="k" class="on">Axe k</button><button data-l="bis" class="on">Bissectrices</button><button data-l="cut" class="on">Coupe et d₁</button><button data-l="hinge" class="on">Charnière et d₃</button><button data-l="labels" class="on">Étiquettes</button></div>
+<div class="pills" id="pills"></div>
+<div id="cap" style="font-size:14px;color:var(--text-primary);min-height:70px;margin-bottom:6px;line-height:1.5"></div>
+<div style="display:flex;gap:8px;margin-bottom:6px">
+<button id="prev"><i class="ti ti-arrow-left" aria-hidden="true"></i> Précédent</button>
+<button id="next">Suivant <i class="ti ti-arrow-right" aria-hidden="true"></i></button>
+<button id="replay" title="Rejoue le pivot (et le glissement en règle 2)"><i class="ti ti-refresh" aria-hidden="true"></i> Rejouer</button>
+</div>
+<svg id="sv" viewBox="0 0 680 520"></svg>
+<div class="cards">
+<div class="card"><div class="l">ω = écart à la normale</div><div class="n" id="cw">–</div></div>
+<div class="card"><div class="l">T = 2·d₁·tan(ω/2)</div><div class="n" id="cT">–</div></div>
+<div class="card"><div class="l">T_max = % × W</div><div class="n" id="cTm">–</div></div>
+<div class="card"><div class="l">Décision</div><div class="n" id="cR">–</div></div>
+<div class="card"><div class="l">d₂ / d₃</div><div class="n" id="cd">–</div></div>
+<div class="card"><div class="l">Δ longueur</div><div class="n" id="cL">–</div></div>
+<div class="card"><div class="l">Contact restant ≈ 1 − T/W</div><div class="n" id="cC">–</div></div>
+</div>
+<div class="out" id="out"></div>
+</div>
+<script>
+const S=2,OX=215,OY=225,W=24,Wi=12,Lp=105,Ld=112,N=97;
+const RED='#E24B4A',PINK='#D4537E',OR='#D85A30',PUR='#7F77DD',GRN='#1D9E75';
+const st={m:117,d1:25,tp:20,type:'ouv',step:0,rot:0,gl:0,L:{axes:1,k:1,bis:1,cut:1,hinge:1,labels:1}};
+const X=x=>OX+S*x,Y=y=>OY+S*y,P=p=>X(p[0]).toFixed(1)+','+Y(p[1]).toFixed(1);
+const add=(a,b)=>[a[0]+b[0],a[1]+b[1]],sub=(a,b)=>[a[0]-b[0],a[1]-b[1]],mul=(a,k)=>[a[0]*k,a[1]*k],dot=(a,b)=>a[0]*b[0]+a[1]*b[1],nrm=a=>mul(a,1/Math.hypot(a[0],a[1]));
+const rot=(v,a)=>{const c=Math.cos(a),s=Math.sin(a);return[v[0]*c-v[1]*s,v[0]*s+v[1]*c]};
+const rotAbout=(p,A,a)=>add(A,rot(sub(p,A),a));
+function lint(p,u,q,v){const den=u[0]*v[1]-u[1]*v[0],w=sub(q,p),s=(w[0]*v[1]-w[1]*v[0])/den;return add(p,mul(u,s))}
+function clip(poly,n,p0){const out=[],f=p=>dot(sub(p,p0),n);for(let i=0;i<poly.length;i++){const a=poly[i],b=poly[(i+1)%poly.length],fa=f(a),fb=f(b);if(fa<=0)out.push(a);if((fa<0&&fb>0)||(fa>0&&fb<0)){const t=fa/(fa-fb);out.push(add(a,mul(sub(b,a),t)))}}return out}
+function ray(o,d,poly){let best=1e9;for(let i=0;i<poly.length;i++){const a=poly[i],e=sub(poly[(i+1)%poly.length],a),den=d[0]*e[1]-d[1]*e[0];if(Math.abs(den)<1e-9)continue;const w=sub(a,o),t=(w[0]*e[1]-w[1]*e[0])/den,u=(w[0]*d[1]-w[1]*d[0])/den;if(t>1e-6&&u>=-1e-9&&u<=1+1e-9)best=Math.min(best,t)}return best}
+const area=p=>{let s=0;for(let i=0;i<p.length;i++){const a=p[i],b=p[(i+1)%p.length];s+=a[0]*b[1]-a[1]*b[0]}return Math.abs(s/2)};
+const pg=(p,a)=>p.length>2?`<polygon points="${p.map(P).join(' ')}" ${a}/>`:'';
+const ln=(a,b,s)=>`<line x1="${X(a[0])}" y1="${Y(a[1])}" x2="${X(b[0])}" y2="${Y(b[1])}" ${s}/>`;
+function arc(c,a,b,r,s){const p1=add(c,mul(a,r)),p2=add(c,mul(b,r)),cr=a[0]*b[1]-a[1]*b[0];return `<path d="M${P(p1)} A${r*S} ${r*S} 0 0 ${cr>0?1:0} ${P(p2)}" fill="none" ${s}/>`}
+const kSym=(p,col)=>`<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="8" fill="none" stroke="${col}" stroke-width="1.5"/><circle cx="${X(p[0])}" cy="${Y(p[1])}" r="2.3" fill="${col}"/>`;
+const f1=x=>(Math.round(x*10)/10).toFixed(1).replace('.',',');
+function bent(w,lp,ld,ud){const up=[0,1],nd=[ud[1],-ud[0]];const Rc=lint([w/2,0],up,mul(nd,w/2),ud),Lc=lint([-w/2,0],up,mul(nd,-w/2),ud);return[[-w/2,-lp],[w/2,-lp],Rc,add(mul(nd,w/2),mul(ud,ld)),add(mul(nd,-w/2),mul(ud,ld)),Lc]}
+function geo(){
+const wdeg=st.m-N,om=wdeg*Math.PI/180,up=[0,1],ud=rot(up,om),C=[0,0];
+const outer=bent(W,Lp,Ld,ud),inner=bent(Wi,Lp-10,Ld-10,ud);
+const c=nrm(add(up,ud)),cp=nrm(sub(up,ud));
+const M=mul(c,st.d1);
+const H=st.type==='neu'?M:add(M,mul(st.type==='ouv'?cp:mul(cp,-1),ray(M,st.type==='ouv'?cp:mul(cp,-1),outer)));
+const A2=st.type==='neu'?C:add(C,mul(st.type==='ouv'?cp:mul(cp,-1),ray(C,st.type==='ouv'?cp:mul(cp,-1),outer)));
+const Wc=ray(M,cp,outer)+ray(M,mul(cp,-1),outer);
+const T=2*st.d1*Math.tan(om/2),Tmm=st.tp/100*Wc;
+const rule=st.d1===0?1:(T<=Tmm?3:2);
+const Cr=rotAbout(C,H,-om);
+const G=mul(cp,-Cr[0]/cp[0]);
+const n2=rot(c,om);
+const split=poly=>{const pr=clip(poly,c,M),dr=clip(poly,mul(c,-1),M);return{pr,d:clip(dr,mul(n2,-1),H),rem:clip(dr,n2,H)}};
+const so=split(outer),si=split(inner);
+const E=mul(ud,Ld),Ef=add(rotAbout(E,H,-om),rule===2?G:[0,0]),dL=Ef[1]-Ld;
+const d3=dot(sub(H,M),cp),d2=rule===3?st.d1:0;
+const contact=rule===2?Math.max(0,1-T/Wc):1;
+const Aa=lint(C,up,M,cp),Bb=lint(Cr,up,M,cp);
+return{wdeg,om,up,ud,C,outer,inner,c,cp,M,H,A2,Wc,T,Tmm,rule,G,so,si,dL,d3,d2,contact,Cr,Aa,Bb};
+}
+const names=['Os, références et axe k','Choix du chirurgien','Coupe','Pivot autour de k','Test T ≤ T_max → règle et ACA','Glissement ou arrêt','Validation et sorties'];
+function caption(g){const tn={ouv:'Ouverture',neu:'Neutre',fer:'Fermeture'}[st.type];const R=g.rule;
+const aca=R===2?'<b>ACA virtuelle au niveau du CORA</b> (d₂ = 0)':R===3?'<b>ACA = charnière H</b> (d₂ = d₁ = '+st.d1+' mm)':'<b>ACA au CORA</b> (d₁ = d₂ = 0)';
+return[
+`<b>1. Os, références et axe k.</b> aLDFA mesuré ${st.m}° contre 97° (normale) : <b>ω = ${g.wdeg}°</b>. L'axe idéal (angle normal) croise l'axe proximal au <b>CORA</b>. La direction de rotation <b>k</b> (⊙, perpendiculaire au plan de la déformation) est connue dès maintenant. La bissectrice <b>c</b> coupe ω en deux, <b>c⊥</b> traverse l'os.`,
+`<b>2. Choix du chirurgien.</b> Plan de coupe à <b>d₁ = ${st.d1} mm</b> du CORA, perpendiculaire à c. ${tn} : coupe complète, charnière H ${st.type==='ouv'?'sur le cortex convexe':st.type==='fer'?'sur le cortex concave':'au centre'} → <b>d₃ = ${f1(g.d3)} mm</b> (calculé). Tolérance <b>T_max = ${st.tp} %</b> de la largeur W. Le test qui suit est le même pour les trois types : T ne dépend que de d₁ et ω.`,
+`<b>3. Coupe.</b> Le fragment distal (vert) est libéré. ${st.type==='fer'?'Le coin rouge (angle ω) est retiré.':st.type==='neu'?'Une petite résection côté convexe (rouge) est retirée.':'Rien n\'est retiré : l\'os s\'ouvrira côté concave.'}`,
+R===1?`<b>4. Pivot de ω autour de k, à la charnière.</b> La coupe est au CORA : les axes sont directement alignés.`:`<b>4. Pivot de ω = ${g.wdeg}° autour de k, à la charnière H.</b> L'angle est corrigé : les axes sont parallèles, mais décalés sur le côté.`,
+R===1?`<b>5. Pas de test.</b> d₁ = 0 → T = 0 : <b>règle 1</b>. ${aca}.`:`<b>5. Test.</b> T = 2·d₁·tan(ω/2) = <b>${f1(g.T)} mm</b> ; T_max = ${st.tp} % × ${f1(g.Wc)} mm = <b>${f1(g.Tmm)} mm</b>. T ${R===3?'≤':'&gt;'} T_max → <b>règle ${R}</b>. La règle est décidée, donc on connaît l'ACA : ${aca}.`,
+R===2?`<b>6. Règle 2 : glissement de T = ${f1(g.T)} mm le long du plan de coupe.</b> Les axes se réalignent. Contact osseux restant ≈ ${Math.round(g.contact*100)} %.`:R===3?`<b>6. Règle 3 : arrêt.</b> Pas de glissement : le décalage est accepté (T ≤ T_max).`:`<b>6. Règle 1 : rien à ajouter.</b>`,
+`<b>7. Validation.</b> Angle résiduel 0° → aLDFA final ≈ 97°, dans la norme. ${R===3?'Axes parallèles, décalage accepté.':'Axes alignés.'} Les sorties pour les guides sont résumées sous les cartes.`][st.step]}
+function draw(){
+const g=geo(),{om,up,ud,C,outer,c,cp,M,H,A2,G}=g,s0=st.step,L=st.L;
+const tr=p=>add(rotAbout(p,H,-om*st.rot),mul(G,st.gl));
+let s=`<defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#FBEAF0"/><line x1="0" y1="0" x2="0" y2="6" stroke="#993556" stroke-width="2.2"/></pattern></defs>`;
+const labs=[];
+if(s0<2){s+=pg(outer,'fill="#888780" fill-opacity="0.3" stroke="#5F5E5A" stroke-width="1"');}
+else{
+s+=pg(outer,'fill="none" stroke="#B4B2A9" stroke-width="0.6" stroke-dasharray="3 3"');
+s+=pg(g.so.pr,'fill="#888780" fill-opacity="0.3" stroke="#5F5E5A" stroke-width="1"');
+if(s0===2&&area(g.so.rem)>1)s+=pg(g.so.rem,'fill="#E24B4A" fill-opacity="0.5" stroke="#A32D2D" stroke-width="0.8"');
+s+=pg(g.so.d.map(tr),'fill="#1D9E75" fill-opacity="0.28" stroke="#0F6E56" stroke-width="1.1"');}
+const udn=rot(ud,-om*st.rot),Cn=tr(C);
+if(L.axes){
+s+=ln([0,-112],[0,135],`stroke="${PUR}" stroke-width="1.6"`);labs.push([[0,-100],'Axe proximal']);
+s+=ln(add(Cn,mul(udn,-30)),add(Cn,mul(udn,125)),`stroke="${GRN}" stroke-width="1.6" stroke-dasharray="6 4"`);labs.push([add(Cn,mul(udn,110)),'Axe distal']);
+if(s0<=1){s+=arc(C,mul(up,-1),mul(ud,-1),20,'stroke="#185FA5" stroke-width="1.4"');const m=nrm(add(mul(up,-1),mul(ud,-1)));s+=`<text x="${X(m[0]*28)}" y="${Y(m[1]*28)+4}" text-anchor="middle" font-size="13" font-weight="500" fill="#185FA5">ω</text>`;}
+s+=`<circle cx="${X(0)}" cy="${Y(0)}" r="4.5" fill="${RED}"/>`;labs.push([[0,0],'CORA']);}
+if(L.k&&s0===0){s+=kSym([-32,-30],'#185FA5');labs.push([[-32,-30],'k : direction de rotation (⊥ écran)']);}
+if(L.bis&&s0<=1){s+=ln(mul(c,-45),mul(c,65),'stroke="#5F5E5A" stroke-width="1" stroke-dasharray="2 3"');s+=ln(mul(cp,-32),mul(cp,32),'stroke="#7F77DD" stroke-width="1" stroke-dasharray="2 3"');labs.push([mul(c,-40),'Bissectrice c (lBL)']);labs.push([mul(cp,30),'c⊥ (tBL)']);}
+if(L.cut&&s0>=1&&s0<=2){s+=ln(add(M,mul(cp,-22)),add(M,mul(cp,22)),`stroke="${OR}" stroke-width="1.6" stroke-dasharray="5 3"`);if(st.type!=='ouv'){s+=ln(H,add(H,mul(rot(cp,om),st.type==='fer'?30:18)),`stroke="${OR}" stroke-width="1.6" stroke-dasharray="5 3"`);}
+labs.push([add(M,mul(cp,-22)),st.type==='ouv'?'Plan de coupe (1 fente)':'Plans de coupe (2 fentes)']);
+if(st.d1>0){const o=mul(cp,-34);s+=ln(add(C,o),add(M,o),'stroke="#993C1D" stroke-width="0.9" marker-start="url(#ar)" marker-end="url(#ar)"');const mm=mul(add(add(C,o),add(M,o)),0.5);s+=`<text x="${X(mm[0])-8}" y="${Y(mm[1])+4}" text-anchor="end" font-size="13" font-weight="500" fill="#993C1D">d₁</text>`;}}
+if(L.hinge){if(s0>=1&&s0<=2&&st.type!=='neu'){const o=mul(c,-7);s+=ln(add(M,o),add(H,o),'stroke="#993C1D" stroke-width="0.9" marker-start="url(#ar)" marker-end="url(#ar)"');const mm=mul(add(add(M,o),add(H,o)),0.5);s+=`<text x="${X(mm[0]+o[0])}" y="${Y(mm[1]+o[1])-2}" text-anchor="middle" font-size="12" font-weight="500" fill="#993C1D">d₃</text>`;}
+s+=`<circle cx="${X(H[0])}" cy="${Y(H[1])}" r="4.5" fill="${OR}"/>`;if(s0>=1&&!(s0===3&&L.k))labs.push([H,'Charnière H']);}
+if(L.k&&s0===3){s+=kSym(H,OR);labs.push([H,'Pivot : axe k à la charnière H']);}
+if(st.gl>0.02)s+=ln(H,add(H,mul(G,st.gl)),`stroke="${PINK}" stroke-width="2.4" marker-end="url(#ar)"`);
+if(s0>=4){const A=g.rule===2?A2:(g.rule===1?C:H);s+=kSym(A,'#534AB7');labs.push([A,g.rule===2?'ACA virtuelle (d₂ = 0)':g.rule===3?'ACA = charnière (d₂ = d₁)':'ACA au CORA']);}
+const zoom=(s0===4||s0===5)&&g.rule!==1;
+if(!zoom&&L.labels)labs.forEach((it,i)=>{const y=24+i*38;s+=`<line x1="${X(it[0][0])}" y1="${Y(it[0][1])}" x2="466" y2="${y}" stroke="#B4B2A9" stroke-width="0.5" stroke-dasharray="3 3"/><circle cx="${X(it[0][0])}" cy="${Y(it[0][1])}" r="1.2" fill="#5F5E5A"/><text x="472" y="${y+4}" font-size="12" fill="#2C2C2A">${it[1]}</text>`});
+if(zoom){
+const xs=[X(g.Aa[0]),X(g.Bb[0])],ys=[Y(g.Aa[1]),Y(g.Bb[1])];
+const bx=Math.min(...xs)-10,by=Math.min(...ys)-12,bw=Math.max(...xs)-Math.min(...xs)+20,bh=Math.max(...ys)-Math.min(...ys)+24;
+s+=`<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="none" stroke="#2C2C2A" stroke-width="1.1" stroke-dasharray="4 3"/>`;
+const CX0=410,CY0=20,CW=262,CH=330;
+s+=`<line x1="${bx+bw}" y1="${by+bh/2}" x2="${CX0}" y2="${CY0+150}" stroke="${OR}" stroke-width="0.8" stroke-dasharray="3 3"/>`;
+s+=`<rect x="${CX0}" y="${CY0}" width="${CW}" height="${CH}" rx="10" fill="#F4F3EE" stroke="#D3D1C7"/>`;
+s+=`<text x="${CX0+CW/2}" y="${CY0+22}" text-anchor="middle" font-size="13" font-weight="500" fill="#2C2C2A">Zoom : plan de coupe</text>`;
+const T=g.T,Tm=g.Tmm,u=nrm(sub(g.Bb,g.Aa)),sg=Math.sign(g.Bb[0]-g.Aa[0])||1;
+const Z=Math.min(16,170/Math.max(T,Tm,1));
+const zA=[sg<0?CX0+CW-40:CX0+40,CY0+165],zpt=mm=>add(zA,mul(u,mm*Z)),zB=zpt(T);
+const nup=mul(c,-1),axT=CY0+58,axB=CY0+205;
+s+=`<line x1="${zA[0]}" y1="${axT}" x2="${zA[0]}" y2="${axB}" stroke="${PUR}" stroke-width="2.2"/>`;
+s+=`<text x="${zA[0]}" y="${axT-7}" text-anchor="middle" font-size="11" font-weight="500" fill="#534AB7">axe proximal</text>`;
+const showB=!(s0===5&&g.rule===2&&st.gl>0.98);
+if(showB){s+=`<line x1="${zB[0]}" y1="${axT}" x2="${zB[0]}" y2="${axB}" stroke="${GRN}" stroke-width="2.2" stroke-dasharray="7 4"/><text x="${zB[0]}" y="${axT-7}" text-anchor="middle" font-size="11" font-weight="500" fill="#0F6E56">axe distal</text>`;}
+const Lm=Math.max(T,Tm),c1=zpt(-2),c2=zpt(Lm+2);
+s+=`<line x1="${c1[0]}" y1="${c1[1]}" x2="${c2[0]}" y2="${c2[1]}" stroke="${OR}" stroke-width="1.4" stroke-dasharray="6 4"/>`;
+s+=`<line x1="${zA[0]}" y1="${zA[1]}" x2="${zB[0]}" y2="${zB[1]}" stroke="${PINK}" stroke-width="7"/>`;
+const tA=add(zA,mul(nup,40)),tB=add(zpt(Tm),mul(nup,40)),tmc=zpt(Tm);
+s+=`<line x1="${tA[0]}" y1="${tA[1]}" x2="${tB[0]}" y2="${tB[1]}" stroke="${PUR}" stroke-width="7"/>`;
+s+=`<line x1="${tB[0]}" y1="${tB[1]}" x2="${tmc[0]}" y2="${tmc[1]}" stroke="#534AB7" stroke-width="1" stroke-dasharray="3 3"/>`;
+const mx=(zA[0]+zB[0])/2;
+s+=`<text x="${mx}" y="${Math.min(tA[1],tB[1])-12}" text-anchor="middle" font-size="13" font-weight="500" fill="#534AB7">T_max = ${f1(Tm)} mm</text>`;
+s+=`<text x="${mx}" y="${Math.max(zA[1],zB[1])+24}" text-anchor="middle" font-size="13" font-weight="500" fill="#993556">T = ${f1(T)} mm</text>`;
+if(g.rule===2){s+=`<line x1="${tmc[0]}" y1="${tmc[1]}" x2="${zB[0]}" y2="${zB[1]}" stroke="url(#hatch)" stroke-width="7"/>`;
+s+=`<text x="${CX0+CW/2}" y="${CY0+250}" text-anchor="middle" font-size="12" font-weight="500" fill="#993556">hachuré = dépassement : ${f1(T-Tm)} mm</text>`;
+if(s0===5){s+=`<line x1="${zB[0]}" y1="${CY0+272}" x2="${zA[0]}" y2="${CY0+272}" stroke="${PINK}" stroke-width="2" marker-end="url(#ar)"/><text x="${CX0+CW/2}" y="${CY0+296}" text-anchor="middle" font-size="12" fill="#993556">glissement de T → axes réalignés</text>`;}}
+else{s+=`<line x1="${zB[0]}" y1="${zB[1]}" x2="${tmc[0]}" y2="${tmc[1]}" stroke="${GRN}" stroke-width="3" stroke-dasharray="2 3"/>`;
+s+=`<text x="${CX0+CW/2}" y="${CY0+250}" text-anchor="middle" font-size="12" font-weight="500" fill="#0F6E56">vert pointillé = marge : ${f1(Tm-T)} mm</text>`;
+if(s0===5)s+=`<text x="${CX0+CW/2}" y="${CY0+274}" text-anchor="middle" font-size="12" fill="#0F6E56">pas de glissement : décalage accepté</text>`;}
+const ok=g.rule===3;
+s+=`<rect x="${CX0}" y="${CY0+CH+14}" width="${CW}" height="38" rx="8" fill="${ok?'#E1F5EE':'#FAECE7'}" stroke="${ok?GRN:OR}"/><text x="${CX0+CW/2}" y="${CY0+CH+38}" text-anchor="middle" font-size="14" font-weight="500" fill="${ok?'#085041':'#712B13'}">${ok?'T ≤ T_max → règle 3':'T &gt; T_max → règle 2'}</text>`;
+}
+if(s0===6)s+=`<text x="${X(4)}" y="${Y(132)}" font-size="12" fill="#0F6E56">${g.rule===3?'axes parallèles, décalage accepté':'axes alignés ✓'}</text>`;
+document.getElementById('sv').innerHTML=s;
+document.getElementById('cap').innerHTML=caption(g);
+document.getElementById('pills').innerHTML=names.map((t,i)=>`<span class="pill${i===st.step?' on':''}">${i+1}. ${t}</span>`).join('');
+document.getElementById('cw').textContent=g.wdeg+'°';
+document.getElementById('cT').textContent=f1(g.T)+' mm';
+document.getElementById('cTm').textContent=f1(g.Tmm)+' mm';
+document.getElementById('cR').textContent='Règle '+g.rule;
+document.getElementById('cd').textContent=f1(g.d2)+' / '+f1(g.d3)+' mm';
+document.getElementById('cL').textContent=(g.dL>=0?'+':'')+f1(g.dL)+' mm';
+document.getElementById('cC').textContent=Math.round(g.contact*100)+' %';
+document.getElementById('replay').disabled=st.step<3;
+const slots={ouv:'1 fente',fer:'2 fentes convergentes (coin de '+g.wdeg+'°)',neu:'2 fentes (la 2e s\'arrête au centre)'}[st.type];
+document.getElementById('out').innerHTML=`<b>Sorties pour les guides</b><br>• <b>Guide de coupe</b> : plan à d₁ = ${st.d1} mm du CORA (normale c), ${slots}, coupe complète, charnière à d₃ = ${f1(g.d3)} mm.<br>• <b>Guide de réduction</b> (broches posées avant la coupe) : rotation de ${g.wdeg}° autour de k à la charnière${g.rule===2?` + glissement T = ${f1(g.T)} mm le long du plan de coupe`:' seule'}.<br>• <b>Contrôles</b> : règle ${g.rule} ; Δ longueur ${(g.dL>=0?'+':'')+f1(g.dL)} mm ; aLDFA final ≈ 97°.`;
+}
+let anim=null;
+function stopAnim(){if(anim){cancelAnimationFrame(anim);anim=null}}
+function animate(k,done){stopAnim();const t0=performance.now();st[k]=0;draw();const f=t=>{const q=Math.min((t-t0)/1200,1);st[k]=q<0.5?2*q*q:1-Math.pow(-2*q+2,2)/2;draw();if(q<1)anim=requestAnimationFrame(f);else{anim=null;if(done)done();}};anim=requestAnimationFrame(f)}
+function play(){const g=geo(),slide=st.step>=5&&g.rule===2;
+if(st.step>=3){st.gl=0;animate('rot',()=>{if(slide)animate('gl');});}
+else draw();}
+function setStep(n,doPlay){stopAnim();const g=geo();st.step=Math.max(0,Math.min(6,n));st.rot=st.step>=3?1:0;st.gl=(st.step>=5&&g.rule===2)?1:0;
+if(doPlay&&st.step===3)animate('rot');else if(doPlay&&st.step===5&&g.rule===2)animate('gl');else draw()}
+document.getElementById('next').onclick=()=>setStep(st.step+1,true);
+document.getElementById('prev').onclick=()=>setStep(st.step-1,false);
+document.getElementById('replay').onclick=()=>play();
+document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{st.type=b.dataset.t;document.querySelectorAll('[data-t]').forEach(x=>x.classList.toggle('on',x===b));setStep(st.step,false)});
+document.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{const k=b.dataset.l;st.L[k]=st.L[k]?0:1;b.classList.toggle('on',!!st.L[k]);draw()});
+[['m','°'],['d1',' mm'],['tp',' %']].forEach(([id,u])=>{const el=document.getElementById(id);el.addEventListener('input',()=>{st[id]=parseFloat(el.value);document.getElementById(id+'v').textContent=el.value+u;setStep(st.step,false)})});
+setStep(0,false);
+</script>
+</body>
+</html>
