@@ -30,11 +30,16 @@ const S = {
   },
   // guides imprimables (étape 7, construits par le serveur)
   guide: { etat: 'aucun', cle: null, dossier: null, info: null, vue: 'coupe', journal: [], erreur: null },
+  // os voisins (ulna, fibula, rotule, fabelles) affichés ? La planification CORA ne montre que l'os planifié par défaut
+  voisins: false,
+  // 2e os (radius) : coupe de l'ulna à son propre niveau (null = automatique), son guide de coupe (étape 7)
+  ulna: { actif: false, niveau: null, plan: null, erreurPlan: null, clePlan: null,
+    etat: 'aucun', cle: null, dossier: null, info: null, journal: [], erreur: null },
   // stratégie chirurgicale (panneau « 2 · Stratégie et guide ») : type de coin (auto = recommandation), niveau du trait
   // (z, mm du CORA le long de l'os, + vers distal ; null = règle 1, ou règle 2 automatique si le CORA touche le cartilage),
   // profondeur de la charnière (y, mm de la corticale de la charnière, par type de coin), broches, chien en croissance,
   // inégalité de longueur (mm, + = membre opéré plus court que le membre opposé)
-  strat: { auto: true, decalage: null, charniere: { fermeture: CHARNIERE_RETRAIT, ouverture: CHARNIERE_RETRAIT }, croissance: false, inegalite: 0 },
+  strat: { auto: true, decalage: null, charniere: { fermeture: CHARNIERE_RETRAIT, ouverture: CHARNIERE_RETRAIT }, tMax: 0, croissance: false, inegalite: 0 },
   guideParams: {},            // dimensions du guide générique changées pour ce cas (clé -> valeur) ; vide = valeurs par défaut
   preset: '',                 // préréglage clinique choisi
 };
@@ -56,19 +61,27 @@ const ctx = {
     if (rho !== null) S.tor.rho = rho;
     majTorsion(complet);
   },
-  // guides imprimables (étape 12)
+  // guides imprimables (étape 14)
   get guide() { return S.guide; },
   get guidePret() { return guidePret(); },
   get serveur() { return S.reel.serveur; },
   construireGuide() { construireGuide(); },
   vueGuide(v) { S.guide.vue = v; refresh(); },
+  // 2e os : l'ulna (guide de coupe à son propre niveau ; son bout distal suit le radius)
+  get ulna() { return S.ulna; },
+  get ulnaPret() { return ulnaPret(); },
+  // le guide de réduction du radius a-t-il été construit avec ce niveau de coupe de l'ulna ?
+  get radiusAJourUlna() { return !guidePret() || S.guide.niveauUlna === (S.ulna.plan ? S.ulna.plan.niveau : null); },
+  ulnaActiver(b) { S.ulna.actif = b; if (!b && S.guide.vue === 'ulna') S.guide.vue = 'coupe'; refresh(); },
+  ulnaNiveau(x) { S.ulna.niveau = x; refresh(); },
+  construireGuideUlna() { construireGuideUlna(); },
   get reference() { return { preset: S.reel.preset, race: S.reel.race }; },
 };
 const INTEGRE = window.parent !== window;
 
 // ------------------------------------------------------------ mise à jour --
 // cas et options de planification de la source courante
-const optsStrategie = () => ({ decalageCoupe: S.strat.decalage, charniere: { ...S.strat.charniere },
+const optsStrategie = () => ({ decalageCoupe: S.strat.decalage, tMaxPct: S.strat.tMax, charniere: { ...S.strat.charniere },
   croissance: S.strat.croissance, inegaliteLongueur: S.strat.inegalite, parametresGuide: { ...S.guideParams } });
 function casEtOptions() {
   if (S.source === 'fictif') { const c = casCourant(); return { cas: c, opts: { ...S.reglages[c.bone], ...optsStrategie() } }; }
@@ -85,7 +98,7 @@ function replan() {
   if (S.source === 'reel' && !MODEL_R) { PLAN = null; TORS = null; clearFragments(); clearGroup(G.bone); clearGroup(G.ghost); return; }
   const { cas, opts } = casEtOptions();
   PLAN = planifier(MODEL, cas, opts);
-  if (S.strat.auto && PLAN.recommandation) S.kind = PLAN.recommandation.kind;     // coin recommandé (critères : étape 9)
+  if (S.strat.auto && PLAN.recommandation) S.kind = PLAN.recommandation.kind;     // coin recommandé (critères : étape 11)
   if (!PLAN.osteo[S.kind]) { const autre = S.kind === 'fermeture' ? 'ouverture' : 'fermeture'; if (PLAN.osteo[autre]) S.kind = autre; }
   buildBones(PLAN);
   clearFragments();
@@ -121,6 +134,7 @@ function refresh() {
     return;
   }
   if (st.torsion) calculTorsion();
+  majUlna();
   const coupe = !!st.coupe && PLAN.osteoPossible && !!PLAN.osteo[S.kind];
   // os intact, fragments ou os tordu
   if (coupe) buildFragments(PLAN, S.kind);
@@ -130,20 +144,25 @@ function refresh() {
   G.wedge.visible = coupe && S.kind === 'fermeture';
   G.gap.visible = coupe && S.kind === 'ouverture';
   G.pins.visible = G.pinsDist.visible = coupe && !!st.broches;
-  // guides imprimables (étape 12) : guide de coupe sur l'os intact, ou guide de réduction sur l'os corrigé
+  // guides imprimables (étape 14) : guide de coupe sur l'os intact, ou guide de réduction sur l'os corrigé
   const gp = st.id === 'guide' && coupe && guidePret();
   const reduction = gp && S.guide.vue === 'reduction';
-  G.guide.visible = gp && !reduction;
+  // vue « guide de l'ulna » (2e os) : os avant correction, broches du radius en place, guide de coupe du radius retiré
+  const vueUlna = st.id === 'guide' && coupe && S.guide.vue === 'ulna' && ulnaPret();
+  G.guide.visible = gp && !reduction && !vueUlna;
   G.guideRed.visible = reduction;
+  G.guideUlna.visible = vueUlna;
   if (reduction) { G.wedge.visible = false; G.gap.visible = S.kind === 'ouverture'; }
   opaciteOs(gp ? 1 : st.transparence ?? 1);
-  if (coupe) applyCorrection(PLAN, S.kind, st.fin || reduction ? 1 : st.anime ? S.progress : 0);
+  if (coupe) applyCorrection(PLAN, S.kind, (st.fin || reduction) && !vueUlna ? 1 : st.anime ? S.progress : 0);
   else setMatrix(G.dist, RT.I());
   G.ghost.visible = S.ghost && fantomeDispo();
+  majVoisins(S.voisins || vueUlna);                      // l'ulna est montrée avec son guide
   $('#v-ghost').setAttribute('aria-pressed', String(S.ghost && fantomeDispo()));
   $('#v-ghost').disabled = !fantomeDispo();
   dessiner(st);
   renderSteps(); renderExplain(); renderNav(); renderLegend(); renderContext(); renderTimeline();
+  if (st.anime && coupe) majCorrection(true);           // valeurs « en direct » de la simulation (angle, broches)
   if (!glisseStrat) renderStrategie();
 }
 // os translucide dans les étapes 3D (constructions et broches visibles à travers l'os)
@@ -258,6 +277,12 @@ const RACES = {
   golden: { nom: 'Golden retriever', femur: { aLDFA: { m: 97 }, aLPFA: { m: 98 } } },
   berger: { nom: 'Berger allemand', femur: { aLDFA: { m: 94 }, aLPFA: { m: 101 } } },
   rottweiler: { nom: 'Rottweiler', femur: { aLDFA: { m: 98 }, aLPFA: { m: 96 } } },
+  // 3. Table de référence par race du groupe (documents/Imane, d'après Aghapour et al. 2021, tableau 16) : angles du tibia
+  //    de profil (mêmes définitions que Dismukes 2008 ; mCdPTA = mCaPTA), avec leur écart-type.
+  chihuahua: { nom: 'Chihuahua', tibia: { mCaPTA: { m: 65.3, sd: 2.6, src: 'Phetkaew et al. 2018 (Aghapour 2021, tableau 16)' }, mCrDTA: { m: 94.9, sd: 3.1, src: 'Phetkaew et al. 2018 (Aghapour 2021, tableau 16)' } } },
+  caniche_toy: { nom: 'Caniche toy', tibia: { mCrDTA: { m: 98.5, sd: 3.8, src: 'Yasukawa et al. 2016 (Aghapour 2021, tableau 16)' } } },
+  bouledogue_anglais: { nom: 'Bouledogue anglais', tibia: { mCaPTA: { m: 63.2, sd: 6.1, src: 'Lusetti et al. 2017 (Aghapour 2021, tableau 16)' } } },
+  petites_races: { nom: 'Petites races', tibia: { mCaPTA: { m: 65.0, sd: 3.02, src: 'Olimpo et al. 2016 (Aghapour 2021, tableau 16)' }, mCrDTA: { m: 86.3, sd: 1.5, src: 'Olimpo et al. 2016 (Aghapour 2021, tableau 16)' } } },
 };
 const PRESETS = [['vezzoni', 'Vezzoni'], ['litterature', 'Littérature'], ['race', 'Race']];
 const NOM_PRESET = {
@@ -267,7 +292,7 @@ const NOM_PRESET = {
 };
 const raceRadiusUtilisee = () => S.reel.raceRadius || S.reel.json?.normales?.MPRA?.race || 'Beagle';
 const nomPreset = () => (S.reel.json?.os === 'radius' ? `${raceRadiusUtilisee().toLowerCase()} (Kwon 2022), courbure de Duncan 2022`
-  : S.reel.preset === 'race' ? `race : ${RACES[S.reel.race].nom.toLowerCase()} (Tomlinson 2007, Wilke 2002)` : NOM_PRESET[S.reel.preset]);
+  : S.reel.preset === 'race' ? `race : ${RACES[S.reel.race].nom.toLowerCase()} (table de référence par race)` : NOM_PRESET[S.reel.preset]);
 // valeur publiée { m, sd, src } de l'angle k pour une référence ; null = pas de valeur publiée (on garde la littérature)
 function valeurReference(preset, bone, k, race = S.reel.race) {
   const lit = LITTERATURE[bone][k];
@@ -275,7 +300,7 @@ function valeurReference(preset, bone, k, race = S.reel.race) {
   if (preset === 'vezzoni') return VEZZONI_PUBLIE[bone]?.[k] || null;
   if (preset === 'race') {
     const r = RACES[race]?.[bone]?.[k];
-    return r ? { m: r.m, sd: lit.sd, src: r.src || `Tomlinson et al. 2007, ${RACES[race].nom} (écart-type : ${lit.src})` } : null;
+    return r ? { m: r.m, sd: r.sd ?? lit.sd, src: r.src || `Tomlinson et al. 2007, ${RACES[race].nom} (écart-type : ${lit.src})` } : null;
   }
   return { m: lit.m, sd: lit.sd, src: lit.src };
 }
@@ -323,7 +348,11 @@ async function construireGuide() {
   Object.assign(Gd, { etat: 'calcul', cle: cleGuide(), info: null, dossier: null, journal: [], erreur: null, vue: 'coupe' });
   viderGuides(); refresh();
   try {
-    const corps = { action: 'guide', prescription: prescription(PLAN, S.kind, { parametresGuide: S.guideParams }),
+    const presc = prescription(PLAN, S.kind, { parametresGuide: S.guideParams });
+    // ulna déjà planifiée (2e os) : le guide de réduction du radius tient compte de SON niveau de coupe
+    if (ULNA) presc.coupes_voisins = { ulna: { niveau_mm: ULNA.niveau, plans_coupe: ULNA.plans.map((pl) => ({ point: pl.p.map((x) => +x.toFixed(4)), normale: V.norm(pl.n).map((x) => +x.toFixed(5)) })) } };
+    Gd.niveauUlna = ULNA ? ULNA.niveau : null;
+    const corps = { action: 'guide', prescription: presc,
       sommets: enBase64(Float32Array.from(PLAN.pos[PLAN.bone])), triangles: enBase64(Uint32Array.from(DATA.bones[PLAN.bone].idx)) };
     // os voisins tels que planifiés (fibula du tibia ; rotule et fabelles du fémur) et cartilage articulaire de l'os :
     // le guide et les broches doivent les éviter
@@ -361,6 +390,66 @@ async function construireGuide() {
   }
   refresh();
   if (guidePret() && ETAPES[S.step].id === 'guide') setView(ETAPES[S.step].vue);
+}
+// 2e os (radius) : coupe de l'ulna à son propre niveau, recalculée quand le plan du radius, le coin ou le niveau change
+const ulnaPossible = () => !!(PLAN && PLAN.bone === 'radius' && PLAN.pos.ulna && PLAN.osteo[S.kind] && MODEL.bones?.ulna);
+function majUlna() {
+  const U = S.ulna;
+  const cle = ulnaPossible() && U.actif ? `${PLAN_ID}|${S.kind}|${U.niveau}` : null;
+  if (cle === U.clePlan) return;
+  U.clePlan = cle; U.plan = null; U.erreurPlan = null;
+  if (cle) {
+    try { U.plan = planifierUlna(MODEL, PLAN, S.kind, { niveau: U.niveau }); } catch (e) { U.erreurPlan = e.message; }
+  }
+  ULNA = U.plan;
+  clearFragments();
+}
+const cleGuideUlna = () => `${S.ulna.clePlan}|${S.ulna.plan?.niveau}`;
+const ulnaPret = () => S.ulna.etat === 'pret' && S.ulna.cle === cleGuideUlna();
+// envoie une construction de guides au serveur (étape 7) et suit le calcul ; renvoie le dossier et guide.json
+async function executerEtape7(corps, Gd, majJournal) {
+  const r = await fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erreur || r.statusText);
+  let t;
+  for (;;) {
+    await new Promise((res) => setTimeout(res, 700));
+    t = (await lireJSON('/api/etat')).travail;
+    Gd.journal = t.journal.filter((l) => l.startsWith('[étape 7]')).map((l) => l.replace('[étape 7] ', ''));
+    majJournal();
+    if (t.etat !== 'en_cours') break;
+  }
+  if (t.etat === 'erreur') throw new Error(t.erreur || 'erreur pendant le calcul');
+  const dossier = t.resultat?.dossier;
+  if (!dossier) throw new Error('le serveur n\'a pas renvoyé de dossier de résultats');
+  return { dossier, info: await lireJSON(`/api/cora/guide?dossier=${encodeURIComponent(dossier)}`) };
+}
+// guide de coupe de l'ulna : ulna planifiée, radius et broches du radius comme obstacles (le guide les évite)
+async function construireGuideUlna() {
+  const Gd = S.ulna, U = Gd.plan;
+  if (!U || Gd.etat === 'calcul') return;
+  Object.assign(Gd, { etat: 'calcul', cle: cleGuideUlna(), info: null, dossier: null, journal: [], erreur: null });
+  clearGroup(G.guideUlna); refresh();
+  try {
+    const cyl = cylindresBroches(U.brochesRadius);
+    const corps = { action: 'guide', prescription: prescriptionUlna(PLAN, S.kind, U, { parametresGuide: S.guideParams }),
+      sommets: enBase64(Float32Array.from(PLAN.pos.ulna)), triangles: enBase64(Uint32Array.from(DATA.bones.ulna.idx)),
+      voisins: [{ nom: 'radius', sommets: enBase64(Float32Array.from(PLAN.pos.radius)), triangles: enBase64(Uint32Array.from(DATA.bones.radius.idx)) },
+        { nom: 'broches_radius', sommets: enBase64(cyl.pos), triangles: enBase64(cyl.idx) }] };
+    if (PLAN.reel && S.reel.choix) { corps.serie = S.reel.choix.serie; corps.nom_os = S.reel.choix.os.replace(/^radius/, 'ulna'); }
+    const { dossier, info } = await executerEtape7(corps, Gd, () => { const el = $('#guide-ulna-journal'); if (el) el.textContent = Gd.journal.join('\n') || 'Démarrage…'; });
+    const meshes = {};
+    for (const [k, n] of [['proximal', 'guide_coupe_proximal.bin'], ['distal', 'guide_coupe_distal.bin'], ['ponts', 'guide_coupe_ponts.bin']]) {
+      if (info.disponibles.includes(n)) meshes[k] = await lireMaillage(fichierGuide(dossier, n));
+    }
+    if (Gd.cle !== cleGuideUlna()) { Gd.etat = 'aucun'; refresh(); return; }
+    construireGuideUlna3D(meshes, U);
+    Object.assign(Gd, { etat: 'pret', dossier, info });
+    S.guide.vue = 'ulna';
+  } catch (e) {
+    console.error(e);
+    Object.assign(Gd, { etat: 'erreur', erreur: e.message });
+  }
+  refresh();
 }
 function montrerDossierGuide() {
   if (S.guide.dossier) fetch('/api/montrer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dossier_guide: S.guide.dossier }) });
@@ -472,7 +561,7 @@ function tableNormales() {
   const race = R.preset === 'race'
     ? h('select', { class: 'choix', 'aria-label': 'Race', onchange: (e) => { R.race = e.target.value; appliquerReference(); replanUI(); } },
       Object.entries(RACES).map(([k, r]) => h('option', { value: k, selected: k === R.race },
-        `${r.nom} : ${[r.femur ? 'fémur' : null, r.tibia ? 'pente tibiale' : null].filter(Boolean).join(', ')}`)))
+        `${r.nom} : ${[r.femur ? 'fémur' : null, r.tibia ? 'tibia de profil' : null].filter(Boolean).join(', ')}`)))
     : null;
   const ligne = (k) => h('tr', {}, h('td', {}, court(k)),
     h('td', { class: 'hi' }, deg(R.normales[k])),
@@ -492,7 +581,7 @@ function tableNormales() {
 function tableNormalesRadius() {
   const R = S.reel, J = R.json, n6 = J.normales.MPRA || {};
   const choix = h('select', { class: 'choix', 'aria-label': 'Race du chien (Kwon 2022)', onchange: (e) => { R.raceRadius = e.target.value || null; appliquerReference(); replanUI(); } },
-    h('option', { value: '', selected: !R.raceRadius }, `Race de l'étape 6 : ${n6.race || 'Beagle'}${(n6.note || '').includes('proches') ? ' (la plus proche des angles mesurés)' : ''}`),
+    h('option', { value: '', selected: !R.raceRadius }, `Race proposée par le calcul des repères : ${n6.race || 'Beagle'}${(n6.note || '').includes('proches') ? ' (la plus proche des angles mesurés)' : ''}`),
     ...Object.keys(RACES_RADIUS).map((k) => h('option', { value: k, selected: R.raceRadius === k }, k)));
   const ligne = (k) => h('tr', {}, h('td', {}, court(k)), h('td', { class: 'hi' }, deg(R.normales[k])),
     h('td', { class: 'src', title: R.sources[k] || '' }, `± ${fr(R.sd[k], 1)}`));
@@ -600,13 +689,21 @@ function renderStrategie() {
   if (!PLAN.osteoPossible) { el.replaceChildren(h('p', { class: 'strat-note' }, 'Pas d\'ostéotomie au CORA pour ce cas.')); return; }
   const O = PLAN.osteo[S.kind], rec = PLAN.recommandation;
   const nomK = { fermeture: 'fermeture', ouverture: 'ouverture' };
-  const btnK = (k) => h('button', { type: 'button', 'aria-pressed': String(!Sg.auto && S.kind === k), disabled: !PLAN.osteo[k],
-    title: PLAN.osteo[k]?.faisable === false ? 'pas réalisable par un abord usuel (voir l\'étape 9)' : '', onclick: () => ctx.setKind(k) },
+  const fe = PLAN.osteo.fermeture, neutreActif = !Sg.auto && S.kind === 'fermeture' && !!fe && fe.h >= fe.hMax - 0.05;
+  const btnK = (k) => h('button', { type: 'button', 'aria-pressed': String(!Sg.auto && S.kind === k && !(k === 'fermeture' && neutreActif)), disabled: !PLAN.osteo[k],
+    title: PLAN.osteo[k]?.faisable === false ? 'pas réalisable par un abord usuel (voir l\'étape 11)' : '', onclick: () => {
+      if (k === 'fermeture' && neutreActif) { Sg.charniere.fermeture = CHARNIERE_RETRAIT; replanStrat(); }
+      ctx.setKind(k);
+    } },
   k === 'fermeture' ? 'Fermeture' : 'Ouverture', rec?.kind === k ? h('span', { class: 'etoile', title: 'recommandé' }, '★') : null);
-  const coin = h('div', { class: 'case-group' }, h('span', { class: 'case-lbl' }, 'Type de coin'),
-    h('div', { class: 'seg coin', role: 'group', 'aria-label': 'Type de coin' },
+  const coin = h('div', { class: 'case-group' }, h('span', { class: 'case-lbl' }, 'Type d\'ostéotomie'),
+    h('div', { class: 'seg coin', role: 'group', 'aria-label': 'Type d\'ostéotomie' },
       h('button', { type: 'button', 'aria-pressed': String(Sg.auto), onclick: () => ctx.setKindAuto() }, `Auto (${rec ? nomK[rec.kind] : '—'})`),
-      btnK('fermeture'), btnK('ouverture')),
+      btnK('fermeture'), btnK('ouverture'),
+      // neutre : coin de fermeture dont la charnière est au centre de l'os (longueur conservée)
+      h('button', { type: 'button', disabled: !PLAN.osteo.fermeture, title: 'coin de fermeture, charnière au centre de l\'os : longueur conservée',
+        'aria-pressed': String(neutreActif),
+        onclick: () => { Sg.charniere.fermeture = PLAN.osteo.fermeture.hMax; replanStrat(); ctx.setKind('fermeture'); renderStrategie(); } }, 'Neutre')),
     rec ? h('p', { class: 'strat-note' }, `★ ${nomK[rec.kind]} recommandée : ${RAISON_RECO[rec.decisif] || rec.decisif}.`) : null,
     O && O.faisable === false ? h('p', { class: 'strat-note', style: { color: 'var(--c-warn)' } }, O.voisinSurLame
       ? `Ce coin n'est pas réalisable par un abord usuel : par la face ${nomDirection(O.faceCoin)}, ${O.voisinSurLame} est sur le trajet de la lame ; un guide y occuperait l'espace entre l'os et ${O.voisinSurLame} : pas de guide de coupe.`
@@ -614,8 +711,8 @@ function renderStrategie() {
   if (!O) { el.replaceChildren(coin); return; }
   const Lg = PLAN.validation.longueurOs, zMax = Math.round(0.3 * Lg);
   const zVal = Sg.decalage ?? O.z;
-  const niveau = curseurStrat('s-z', 'Niveau du trait de coupe (z)', -zMax, zMax, 1, zVal,
-    (x) => (Math.abs(x) < 0.5 ? 'au CORA (règle 1)' : `${x > 0 ? '+' : '−'}${fr(Math.abs(x), 0)} mm (règle 2)`),
+  const niveau = curseurStrat('s-z', 'Distance d1 entre le CORA et le plan de coupe', -zMax, zMax, 1, zVal,
+    (x) => (Math.abs(x) < 0.5 ? 'au CORA (règle 1)' : `${x > 0 ? '+' : '−'}${fr(Math.abs(x), 0)} mm`),
     (x) => { Sg.decalage = x; replanStrat(); }, '← proximal', 'distal →');
   const auto = Sg.decalage === null;
   const niveauBtns = h('div', { class: 'ligne-btn' },
@@ -623,7 +720,10 @@ function renderStrategie() {
     h('button', { type: 'button', class: 'btn petit', 'aria-pressed': String(auto), onclick: () => { Sg.decalage = null; replanStrat(); renderStrategie(); } }, 'Automatique'));
   const noteZ = h('p', { class: 'strat-note' }, auto
     ? (O.regle === 2 ? `Automatique : le CORA touche le cartilage, la coupe est déplacée de ${fr(O.decalageCoupe, 0)} mm (règle 2).` : 'Automatique : règle 1 de Paley, coupe au CORA.')
-    : 'Coupe déplacée le long de l\'os : l\'ACA reste au CORA (axes réalignés), le fragment glisse le long de la coupe (translation, règle 2). Contraintes au niveau choisi : étape 9.');
+    : O.regle === 3 ? `Règle 3 : T = 2·d1·tan(θ/2) = ${fr(O.tBarksfield, 1)} mm ≤ T_max = ${fr(O.tMax, 1)} mm. L'ACA est sur la charnière : rotation seule, les axes restent parallèles mais décalés (décalage accepté).`
+      : `Règle 2 : T = 2·d1·tan(θ/2) = ${fr(O.tBarksfield, 1)} mm${O.tMax ? ` > T_max = ${fr(O.tMax, 1)} mm` : ' (T_max non fixé)'}. L'ACA reste au CORA (axes réalignés) et le fragment glisse de ${fr(O.translationOsteo, 1)} mm le long de la coupe. Contraintes au niveau choisi : étape « Ostéotomie et règle de Paley ».`);
+  const tmax = curseurStrat('s-tmax', 'Tolérance T_max (% de la largeur de l\'os)', 0, 50, 1, Sg.tMax,
+    (x) => (x === 0 ? 'non fixée (règle 2)' : `${fr(x, 0)} %${O.tMax ? ` = ${fr(O.tMax, 1)} mm` : ''}`), (x) => { Sg.tMax = x; replanStrat(); }, '0 %', '50 %');
   const hMax = Math.max(0.6, O.hMax);
   const prof = curseurStrat('s-h', `Profondeur de la charnière (y) : depuis la corticale ${S.kind === 'fermeture' ? 'concave' : 'convexe'}`, 0.5, Math.round(hMax * 10) / 10, 0.1, O.h,
     (x) => `${fr(x, 1)} mm`, (x) => { Sg.charniere[S.kind] = x; replanStrat(); },
@@ -632,7 +732,7 @@ function renderStrategie() {
     ? `≤ ${PONT_MAX} mm : pont d'os qui plie (charnière conservée). Au-delà : coin mixte, ostéotomie complète ; au centre, coin neutre (longueur conservée). Actuellement : ${O.coinMixte ? 'coin mixte' : O.charniereConservee ? 'charnière conservée' : 'ostéotomie complète'}, longueur ${O.deltaOperation >= 0 ? '+' : '−'}${fr(Math.abs(O.deltaOperation), 1)} mm.`
     : `Coin d'ouverture : la charnière reste au plus à ${CHARNIERE_OUVERTURE_MAX} mm de la corticale convexe (au-delà, la partie convexe devrait se chevaucher). Actuellement : ${O.charniereConservee ? 'charnière conservée' : 'ostéotomie complète'}, longueur +${fr(Math.abs(O.deltaOperation), 1)} mm.`);
   const broches = h('div', { class: 'case-group' }, h('span', { class: 'case-lbl' }, 'Broches de réduction'),
-    h('p', { class: 'strat-note' }, `${NOM_BROCHES}${O.placementBroches.ok ? '' : ' — placement incomplet, voir les alertes (étape 12)'}.`));
+    h('p', { class: 'strat-note' }, `${NOM_BROCHES}${O.placementBroches.ok ? '' : ' — placement incomplet, voir les alertes (étape 14)'}.`));
   const ineg = curseurStrat('s-ineg', 'Membre opéré plus court (+) ou plus long (−)', -20, 20, 1, Sg.inegalite,
     (x) => (x === 0 ? 'égal' : `${x > 0 ? '+' : '−'}${fr(Math.abs(x), 0)} mm`), (x) => { Sg.inegalite = x; replanStrat(); }, 'plus long', 'plus court');
   const croissance = h('label', { class: 'bascule' }, h('input', { type: 'checkbox', checked: Sg.croissance, onchange: (e) => { Sg.croissance = e.target.checked; replanStrat(); } }),
@@ -640,7 +740,7 @@ function renderStrategie() {
   // inégalité de longueur : ne sert qu'au critère « longueur » du choix du coin (la fermeture raccourcit, l'ouverture allonge)
   const lg = (x) => (x ? `${x.deltaOperation >= 0 ? '+' : '−'}${fr(Math.abs(x.deltaOperation), 1)} mm` : '—');
   const noteL = h('p', { class: 'strat-note' }, `Écart de longueur avec le membre opposé, mesuré à l'examen ou sur une radiographie des deux membres. Il sert seulement à départager les deux coins (critère « longueur », à partir de 3 mm) : ici, fermeture ${lg(PLAN.osteo.fermeture)}, ouverture ${lg(PLAN.osteo.ouverture)}${rec?.decisif === 'longueur' ? ' ; c\'est ce critère qui décide' : ''}.`);
-  el.replaceChildren(...[coin, niveau, niveauBtns, noteZ, prof, noteH, broches, ineg, noteL, croissance].filter(Boolean));
+  el.replaceChildren(...[coin, niveau, niveauBtns, tmax, noteZ, prof, noteH, broches, ineg, noteL, croissance].filter(Boolean));
 }
 
 // ------------------------------------------------------------ guide générique : dimensions --
@@ -668,7 +768,7 @@ function renderGuideParams() {
   }
   const n = Object.keys(G_).length;
   el.replaceChildren(
-    h('p', { class: 'strat-note' }, 'Le guide est un modèle paramétrique : ces dimensions de conception sont les mêmes pour tous les cas (sauf si vous les changez ici). Celles qui dépendent de l\'os (longueur des fentes, hauteur des tours, position des broches, longueur de la coque…) en découlent pour chaque scanner : plan 2D coté à l\'étape 12.'),
+    h('p', { class: 'strat-note' }, 'Le guide est un modèle paramétrique : ces dimensions de conception sont les mêmes pour tous les cas (sauf si vous les changez ici). Celles qui dépendent de l\'os (longueur des fentes, hauteur des tours, position des broches, longueur de la coque…) en découlent pour chaque scanner : plan 2D coté à l\'étape 14.'),
     h('table', { class: 't compact gp' }, h('tbody', {}, lignes)),
     h('div', { class: 'ligne-btn' }, h('button', { type: 'button', class: 'btn petit', disabled: !n, onclick: () => { S.guideParams = {}; renderGuideParams(); replanStrat(); } }, `Valeurs par défaut${n ? ` (${n} changée${n > 1 ? 's' : ''})` : ''}`)));
 }
@@ -757,6 +857,14 @@ function renderContext() {
         : h('span', { class: 'glass pill' }, `${nomOs} droit · ${comp} · θ vrai ${deg(v.thetaVrai)}`),
       st.torsion ? null : h('span', { class: 'glass pill' }, `apex à ${fr(PLAN.niveau * 100, 0)} % (${mm(v.niveauApex, 0)})`),
     ];
+  }
+  // os voisins (ulna, fibula, rotule, fabelles) : cachés par défaut, une case les affiche (ils restent pris en compte)
+  const noms = [...PLAN.meshes.filter((n) => n !== PLAN.bone), ...Object.keys(PLAN.voisins || {}).filter((n) => DATA.bones[n])];
+  if (noms.length) {
+    const NOMS = { fibula: 'la fibula', ulna: 'l\'ulna', patella: 'la rotule', fabellae: 'les fabelles' };
+    pills.push(h('label', { class: 'glass pill case-voisin', title: 'Os voisin : pris en compte par la planification (lame, guide, broches) même caché' },
+      h('input', { type: 'checkbox', checked: S.voisins, onchange: (e) => { S.voisins = e.target.checked; refresh(); } }),
+      ` Afficher ${noms.map((n) => NOMS[n] || n).join(' et ')}`));
   }
   $('#ctx').replaceChildren(...pills.filter(Boolean));
 }
@@ -958,7 +1066,7 @@ function renderHelp() {
       li('En 3D : <b>angle vrai θ</b> (tan²θ = tan²F + tan²S), plan de la déformité (φ), plan bissecteur, <b>ACA oblique</b> (orientation ψ).'),
       li('<b>Règle 1</b> : ostéotomie au CORA, coin de fermeture (charnière concave, 2 traits ⊥ aux axes) ou d\'ouverture (charnière convexe, 1 trait bissecteur). Même angle θ dans les deux cas.'),
       li('Correction (avec dérotation si la torsion sort de la normale), contrôle dans les deux plans, puis prescription : fentes, charnière, broches de réduction (2 + 2, 1 + 1 ou 1 + 2), parallèles après correction.'),
-      li('<b>Guides imprimables</b> (étape 12, application CT-CORA3D) : guide de coupe moulé sur l\'os (deux moitiés reliées par des ponts sécables) et guide de réduction, construits et contrôlés par <code>etape7_guide.py</code> ; STL à télécharger.')),
+      li('<b>Guides imprimables</b> (étape 14, application CT-CORA3D) : guide de coupe moulé sur l\'os (deux moitiés reliées par des ponts sécables) et guide de réduction, construits et contrôlés par <code>etape7_guide.py</code> ; STL à télécharger.')),
     h('h3', {}, 'Stratégie chirurgicale (panneau « 2 · Stratégie et guide »)'),
     h('ul', {},
       li('<b>Préréglages cliniques</b> : 17 déformités prêtes à l\'emploi, avec leur contexte et leur référence.'),
@@ -966,7 +1074,7 @@ function renderHelp() {
       li('<b>Ouverture ou fermeture</b> : « Auto » suit la recommandation (★), décidée par le premier critère qui départage : accès, charnière conservée, règle 1, coin assez épais, ouverture ≤ 40 % de la largeur, longueur, puis stabilité.'),
       li('<b>Niveau du trait (z)</b> : règle 1 de Paley par défaut (coupe au CORA) ; le curseur translate le plan de coupe le long de l\'os (règle 2 : translation chiffrée). <b>Profondeur de la charnière (y)</b> : 2 mm dans la corticale par défaut (pont d\'os qui plie) ; plus profond, ostéotomie complète.'),
       li('<b>Contraintes biologiques</b> au niveau du trait : cartilage, tubérosité tibiale, épicondyles, physes (chien en croissance), place pour la fixation, consolidation, structures de l\'abord.'),
-      li('<b>Guide générique</b> : 21 dimensions de conception modifiables (panneau « Guide générique : dimensions ») ; les autres découlent de l\'os. Étape 12 : guide 3D et <b>plans 2D</b> (générique et coté).')),
+      li('<b>Guide générique</b> : 21 dimensions de conception modifiables (panneau « Guide générique : dimensions ») ; les autres découlent de l\'os. Étape 14 : guide 3D et <b>plans 2D</b> (générique et coté).')),
     h('h3', {}, 'Os segmenté : repères et références'),
     h('ul', {},
       li('L\'onglet CORA prend l\'os complet détecté dans la série de l\'onglet 1 : fémur, tibia ou radius (les os coupés par le champ du scanner sont ignorés). S\'il y en a plusieurs (les deux membres), on choisit l\'os à planifier.'),
@@ -982,7 +1090,7 @@ function renderHelp() {
       li('« Anormal » = écart à la référence de plus de 2 écarts-types publiés.')),
     h('h3', {}, 'Commandes'),
     h('ul', {},
-      li('<b>← →</b> : étape précédente / suivante · <b>Espace</b> : lecture de la correction (étape 10).'),
+      li('<b>← →</b> : étape précédente / suivante · <b>Espace</b> : lecture de la correction (étape 12).'),
       li('Clic-glisser : tourner · molette : zoomer · clic droit-glisser : déplacer · bouton de cadrage : revenir à la vue de l\'étape.')),
     h('h3', {}, 'Références'),
     h('ul', {}, Object.keys(REFS).map((k) => h('li', {}, srcLink(k)))),

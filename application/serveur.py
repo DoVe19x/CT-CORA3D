@@ -61,7 +61,7 @@ import parametres as P                 # noqa: E402
 
 INTERFACE = ICI / "interface"
 ETAPES = ["lecture DICOM", "seuillage et croissance de région", "identification des os", "maillages STL",
-          "contrôle et rapport", "repères pour CORA (fémur, tibia)"]
+          "contrôle et rapport", "repères pour CORA (fémur, tibia, radius)"]
 # réglages modifiables depuis l'interface, avec leurs bornes (garde-fous contre une saisie absurde)
 BORNES = {"SEUIL_OS_HU": (100, 700), "SIGMA_LISSAGE_MM": (0.0, 1.0), "VARIATION_SEUIL_HU": (10, 150),
           "TRIANGLES_MAX": (10_000, 1_000_000), "RAYON_FERMETURE_MM": (0.0, 3.0)}
@@ -349,10 +349,18 @@ def dossier_guide(d):
     """Dossier des guides : resultats/<série>/guide_<os>_<coin> (os segmenté), resultats/_os_fictif/… (os fictif)."""
     pr = d["prescription"]
     kind, os_ = pr["strategie"]["type_coin"], pr.get("os")
-    if kind not in ("fermeture", "ouverture") or os_ not in P.CORA_PLANIFIABLES:
+    # 2e os : l'ulna (ostéotomie simple « section », elle suit le radius), après le radius du même membre
+    deuxieme = os_ == "ulna" and kind == "section"
+    if not deuxieme and (kind not in ("fermeture", "ouverture") or os_ not in P.CORA_PLANIFIABLES):
         raise ValueError("prescription invalide (os ou type de coin)")
     if d.get("serie"):
-        return dossier_serie(d["serie"]) / f"guide_{nom_os_valide(d.get('nom_os') or os_)}_{kind}"
+        nom = d.get("nom_os") or os_
+        if deuxieme:
+            if not re.fullmatch(r"ulna(_gauche|_droit)?", nom):
+                raise ValueError("os inconnu (ulna, ulna_gauche, ulna_droit)")
+        else:
+            nom = nom_os_valide(nom)
+        return dossier_serie(d["serie"]) / f"guide_{nom}_{kind}"
     return P.RESULTATS / "_os_fictif" / f"guide_{os_}_{kind}"
 
 
@@ -699,7 +707,7 @@ def cas_courant(serie=None):
 
 def dossier_guide_lu(rel):
     """Dossier de guides désigné par l'interface (« <série>/guide_<os>_<coin> ») : vérifié, sans « ../ »."""
-    if not re.fullmatch(r"[A-Za-z0-9_][^/\\]*/guide_(femur|tibia|radius)(_gauche|_droit)?_(fermeture|ouverture)", rel or ""):
+    if not re.fullmatch(r"[A-Za-z0-9_][^/\\]*/(guide_(femur|tibia|radius)(_gauche|_droit)?_(fermeture|ouverture)|guide_ulna(_gauche|_droit)?_section)", rel or ""):
         raise ValueError("dossier de guide invalide")
     d = (P.RESULTATS / rel).resolve()
     if not d.is_relative_to(P.RESULTATS.resolve()) or not d.is_dir():

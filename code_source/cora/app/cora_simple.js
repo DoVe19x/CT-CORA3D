@@ -314,7 +314,7 @@ export function modeleReel(json, maillages) {
   const bone = json.os;
   if (bone === 'radius') {
     const manquants = REPERES_RADIUS.filter((k) => !json.reperes[k]);
-    if (manquants.length) throw new Error(`repères du radius manquants (${manquants.join(', ')}) : fichier d'une ancienne version, relancer l'étape 6 (repères) sur cette série`);
+    if (manquants.length) throw new Error(`repères du radius manquants (${manquants.join(', ')}) : fichier d'une ancienne version, relancer le calcul des repères (programme, étape 6) sur cette série`);
   }
   const L = Object.fromEntries(Object.entries(json.reperes).map(([k, p]) => [k, [...p]]));
   if (bone === 'radius') for (const [a, k] of Object.entries(ALIAS_RADIUS)) if (L[k] && !L[a]) L[a] = [...L[k]];
@@ -386,6 +386,21 @@ export function sectionPoints(pos, idx, p0, n) {
     if ((d[c] >= 0) !== (d[a] >= 0)) out.push(pt(c, a));
   }
   return out;
+}
+// Milieu de la section de l'os par le plan (p0, n), à moins de `rayon` mm de p0 : milieu des bords le long de deux
+// directions du plan (dir projetée dans le plan, et sa perpendiculaire). null si le plan ne coupe pas l'os à cet endroit.
+export function milieuSection(pos, idx, p0, n, dir, rayon) {
+  n = V.norm(n);
+  const e1 = V.norm(V.perp(dir, n)), e2 = V.cross(n, e1);
+  let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
+  for (const q of sectionPoints(pos, idx, p0, n)) {
+    const r = V.sub(q, p0);
+    if (V.len(r) > rayon) continue;
+    const x = V.dot(r, e1), y = V.dot(r, e2);
+    a0 = Math.min(a0, x); a1 = Math.max(a1, x); b0 = Math.min(b0, y); b1 = Math.max(b1, y);
+  }
+  if (!Number.isFinite(a0) || !Number.isFinite(b0)) return null;
+  return V.add(p0, V.add(V.mul(e1, (a0 + a1) / 2), V.mul(e2, (b0 + b1) / 2)));
 }
 // Milieu de la diaphyse à la hauteur y, comme sur les radiographies : bords médial / latéral de la
 // silhouette crânio-caudale (x min / x max) et bords crânial / caudal de la silhouette de profil (z min / z max).
@@ -1347,8 +1362,13 @@ export function planifier(model, cas, opts = {}) {
       }
     }
     if (!cp) { osteo[kind] = null; continue; }
-    const regle = cp.z === 0 ? 1 : 2;
     const { H, plans } = cp, secK = cp.sec2;
+    // Coupe hors du CORA (d1 = |z| > 0) : translation de Barksfield et Monsell 2015, T = 2·d1·tan(θ/2). Si le chirurgien a
+    // fixé une tolérance T_max (opts.tMaxPct, % de la largeur de l'os à la coupe) et que T ≤ T_max : règle 3 (ACA sur la
+    // charnière, rotation seule ; les axes restent parallèles mais décalés). Sinon règle 2 (ACA au CORA, translation).
+    const tBarks = 2 * Math.abs(cp.z) * Math.tan(theta * RAD / 2);
+    const tMax = Number.isFinite(opts.tMaxPct) && opts.tMaxPct > 0 ? opts.tMaxPct / 100 * secK.largeur : 0;
+    const regle = cp.z === 0 ? 1 : tBarks <= tMax ? 3 : 2;
     const nDist = plans[plans.length - 1].n;
     const estDistal = (p) => V.dot(V.sub(p, H), nDist) > 0;
     // règle 1 : rotation autour de la charnière, sur la bissectrice transverse du CORA. Règle 2 : l'ACA reste sur cette
@@ -1369,7 +1389,18 @@ export function planifier(model, cas, opts = {}) {
     //   ouverture : autour de l'axe réaligné (axe proximal), APRÈS l'ouverture (l'espace d'ouverture est comblé).
     // L'angle est ajusté (méthode de la sécante) pour que la torsion mesurée après correction égale la cible.
     const surAxe = (A_, p) => V.add(A_.p, V.mul(A_.d, V.dot(V.sub(p, A_.p), A_.d)));
-    const axeDer = kind === 'fermeture' ? { p: surAxe(axeDist, Cc), d: V.neg(v) } : { p: surAxe(axeProx, Cc), d: V.neg(u) };
+    let axeDer = kind === 'fermeture' ? { p: surAxe(axeDist, Cc), d: V.neg(v) } : { p: surAxe(axeProx, Cc), d: V.neg(u) };
+    // radius : l'axe distal construit (depuis la surface carpienne) ne passe pas par l'os à la coupe (5 à 6 mm du milieu
+    // de la section sur le chien A). Tourner autour de lui ferait glisser le fragment distal de côté à l'ostéotomie
+    // (≈ 4,7 mm pour une dérotation de 43°) : les fragments ne seraient plus en face. Le fragment tourne donc autour de
+    // la ligne centrale RÉELLE de l'os à la coupe (milieu de la section dans le plan qui tourne), comme le fait le
+    // chirurgien, fragments en contact ; l'axe construit se décale alors un peu (translation entre les axes, signalée).
+    // Règle 2 : l'axe construit est gardé, car la translation de la règle 2 est calculée pour réaligner les axes.
+    if (bone === 'radius' && regle !== 2) {
+      const plD = kind === 'fermeture' ? plans[plans.length - 1] : plans[0];
+      const m = milieuSection(main.pos, main.idx, plD.p, plD.n, c, 2 * secK.largeur);
+      if (m) axeDer = { p: m, d: axeDer.d };
+    }
     const corrigeAvec = (alpha) => {
       const Rd = RT.aboutAxis(axeDer.p, axeDer.d, alpha * RAD);
       const Ttot = kind === 'fermeture' ? RT.compose(Tang, Rd) : RT.compose(Rd, Tang);
@@ -1464,7 +1495,7 @@ export function planifier(model, cas, opts = {}) {
     for (const [nomF, pr_] of [['proximal', pl.pp], ['distal', pl.pd]]) {
       if (pr_.ok && pr_.decalage) alertesK.push(`broche du fragment ${nomF} décalée de ${Math.abs(pr_.decalage)} mm de la ligne centrale de l'os (cartilage ou os voisin évités)`);
     }
-    const charniereConservee = ab.charniere && regle === 1 && Math.abs(alpha) < DEROTATION_MIN && cp.h <= PONT_MAX + 1e-9;
+    const charniereConservee = ab.charniere && regle !== 2 && Math.abs(alpha) < DEROTATION_MIN && cp.h <= PONT_MAX + 1e-9;
     const coinMixte = kind === 'fermeture' && cp.h > PONT_MAX + 1e-9;
     const pourquoi = ab.charniere && !ab.nonUsuel ? null : bloqueePar ? `${bloqueePar} est sur le trajet de la lame` : 'hors des abords chirurgicaux usuels';
     if (ab.nonUsuel) {
@@ -1485,18 +1516,25 @@ export function planifier(model, cas, opts = {}) {
       alertesK.push(`coin de fermeture trop fin (base ≈ ${(2 * Dl * Math.tan(theta * RAD / 2)).toFixed(1)} mm) : les deux fentes du guide se touchent presque ; préférer le coin d'ouverture`);
     }
     const trans = V.dist(RT.apply(Tang, H), H);
+    if (regle === 3) alertesK.push(`règle 3 de Paley : coupe à ${Math.abs(cp.z).toFixed(0)} mm du CORA, T = 2·d1·tan(θ/2) = ${tBarks.toFixed(1)} mm ≤ T_max = ${tMax.toFixed(1)} mm : rotation à la charnière, sans translation ; les axes restent parallèles mais décalés`);
     if (regle === 2) alertesK.push(`règle 2 de Paley : coupe à ${Math.abs(cp.z).toFixed(0)} mm ${cp.z < 0 ? 'au-dessus' : 'au-dessous'} du CORA${zImpose === null ? ' (hors du cartilage)' : ' (niveau choisi)'}, translation de ${trans.toFixed(1)} mm à l'ostéotomie`);
+    // radius : l'ulna n'est pas coupée par ce plan (simple obstacle) ; elle a son propre guide (2e os, étape 14)
+    if (bone === 'radius' && pos.ulna) alertesK.push('ulna intacte dans ce plan (obstacle pour la lame, le guide et les broches) : la couper avec son propre guide (2e os, étape 14) avant la correction, sinon elle l\'empêche');
     if (trans > 0.5 * secK.largeur) alertesK.push(`translation à l'ostéotomie de ${trans.toFixed(1)} mm (${Math.round(100 * trans / secK.largeur)} % de la largeur de l'os) : contact osseux insuffisant`);
     if (zImpose !== null && !cp.sur) alertesK.push(`trait de coupe à ${Number.isFinite(cp.dCart) ? cp.dCart.toFixed(1) : '?'} mm du cartilage (minimum ${MARGE_COUPE_CARTILAGE} mm)${cp.dansCoin ? ' ; le coin retiré emporterait du cartilage' : ''}`);
     const contraintes = contraintesCoupe({ bone, L, ax, kind, cp, regle, translation: trans, largeur: secK.largeur, croissance: !!opts.croissance, abord: ab.abord, nonUsuel: ab.nonUsuel });
     osteo[kind] = {
-      kind, regle, decalageCoupe: Math.abs(cp.z), z: cp.z, translationOsteo: trans, aca: Q, centreCoupe: cp.Pc,
+      kind, regle, decalageCoupe: Math.abs(cp.z), z: cp.z, translationOsteo: trans, tBarksfield: tBarks, tMax, aca: Q, centreCoupe: cp.Pc,
       abord: ab.abord, charniereConservee, faceCoin, raisonAbord: pourquoi,
       faisable: ab.faisable, abordNonUsuel: !!ab.nonUsuel, ecartFace: ab.ecart, voisinSurLame: bloqueePar,
       angleFaceCharniere: V.angle(V.norm(V.perp(face, u)), V.norm(V.perp(V.neg(faceCoin), u))),
       h: cp.h, hMax: cp.hMax, coinMixte, ouvertureCharniere: !charniereConservee && kind === 'fermeture' ? 2 * cp.h * Math.sin(theta * RAD / 2) : 0,
       dCart: cp.dCart, contraintes,
       charniere: H, plans, T, Tang, k, corr: theta, face, broches, brochesReduction, brochesApres,
+      // trait de scie (mm) : en fermeture, chaque coupe enlève l'épaisseur de la lame, centrée sur son plan ; une fois
+      // le coin refermé, le fragment distal avance encore de cette épaisseur le long de la normale au 1er plan (même
+      // compensation que transformation_reelle de l'étape 7 : os, broches et guide de réduction coïncident)
+      traitScie: kind === 'fermeture' && plans.length === 2 ? INSTRUMENT.lame : 0,
       placementBroches: { beta: pl.beta, eProx: pl.pp.e, eDist: pl.pd.e,
         decalageProx: pl.pp.decalage, decalageDist: pl.pd.decalage,
         retraitLibre: pl.retrait !== false, gamma: pl.gamma || 0,
@@ -1545,7 +1583,7 @@ export function planifier(model, cas, opts = {}) {
     cora: C, coraC: Cc, cc, coraDansOs, theta, Fm, Sm, typeF, typeS, theta2D, phi, psi,
     bis: { b, c, ccv: V.neg(c), n: nACA },
     osteo, osteoPossible, validation, recommandation,
-    optionsStrategie: { decalageCoupe: zImpose, charniere: opts.charniere ?? null, croissance: !!opts.croissance, inegaliteLongueur: opts.inegaliteLongueur ?? null },
+    optionsStrategie: { decalageCoupe: zImpose, tMaxPct: opts.tMaxPct ?? null, charniere: opts.charniere ?? null, croissance: !!opts.croissance, inegaliteLongueur: opts.inegaliteLongueur ?? null },
     voisins: voisinsPos, articulaire: masque, alertesPlanif: alertes,
   };
 }
@@ -1591,7 +1629,7 @@ export function prescription(P, kind, extra = {}) {
     reference: P.reference === 'normales' ? { type: 'valeurs normales (méthode de Paley)', valeurs: Object.fromEntries(Object.entries(P.mesures.normal).filter(([k]) => k !== 'longueur').map(([k, x]) => [k, r(x, 2)])) }
       : { type: R ? 'os avant la déformité de test (membre controlatéral idéal)' : 'os sain du modèle (membre controlatéral)' },
     strategie: { type_coin: kind, regle_paley: O.regle, torsion: Math.abs(O.derotation) >= DEROTATION_MIN ? `corrigée : dérotation de ${r(O.derotation, 1)}°` : 'non corrigée',
-      decalage_coupe_mm: O.decalageCoupe, decalage_coupe_signe_mm: r(O.z ?? 0, 2), translation_osteotomie_mm: r(O.translationOsteo, 2),
+      decalage_coupe_mm: O.decalageCoupe, decalage_coupe_signe_mm: r(O.z ?? 0, 2), translation_osteotomie_mm: r(O.translationOsteo, 2), translation_barksfield_mm: r(O.tBarksfield || 0, 2), t_max_mm: r(O.tMax || 0, 2),
       abord: O.abord, face_du_coin: p3(O.faceCoin || O.face),
       abord_non_usuel: !!O.abordNonUsuel, faisable_abord_usuel: O.faisable !== false, ecart_face_coin_deg: r(O.ecartFace || 0, 1),
       // os voisin sur le trajet de la lame par la face du coin (« la fibula »…) : l'étape 7 ne construit alors pas de guide
@@ -1639,6 +1677,176 @@ export function prescription(P, kind, extra = {}) {
       frontal_deg: (P.frontal === 'varus' ? 1 : -1) * P.thetaF, sagittal_deg: P.D.sS * P.D.S,
     };
   }
+  if (extra.parametresGuide && Object.keys(extra.parametresGuide).length) out.parametres_guide = { ...extra.parametresGuide };
+  return out;
+}
+
+// ------------------------------------------------------------ 2e os : l'ulna --
+// Choix de Dorian (25/11/2026) : le plan du radius ne coupe pas l'ulna (elle reste intacte, simple obstacle pour la lame,
+// le guide et les broches) ; l'ulna a ensuite son PROPRE guide de coupe. Son niveau de coupe se choisit (z, mm le long de
+// l'ulna depuis le niveau du 1er trait du radius) ; c'est une ostéotomie simple (un trait complet, perpendiculaire à
+// l'ulna) et son bout distal SUIT le fragment distal du radius (même déplacement : correction réelle du radius, trait de
+// scie compris), puisque les deux os sont liés au carpe. L'ulna n'a pas de CORA propre (pas de lignes articulaires) :
+// le 1er os est toujours le radius.
+export const ULNA_NIVEAU_MAX = 25;          // mm de part et d'autre du niveau de la coupe du radius
+// opts.niveau : niveau choisi (mm) ; null ou absent : AUTOMATIQUE, le niveau le plus proche de celui du radius (0, ∓ 2,
+// ± 2… mm) où les deux broches trouvent leur place hors des extrémités articulaires et du radius
+export function planifierUlna(model, P, kind, opts = {}) {
+  if (opts.niveau !== null && opts.niveau !== undefined) return { ...planifierUlnaA(model, P, kind, opts.niveau), auto: false };
+  let premier = null, erreur = null;
+  for (let k = 0; k <= ULNA_NIVEAU_MAX; k += 2) {
+    for (const z of k ? [-k, k] : [0]) {
+      try {
+        const U = planifierUlnaA(model, P, kind, z);
+        if (U.ok) return { ...U, auto: true };
+        premier = premier || U;
+      } catch (e) { erreur = erreur || e; }
+    }
+  }
+  if (premier) return { ...premier, auto: true };
+  throw erreur || new Error('aucun niveau de coupe de l\'ulna possible');
+}
+function planifierUlnaA(model, P, kind, niveauDemande) {
+  if (P.bone !== 'radius' || !P.pos.ulna || !model.bones.ulna) throw new Error('pas d\'ulna segmentée avec ce radius');
+  const O = P.osteo[kind];
+  if (!O) throw new Error('pas de correction du radius pour ce type de coin');
+  const L = P.L, A0 = L.uln_prox_center, A1 = L.uln_styloid;
+  if (!A0 || !A1) throw new Error('repères de l\'ulna absents (centre proximal, styloïde)');
+  const pos = P.pos.ulna, idx = model.bones.ulna.idx, longueur = V.dist(A0, A1);
+  const niveau = clamp(Number(niveauDemande) || 0, -ULNA_NIVEAU_MAX, ULNA_NIVEAU_MAX);
+  // correction réelle du radius (trait de scie compris, comme l'affichage et l'étape 7) : l'ulna distale la suit
+  const n1 = V.norm(O.plans[0].n);
+  const Treel = { R: O.T.R, t: V.sub(O.T.t, V.mul(n1, O.traitScie || 0)) };
+  // axe de l'ulna au niveau de la coupe : milieux des sections à ± 8 mm (l'ulna est courbe)
+  let d = V.norm(V.sub(A1, A0));
+  const tR = V.dot(V.sub(O.plans[0].p, A0), n1) / V.dot(d, n1);           // le 1er trait du radius coupe l'axe de l'ulna
+  let P0 = V.add(A0, V.mul(d, tR + niveau));
+  const ref = V.norm(V.perp(P.bis.c, d));
+  for (let it = 0; it < 2; it++) {
+    const a = milieuSection(pos, idx, V.sub(P0, V.mul(d, 8)), d, ref, 15), b = milieuSection(pos, idx, V.add(P0, V.mul(d, 8)), d, ref, 15);
+    if (a && b) d = V.norm(V.sub(b, a));
+  }
+  const fraction = (tR + niveau) / longueur;
+  if (fraction < 0.15 || fraction > 0.88) throw new Error(`coupe de l'ulna à ${Math.round(100 * fraction)} % de sa longueur : trop près d'une extrémité (articulation)`);
+  const sec = sectionUlna(pos, idx, P0, d, ref, 15);
+  if (!sec) throw new Error('à ce niveau, le plan de coupe ne traverse pas l\'ulna');
+  const C = sec.centre, largeur = Math.max(sec.l1, sec.l2);
+  // face d'appui (entrée de la lame et des broches) : à l'opposé du radius (abord caudo-latéral de l'ulna), pour laisser
+  // libre l'espace entre les deux os
+  const Cr = milieuSection(P.main.pos, P.main.idx, C, d, ref, 30) || C;
+  const face = V.norm(V.perp(V.sub(C, Cr), d));
+  const plans = [{ p: C, n: d, profondeur: 'complete' }];
+  // obstacles : le radius planifié et ses broches (forées avant la coupe de l'ulna et laissées en place pour le guide de
+  // réduction du radius), en nuages de points
+  const rayon = largeur + 45;
+  const proche = (pts) => {
+    const out = [];
+    for (let i = 0; i < pts.length; i += 3) if (Math.abs(pts[i] - C[0]) < rayon && Math.abs(pts[i + 1] - C[1]) < rayon && Math.abs(pts[i + 2] - C[2]) < rayon) out.push(pts[i], pts[i + 1], pts[i + 2]);
+    return Float32Array.from(out);
+  };
+  const brochesRadius = (O.brochesReduction || O.broches).map((bb) => ({ a: V.sub(bb.point, V.mul(V.norm(bb.dir), 25)), b: V.add(bb.point, V.mul(V.norm(bb.dir), 15)) }));
+  const ptsBroches = [];
+  for (const s of brochesRadius) for (let t = 0; t <= 1.0001; t += 0.5 / V.dist(s.a, s.b)) ptsBroches.push(...V.add(s.a, V.mul(V.sub(s.b, s.a), t)));
+  const nrm = normalesSommets(pos, idx);
+  // extrémités articulaires de l'ulna (pas de carte du cartilage pour elle) : les 10 mm de chaque bout le long de l'axe
+  // (DISTANCE_MIN_ARTICULATION_MM de l'étape 7) sont traités comme du cartilage par le placement des broches
+  let sMin = Infinity, sMax = -Infinity;
+  for (let i = 0; i < pos.length; i += 3) { const s = (pos[i] - C[0]) * d[0] + (pos[i + 1] - C[1]) * d[1] + (pos[i + 2] - C[2]) * d[2]; sMin = Math.min(sMin, s); sMax = Math.max(sMax, s); }
+  const bouts = [];
+  for (let i = 0; i < pos.length; i += 3) {
+    const s = (pos[i] - C[0]) * d[0] + (pos[i + 1] - C[1]) * d[1] + (pos[i + 2] - C[2]) * d[2];
+    if (s < sMin + 10 || s > sMax - 10) bouts.push(pos[i], pos[i + 1], pos[i + 2]);
+  }
+  if (sMax < 10 + 8 || -sMin < 10 + 8) throw new Error(`coupe de l'ulna à ${Math.round(Math.min(sMax, -sMin))} mm d'une extrémité : pas de place pour une broche hors de l'articulation`);
+  const sections = plans.map((pl_) => sectionPoints(pos, idx, pl_.p, pl_.n));
+  const tours = toursFente(plans, face, pos, idx, largeur, sections);
+  const centre = (frag, e) => {
+    const q = V.add(C, V.mul(d, frag === 'proximal' ? -e : e));
+    return milieuSection(pos, idx, q, d, ref, 15) || q;
+  };
+  // broches de l'ulna : parallèles (pas de guide de réduction de l'ulna : elle suit le radius, que son guide de
+  // réduction tient) ; elles ne servent qu'à fixer le guide de coupe de l'ulna
+  const pl = placerBroches({ u: d, v: d, face, Tinv: RT.I(), largeur, centre, tours, plansProx: plans, plansDist: plans, tousPlans: plans,
+    ctx: { osPos: proche(pos), osNrm: proche(nrm), art: Float32Array.from(bouts), voisins: [proche(P.main.pos), Float32Array.from(ptsBroches)], demiLargeur: largeur / 2 } });
+  const broches = [];
+  if (pl?.pp?.pts.length) broches.push({ fragment: 'proximal', point: pl.pp.pts[0], dir: pl.pp.dir, hauteurManchon: 15 });
+  if (pl?.pd?.pts.length) broches.push({ fragment: 'distal', point: pl.pd.pts[0], dir: pl.pd.dir, hauteurManchon: pl.pd.hauteurManchon });
+  const alertes = [];
+  for (const [frag, pr_] of [['proximal', pl?.pp], ['distal', pl?.pd]]) {
+    if (!pr_?.ok) alertes.push(`broche ${frag} de l'ulna : ${pr_?.ev?.[0]?.raison || 'aucune position possible'}`);
+  }
+  if (pl && Math.abs(pl.beta) > 0) alertes.push(`broches de l'ulna tournées de ${pl.beta}° autour de l'os (radius ou ses broches évités)`);
+  // écart entre les deux bouts de l'ulna après la correction (l'ulna distale suit le radius) : attendu, à signaler
+  const CdApres = RT.apply(Treel, V.add(C, V.mul(d, 0)));
+  return { niveau, fraction, d, centre: C, largeur, sec, face, plans, broches, bouts: Float32Array.from(bouts), distanceBouts: [-sMin, sMax], ok: !!(pl?.pp?.ok && pl?.pd?.ok), beta: pl?.beta || 0,
+    eProx: pl?.pp?.e, eDist: pl?.pd?.e, Treel, brochesRadius, ecartApres: V.dist(CdApres, C), alertes };
+}
+// broches du radius (segments { a, b }) en cylindres fermés (rayon de la broche + 0,2 mm), pour l'étape 7 : le guide de
+// l'ulna doit les éviter (elles restent en place jusqu'au guide de réduction du radius)
+export function cylindresBroches(segments, r = INSTRUMENT.broche / 2 + 0.2, n = 12) {
+  const pos = [], idx = [];
+  for (const { a, b } of segments) {
+    const d = V.norm(V.sub(b, a)), e1 = V.norm(V.perp(Math.abs(d[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0], d)), e2 = V.cross(d, e1);
+    const o = pos.length / 3;
+    for (const c of [a, b]) for (let k = 0; k < n; k++) {
+      const t = 2 * Math.PI * k / n;
+      pos.push(...V.add(c, V.add(V.mul(e1, r * Math.cos(t)), V.mul(e2, r * Math.sin(t)))));
+    }
+    pos.push(...a, ...b);
+    const ca = o + 2 * n, cb = ca + 1;
+    for (let k = 0; k < n; k++) {
+      const k2 = (k + 1) % n;
+      idx.push(o + k, o + n + k2, o + n + k, o + k, o + k2, o + n + k2);     // flanc (normales vers l'extérieur)
+      idx.push(ca, o + k2, o + k, cb, o + n + k, o + n + k2);                 // couvercles
+    }
+  }
+  return { pos: Float32Array.from(pos), idx: Uint32Array.from(idx) };
+}
+// section de l'ulna par le plan (p0, d) : milieu et étendues (dans l'axe ref et sa perpendiculaire), à moins de rayon mm
+function sectionUlna(pos, idx, p0, d, ref, rayon) {
+  const e1 = V.norm(V.perp(ref, d)), e2 = V.cross(d, e1);
+  let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
+  for (const q of sectionPoints(pos, idx, p0, d)) {
+    const r = V.sub(q, p0);
+    if (V.len(r) > rayon) continue;
+    const x = V.dot(r, e1), y = V.dot(r, e2);
+    a0 = Math.min(a0, x); a1 = Math.max(a1, x); b0 = Math.min(b0, y); b1 = Math.max(b1, y);
+  }
+  if (!Number.isFinite(a0)) return null;
+  return { centre: V.add(p0, V.add(V.mul(e1, (a0 + a1) / 2), V.mul(e2, (b0 + b1) / 2))), l1: a1 - a0, l2: b1 - b0 };
+}
+// Prescription du guide de l'ulna pour l'étape 7 (type « section » : un trait complet, pas de coin)
+export function prescriptionUlna(P, kind, U, extra = {}) {
+  const O = P.osteo[kind], R = P.reel;
+  const r = (x, dd = 4) => +x.toFixed(dd), p3 = (p) => p.map((x) => r(x));
+  const hh = V.norm(V.cross(U.d, U.face));                                  // direction de la fente (⊥ face, ⊥ ulna)
+  const out = {
+    schema_version: 'v2.2',
+    generateur: 'CT-CORA3D (PMD2, ECAM), os segmenté sur CT : 2e os (ulna), suit la correction du radius',
+    os: 'ulna', cote: 'droit', unites: 'mm',
+    fichier_maillage: nomFichierOs(P).replace(/radius/, 'ulna'),
+    repere: R && R.miroir ? 'X latéral, Y proximal, Z caudal (repère du maillage ; membre gauche mis en miroir)' : 'X latéral, Y proximal, Z caudal (repère du maillage)',
+    deformite: { theta_deg: r(P.theta), suit: 'radius' },
+    strategie: { type_coin: 'section', regle_paley: null, abord: 'caudo-latéral', abord_non_usuel: false, faisable_abord_usuel: true,
+      voisin_sur_lame: null, charniere_profondeur_mm: 0, coin_mixte: false, configuration_broches: '1+1', osteotomie_complete: true,
+      suit_os: 'radius', type_coin_premier_os: kind, niveau_coupe_mm: r(U.niveau, 1), niveau_coupe_fraction: r(U.fraction, 3) },
+    charniere: { point: p3(U.centre), direction: p3(hh), d_mm: 0, marge_mm: 0, axe_correction_point: p3(U.centre) },
+    plans_coupe: U.plans.map((pl) => ({ point: p3(pl.p), normale: p3(V.norm(pl.n)), profondeur: 'complete' })),
+    // déplacement du bout distal de l'ulna : celui du fragment distal du radius (correction réelle, trait de scie compris)
+    correction: { angle_deg: 0, derotation_deg: 0, T_4x4: RT.toRows4(U.Treel).map((l) => l.map((x) => r(x, 6))), suit: 'fragment distal du radius' },
+    broches: U.broches.map((bb) => ({ fragment: bb.fragment, point_axe: p3(bb.point), direction: p3(V.norm(bb.dir)), diametre_mm: INSTRUMENT.broche })),
+    broches_reduction: U.broches.map((bb) => ({ fragment: bb.fragment, point_axe: p3(bb.point), direction: p3(V.norm(bb.dir)), diametre_mm: INSTRUMENT.broche, hauteur_manchon_mm: bb.hauteurManchon || 15 })),
+    placement_broches: { rotation_deg: U.beta, inclinaison_deg: 0, distance_coupe_mm: [r(U.eProx || 0, 1), r(U.eDist || 0, 1)], contraintes_respectees: U.ok },
+    guide: { face_appui: p3(U.face), axe_os: p3(U.d), axe_distal: p3(U.d), centre_section: p3(U.centre) },
+    // pas de guide de réduction de l'ulna : elle suit le radius, que le guide de réduction du radius tient
+    guide_reduction: false,
+    // 1er os : l'étape 7 le corrige avec SES plans et sa correction (contrôles et aperçu après correction)
+    premier_os: { os: 'radius', type_coin: kind, plans_coupe: O.plans.map((pl) => ({ point: p3(pl.p), normale: p3(V.norm(pl.n)) })),
+      T_4x4: RT.toRows4(U.Treel).map((l) => l.map((x) => r(x, 6))) },
+    prevision: { ecart_bouts_ulna_mm: r(U.ecartApres, 1) },
+    alertes: [...U.alertes],
+  };
+  if (R) out.os_segmente = blocOsSegmente(R);
   if (extra.parametresGuide && Object.keys(extra.parametresGuide).length) out.parametres_guide = { ...extra.parametresGuide };
   return out;
 }

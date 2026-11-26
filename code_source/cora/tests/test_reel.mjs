@@ -90,10 +90,28 @@ for (const serie of series) {
         const N = P0.mesures.normal, sd = P0.sdRef;
         const dans = ['LDRA', 'CdDRA', 'procurvatum'].map((k) => [k, O.post[k], Math.abs(O.post[k] - N[k]) <= 2 * sd[k]]);
         ok(dans.every((x) => x[2]), `radius : après correction ${dans.map(([k, x]) => `${k} ${x.toFixed(1)}°`).join(', ')} dans les normes`);
-        ok(Math.abs(O.torsionApres - P0.torsion.normale.m) < 0.1 && O.residuel < 0.01 && O.decalage < 0.5,
-          `radius : torsion ${P0.torsion.avant.toFixed(1)}° → ${O.torsionApres.toFixed(2)}° (dérotation ${O.derotation.toFixed(1)}°), résiduel ${O.residuel.toFixed(4)}°, translation ${O.decalage.toFixed(3)} mm`);
+        ok(Math.abs(O.torsionApres - P0.torsion.normale.m) < 0.1 && O.residuel < 0.01,
+          `radius : torsion ${P0.torsion.avant.toFixed(1)}° → ${O.torsionApres.toFixed(2)}° (dérotation ${O.derotation.toFixed(1)}°), résiduel ${O.residuel.toFixed(4)}°`);
+        // fragments réalignés : la dérotation tourne autour de la ligne centrale réelle de l'os à la coupe (l'axe distal
+        // construit ne passe pas par l'os) : après correction, le milieu de la face distale tombe en face du milieu de la
+        // face proximale (règle 1, sans translation à l'ostéotomie) ; l'axe construit se décale un peu (signalé, < 1/3 de
+        // la largeur de l'os)
+        const mesh = meshes[bone], pl1 = O.plans[0], pl2 = O.plans[O.plans.length - 1], lg = O.sectionCoupe.largeur;
+        const m1 = C.milieuSection(mesh.pos, mesh.idx, pl1.p, pl1.n, P0.bis.c, 2 * lg);
+        const m2 = C.RT.apply(O.T, C.milieuSection(mesh.pos, mesh.idx, pl2.p, pl2.n, P0.bis.c, 2 * lg));
+        const dm = C.V.sub(m2, m1), n1 = C.V.norm(pl1.n), ecart = C.V.len(C.V.perp(dm, n1));
+        ok(O.regle !== 1 || (ecart < 1.0 && O.decalage < lg / 3),
+          `radius : fragments en face l'un de l'autre après correction (milieux des faces à ${ecart.toFixed(2)} mm, règle ${O.regle}) ; translation entre les axes ${O.decalage.toFixed(2)} mm (largeur ${lg.toFixed(1)} mm)`);
         const dirs = O.brochesApres.map((bb) => V3n(bb.dir));
         ok(Math.max(...dirs.map((d) => angDeg(d, dirs[0]))) < 1e-6, 'radius : les 2 broches parallèles après correction');
+        // 2e os : l'ulna, coupée à son propre niveau (automatique), son bout distal suit le radius
+        if (meshes.ulna) {
+          let U = null, err = null;
+          try { U = C.planifierUlna(model, P0, 'fermeture', { niveau: null }); } catch (e) { err = e.message; }
+          const pr = U ? C.prescriptionUlna(P0, 'fermeture', U) : null;
+          ok(!!U && U.ok && pr.plans_coupe.length === 1 && pr.broches.length === 2 && pr.guide_reduction === false && pr.premier_os?.os === 'radius',
+            U ? `ulna (2e os) : coupe à ${U.niveau} mm du niveau du radius (${(100 * U.fraction).toFixed(0)} % de l'ulna), broches placées (β ${U.beta}°), bouts écartés de ${U.ecartApres.toFixed(1)} mm après correction` : `ulna (2e os) : ${err}`);
+        }
       }
     }
     console.log(`   θ entre les axes ${P0.theta.toFixed(2)}° (F ${P0.Fm.toFixed(2)}°, S ${P0.Sm.toFixed(2)}°), CORA ${P0.coraDansOs ? 'dans l\'os' : 'hors de l\'os'}, ostéotomie ${P0.osteoPossible ? 'calculable' : 'non calculée'}`);

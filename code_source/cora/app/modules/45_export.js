@@ -64,8 +64,8 @@ function lisezMoiExport(P, kind, presc, voisins = [], cartilage = false) {
     `Charnière  : corticale ${sens3(kind === 'fermeture' ? P.bis.ccv : P.bis.c, true)}, orientation ψ = ${fr(P.psi, 1)}° (0° = crânio-caudale)`,
     `Coupe      : ${O.plans.length} fente(s), profondeur ${fr(O.D, 1)} mm, ${kind === 'fermeture' ? 'base du coin' : 'ouverture'} ${fr(O.base, 2)} mm`,
     `Torsion    : ${Math.abs(O.derotation) >= DEROTATION_MIN ? `dérotation de ${fr(O.derotation, 1)}° (${fr(P.torsion.avant, 1)}° -> ${fr(O.torsionApres, 1)}°)` : `non corrigée (${fr(P.torsion.avant, 1)}°)`}`,
-    `Broches    : ${(O.brochesReduction || O.broches).length} × Ø ${fr(INSTRUMENT.broche)} mm (${NOM_BROCHES}), ${fr(O.angleBroches, 2)}° entre les fragments (toutes parallèles après correction)`,
-    `Stratégie  : face d'appui ${nomDirection(O.face)}${O.abordNonUsuel ? ' (abord non usuel)' : ` (abord ${O.abord})`}, charnière à ${fr(O.h, 1)} mm, trait ${Math.abs(O.z) < 0.5 ? 'au CORA (règle 1)' : `à ${fr(O.z, 0)} mm du CORA (règle 2)`}`,
+    `Broches    : ${(O.brochesReduction || O.broches).length} × Ø ${fr(INSTRUMENT.broche)} mm (une par fragment), ${fr(O.angleBroches, 2)}° entre les fragments (toutes parallèles après correction)`,
+    `Stratégie  : face d'appui ${nomDirection(O.face)}${O.abordNonUsuel ? ' (abord non usuel)' : ` (abord ${O.abord})`}, charnière à ${fr(O.h, 1)} mm, trait ${Math.abs(O.z) < 0.5 ? 'au CORA (règle 1)' : `à ${fr(O.z, 0)} mm du CORA (règle ${O.regle})`}`,
   ];
   if (R && !P.D && !P.anomalies.length) lignes.push('', 'ATTENTION : les angles articulaires de cet os sont dans les normes ; aucune correction n\'est indiquée. Cet export illustre la méthode, sans indication chirurgicale.');
   lignes.push('',
@@ -76,9 +76,9 @@ function lisezMoiExport(P, kind, presc, voisins = [], cartilage = false) {
     `  ${P.bone}_corrige_prevu.stl   os après la correction simulée (contrôle visuel)`);
   for (const n of voisins) lignes.push(`  ${('voisin_' + n + '.stl').padEnd(24)} os voisin tel que planifié (${{ fibula: 'fibula', ulna: 'ulna', patella: 'rotule', fabellae: 'fabelles' }[n] || n}) : le guide et les broches l'évitent`);
   if (cartilage) lignes.push(`  ${('cartilage_' + P.bone + '.u8').padEnd(24)} cartilage articulaire : 1 octet par sommet de ${P.bone}_planifie.bin (255 = cartilage)`);
-  if (R) lignes.push(`  cora_${R.nom || P.bone}.json${' '.repeat(Math.max(1, 13 - (R.nom || P.bone).length))}repères automatiques (étape 6), dans le repère de l'os et dans celui du scanner`);
+  if (R) lignes.push(`  cora_${R.nom || P.bone}.json${' '.repeat(Math.max(1, 13 - (R.nom || P.bone).length))}repères automatiques (calcul des repères), dans le repère de l'os et dans celui du scanner`);
   lignes.push('',
-    'Construire les guides imprimables : bouton « Construire les guides 3D » de l\'étape 12 dans CT-CORA3D, ou en ligne de',
+    'Construire les guides imprimables : bouton « Construire les guides 3D » de l\'étape 14 dans CT-CORA3D, ou en ligne de',
     'commande (depuis le dossier PMD2, après avoir dézippé dans <dossier>) :',
     `  macOS   : .venv/bin/python CT-CORA3D/code_source/etape7_guide.py --prescription <dossier>/prescription.json --os <dossier>/${P.bone}_planifie.bin${voisins.map((n) => ` --voisin ${n}=<dossier>/voisin_${n}.stl`).join('')}${cartilage ? ` --cartilage <dossier>/cartilage_${P.bone}.u8` : ''} --sortie <dossier>`,
     `  Windows : .venv\\Scripts\\python CT-CORA3D\\code_source\\etape7_guide.py --prescription <dossier>\\prescription.json --os <dossier>\\${P.bone}_planifie.bin${voisins.map((n) => ` --voisin ${n}=<dossier>\\voisin_${n}.stl`).join('')}${cartilage ? ` --cartilage <dossier>\\cartilage_${P.bone}.u8` : ''} --sortie <dossier>`,
@@ -107,7 +107,7 @@ function exporterGuide(P, kind) {
     files.push({ name: fos, data: stlBinary(parts.slice(0, 1), `${P.bone} ${P.reel ? 'CT-CORA3D' : 'CORA3D'}`) });
     buildFragments(P, kind);
     if (FRAG.raw) {
-      const T = P.osteo[kind].T, d = FRAG.raw.dist;
+      const T = transformCorrection(P.osteo[kind], kind, 1), d = FRAG.raw.dist;   // comme l'affichage (trait de scie compris)
       const posD = new Float32Array(d.pos.length);
       for (let i = 0; i < d.pos.length; i += 3) { const q = RT.apply(T, [d.pos[i], d.pos[i + 1], d.pos[i + 2]]); posD[i] = q[0]; posD[i + 1] = q[1]; posD[i + 2] = q[2]; }
       files.push({ name: `${P.bone}_corrige_prevu.stl`, data: stlBinary([{ pos: FRAG.raw.prox.pos, idx: FRAG.raw.prox.tri }, { pos: posD, idx: d.tri }], `${P.bone} corrige`) });

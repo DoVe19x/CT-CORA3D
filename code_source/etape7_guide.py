@@ -1267,7 +1267,7 @@ def guide_coupe(pr, v, f, journal=print, voisins=(), cart=None):
     # de réduction et l'os corrigé
     T_reel = transformation_reelle(pr, plans)
     broches_c = broches_apres(pr, broches, T_reel)
-    voisins_c = [(n_, *voisin_corrige(n_, vv, ff, plans, T_reel)) for n_, vv, ff in voisins]
+    voisins_c = [(n_, *voisin_corrige(n_, vv, ff, plans, T_reel, pr)) for n_, vv, ff in voisins]
     geo = dict(K=K, u=u, vd=vd, b=b, H=H, fp=fp, fd=fd, face=face, nsep=nsep, Hs=Hs, plans=plans, broches=broches,
                tours=tours, ws=ws, rh=rh, Rs=Rs, Hp=Hp, J=J, E=E, gr=gr, n_exact=n_exact, ecartees=ecartees,
                poly=poly, etendue_coque=(float(s_haut), float(s_bas)), Tt=Tt,
@@ -1283,11 +1283,17 @@ def guide_coupe(pr, v, f, journal=print, voisins=(), cart=None):
 def os_corrige(man_os, plans, T):
     """Os après la correction : fragment proximal + fragment distal déplacé par T (coin retiré en fermeture, ouvert en
     ouverture). Chaque trait de scie enlève l'épaisseur de la lame, centrée sur son plan (T = transformation_reelle :
-    en fermeture, les surfaces coupées se touchent)."""
+    en fermeture, les surfaces coupées se touchent). Le fragment distal est sous les DEUX traits : au-delà de la
+    charnière, où les plans se croisent, un seul trait passe (l'os s'y ouvre à la fermeture). Sans cela, la tranche
+    comprise entre les deux plans de ce côté serait dans les deux fragments : une ulna ou une fibula située au-delà de
+    la charnière gagnait jusqu'à 90 mm³ d'os inexistant, autour duquel le guide de réduction était construit. Même
+    découpe que l'application (buildFragments)."""
     s2 = 0.5 * P.GUIDE_LAME_MM
     (p1, n1), (pl, nl) = plans[0], plans[-1]
     prox = man_os.trim_by_plane(tuple(-n1), float(-n1 @ p1) + s2)
     dist = man_os.trim_by_plane(tuple(nl), float(nl @ pl) + s2)
+    if len(plans) > 1:
+        dist = dist.trim_by_plane(tuple(n1), float(n1 @ p1) + s2)
     return prox + dist.transform(np.asarray(T, float)[:3, :])
 
 
@@ -1297,10 +1303,27 @@ OS_A_OSTEOTOMISER = {"fibula": ("la fibula", "tibiale", "un court abord latéral
                      "ulna": ("l'ulna", "radiale", "un court abord caudo-latéral")}
 
 
-def voisin_corrige(nom, vv, ff, plans, T):
+def voisin_corrige(nom, vv, ff, plans, T, pr=None):
     """Os voisin après la correction planifiée : la fibula (ou l'ulna) est ostéotomisée au niveau de la coupe et suit les
-    deux fragments ; la rotule et les fabelles suivent le fragment distal (ou restent en place du côté proximal)."""
+    deux fragments ; la rotule et les fabelles suivent le fragment distal (ou restent en place du côté proximal).
+    Guide d'un 2e os (ulna, qui suit le radius) : le 1er os et ses broches (pr["premier_os"]) sont corrigés avec LEURS
+    plans de coupe et leur correction."""
+    po = (pr or {}).get("premier_os")
+    if po and nom in (po.get("os"), f"broches_{po.get('os')}"):
+        plans_po = [(np.array(x["point"], float), unitaire(x["normale"])) for x in po["plans_coupe"]]
+        try:
+            return depuis_manifold(os_corrige(vers_manifold(vv, ff), plans_po, np.asarray(po["T_4x4"], float)))
+        except ValueError:
+            pass
     T = np.asarray(T, float)
+    # os voisin coupé à SON propre niveau (ulna planifiée comme 2e os) : un trait, son bout distal suit le fragment distal
+    cv_ = ((pr or {}).get("coupes_voisins") or {}).get(nom)
+    if cv_:
+        plans_v = [(np.array(x["point"], float), unitaire(x["normale"])) for x in cv_["plans_coupe"]]
+        try:
+            return depuis_manifold(os_corrige(vers_manifold(vv, ff), plans_v, T))
+        except ValueError:
+            pass
     p, n = plans[-1]
     if nom in OS_A_OSTEOTOMISER:
         try:
@@ -1591,6 +1614,8 @@ def protocole(pr, cc, cv=None, cr=None):
     réduction (None s'il n'a pas pu être construit)."""
     st = pr["strategie"]
     kind = st["type_coin"]
+    if kind == "section":
+        return protocole_section(pr, cc)
     derot = float(pr.get("correction", {}).get("derotation_deg", 0) or 0)
     fentes = cc["fentes"]
     p1, p2 = cc["ordre_retrait"]
@@ -1627,10 +1652,15 @@ def protocole(pr, cc, cv=None, cr=None):
                           "sur la lame) : la corticale opposée est conservée.")
     lignes.append(f"Couper les 2 ponts (aux deux bouts de {'la fente 1' if len(fentes) > 1 else 'la fente'}) au ras des "
                   "moitiés, à la pince coupe-broche.")
-    lignes.append(f"Retirer la moitié {p1} en la faisant glisser le long de ses broches, puis la moitié {p2}"
+    lignes.append(f"Retirer la moitié {p1} en la faisant glisser le long de sa broche, puis la moitié {p2}"
                   + (" ; retirer le coin osseux." if kind == "fermeture" else "."))
     for nom in (cv or {}).get("a_osteotomiser") or (["fibula"] if (cv or {}).get("fibula_a_osteotomiser") else []):
         quoi, coupe, abord_v = OS_A_OSTEOTOMISER[nom]
+        if nom == "ulna":                 # l'ulna a son propre guide (2e os), choix de Dorian du 25/11/2026
+            lignes.append(f"Couper {quoi} avec son propre guide (2e os : onglet CORA, étape 14), par {abord_v}, les broches "
+                          f"du radius laissées en place ; sans ce guide, l'ostéotomiser au niveau de la coupe {coupe}. "
+                          "Intacte, elle empêcherait la correction.")
+            continue
         lignes.append(f"Ostéotomiser {quoi} au niveau de la coupe {coupe} (ostéotome ou scie, par {abord_v}) : "
                       "intacte, elle empêcherait la correction.")
     geste = "Fermer le coin jusqu'au contact des surfaces coupées" if kind == "fermeture" else "Ouvrir le coin"
@@ -1639,6 +1669,10 @@ def protocole(pr, cc, cv=None, cr=None):
     if st.get("regle_paley") == 2:
         geste += (f", en laissant le fragment distal glisser de {_fr(st.get('translation_osteotomie_mm') or 0)} mm le long de "
                   "la coupe (règle 2 de Paley : coupe hors du CORA, cette translation réaligne les axes)")
+    elif st.get("regle_paley") == 3:
+        dec = (pr.get("prevision") or {}).get("translation_residuelle_mm") or 0
+        geste += (f", sans translation (règle 3 de Paley : coupe hors du CORA, rotation autour de la charnière ; les axes "
+                  f"restent parallèles, décalés de {_fr(dec)} mm, décalage accepté par le chirurgien)")
     lignes.append(geste + f", jusqu'à ce que les {n_tot} broches soient parallèles.")
     if cr is not None:
         lignes.append(f"Enfiler le guide de réduction sur les {n_tot} broches jusqu'au contact de ses manchons avec l'os : il "
@@ -1653,6 +1687,31 @@ def protocole(pr, cc, cv=None, cr=None):
 
 
 # --------------------------------------------------------------------------- aperçu
+def protocole_section(pr, cc):
+    """Mode opératoire du guide d'un 2e os (ulna) : ostéotomie simple, un trait complet ; son bout distal suit le
+    fragment distal du 1er os (radius), tenu par le guide de réduction du radius."""
+    st = pr["strategie"]
+    premier = (pr.get("premier_os") or {}).get("os", "radius")
+    x = cc["fentes"][0]
+    p1, p2 = cc["ordre_retrait"]
+    noms = {fr_: [b["nom"] for b in cc["broches"] if b["fragment"] == fr_] for fr_ in ("proximal", "distal")}
+    return [
+        f"Ordre : après la coupe du {premier} et le retrait de son guide de coupe ; les broches du {premier} restent en "
+        "place (elles serviront au guide de réduction du radius). Le guide de l'ulna les évite.",
+        f"Abord {st.get('abord') or 'caudo-latéral'} de l'ulna : exposer sa face d'appui sur toute la longueur du guide.",
+        "Poser le guide de coupe de l'ulna : il ne s'emboîte que dans une seule position ; vérifier qu'il ne bascule pas. "
+        f"Forer la broche proximale ({', '.join(noms['proximal'])}), puis la distale ({', '.join(noms['distal'])}).",
+        f"Couper par la fente sur toute l'épaisseur de l'ulna (la lame traverse la corticale opposée à "
+        f"{_fr(x['profondeur_lame_mm'], 1)} mm du haut de la tour) ; la lame sort du côté du {premier} : protéger "
+        "l'espace entre les deux os (écarteur).",
+        "Couper les 2 ponts au ras des moitiés, à la pince coupe-broche.",
+        f"Retirer la moitié {p1} en la faisant glisser le long de sa broche, puis la moitié {p2} ; retirer les broches de l'ulna.",
+        f"Corriger le {premier} (son guide de réduction) : le bout distal de l'ulna suit le fragment distal du {premier}. "
+        f"Les deux bouts de l'ulna ne se font plus face (écart prévu ≈ {_fr((pr.get('prevision') or {}).get('ecart_bouts_ulna_mm', 0), 0)} mm) : "
+        "c'est attendu, l'ulna n'est pas fixée.",
+    ]
+
+
 def apercu(chemin, v, f, moities, ponts, vc, fc, red, broches, broches_c, geo, voisins=(), voisins_c=()):
     import pyvista as pv
     def pvm(vv, ff):
@@ -1664,10 +1723,14 @@ def apercu(chemin, v, f, moities, ponts, vc, fc, red, broches, broches_c, geo, v
         vv = np.vstack([depuis_manifold(m_)[0] for m_ in mans if m_ is not None])
         lo, hi = vv.min(0) - 6, vv.max(0) + 6
         return [lo[0], hi[0], lo[1], hi[1], lo[2], hi[2]]
-    bornes = [cadre(*moities), cadre(*moities), cadre(red) if red is not None else None]
+    # 2e os sans guide de réduction (ulna) : après correction, l'os et le 1er os corrigés (le bout distal suit le 1er os)
+    sans_red = red is None and vc is not None and geo.get("sans_reduction")
+    bornes = [cadre(*moities), cadre(*moities), cadre(red) if red is not None else
+              ([*np.ravel(np.column_stack([vc.min(0) - 6, vc.max(0) + 6]))] if sans_red else None)]
     for col, (titre, cam) in enumerate((("Guide de coupe : vue de la face d'appui", fp),
                                         ("Guide de coupe : vue de profil", side + 0.25 * fp),
-                                        ("Après correction : guide de réduction", fp + 0.6 * side))):
+                                        ("Après correction : l'os suit le 1er os" if sans_red else
+                                         "Après correction : guide de réduction", fp + 0.6 * side))):
         pl.subplot(0, col)
         pl.add_text(titre, font_size=10)
         if col < 2:
@@ -1683,12 +1746,13 @@ def apercu(chemin, v, f, moities, ponts, vc, fc, red, broches, broches_c, geo, v
                 o = -x["d"]
                 pl.add_mesh(pv.Cylinder(center=x["a"] + o * (x["t_haut"] + x["t_sortie"] - 10) / 2, direction=o, radius=0.8,
                                         height=x["t_haut"] - x["t_sortie"] + 10), color="#9aa0a6")
-        elif red is not None:
+        elif red is not None or sans_red:
             pl.add_mesh(pvm(vc, fc), color="#e8dcc4", smooth_shading=True)
             for _n, vv, ff in voisins_c:
                 pl.add_mesh(pvm(vv, ff), color="#b9b4ac", opacity=0.6, smooth_shading=True)
-            pl.add_mesh(pvm(*depuis_manifold(red)), color="#8e44ad", smooth_shading=True)
-            for x in broches_c:
+            if red is not None:
+                pl.add_mesh(pvm(*depuis_manifold(red)), color="#8e44ad", smooth_shading=True)
+            for x in (broches_c if red is not None else ()):
                 o = -x["d"]
                 pl.add_mesh(pv.Cylinder(center=x["a"] + o * 15, direction=o, radius=0.8, height=60), color="#9aa0a6")
         pl.camera.focal_point = K
@@ -1853,7 +1917,9 @@ def _generer(pr, maillage_os, dossier, journal, image, voisins, articulaire, pc)
         ecrire_stl(dossier / "os_corrige.stl", vc, fc, "os corrige (prevision)")
         ecrire_bin(dossier / "os_corrige.bin", vc, fc)
         fichiers.append("os_corrige.stl")
-    if man_c is not None and min(nb_fr.values()) >= 1:
+    sans_reduction = pr.get("guide_reduction") is False      # 2e os (ulna) : il suit le 1er, tenu par son guide de réduction
+    geo["sans_reduction"] = sans_reduction
+    if man_c is not None and min(nb_fr.values()) >= 1 and not sans_reduction:
         try:
             red, gred = guide_reduction(pr, vc, fc, broches_c, journal, voisins_c)
         except ValueError as exc:
@@ -1931,7 +1997,8 @@ def _generer(pr, maillage_os, dossier, journal, image, voisins, articulaire, pc)
             elif dd_["axe_broche_mm"] < lim["broche_voisin_axe_mm"] - 0.1 or dd_["axe_manchon_mm"] < lim["manchon_voisin_axe_mm"] - 0.1:
                 alertes.append(f"broche {nb} ou son manchon contre {nom} ({min(dd_.values())} mm de l'axe)")
     if cr is None:
-        alertes.append(f"guide de réduction non construit ({raison_reduction})")
+        if not sans_reduction:
+            alertes.append(f"guide de réduction non construit ({raison_reduction})")
     else:
         if not cr["etanche_stl"]:
             alertes.append("STL du guide de réduction non étanche")

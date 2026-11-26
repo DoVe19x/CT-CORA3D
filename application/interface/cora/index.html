@@ -4925,7 +4925,7 @@ function modeleReel(json, maillages) {
   const bone = json.os;
   if (bone === 'radius') {
     const manquants = REPERES_RADIUS.filter((k) => !json.reperes[k]);
-    if (manquants.length) throw new Error(`repères du radius manquants (${manquants.join(', ')}) : fichier d'une ancienne version, relancer l'étape 6 (repères) sur cette série`);
+    if (manquants.length) throw new Error(`repères du radius manquants (${manquants.join(', ')}) : fichier d'une ancienne version, relancer le calcul des repères (programme, étape 6) sur cette série`);
   }
   const L = Object.fromEntries(Object.entries(json.reperes).map(([k, p]) => [k, [...p]]));
   if (bone === 'radius') for (const [a, k] of Object.entries(ALIAS_RADIUS)) if (L[k] && !L[a]) L[a] = [...L[k]];
@@ -4997,6 +4997,21 @@ function sectionPoints(pos, idx, p0, n) {
     if ((d[c] >= 0) !== (d[a] >= 0)) out.push(pt(c, a));
   }
   return out;
+}
+// Milieu de la section de l'os par le plan (p0, n), à moins de `rayon` mm de p0 : milieu des bords le long de deux
+// directions du plan (dir projetée dans le plan, et sa perpendiculaire). null si le plan ne coupe pas l'os à cet endroit.
+function milieuSection(pos, idx, p0, n, dir, rayon) {
+  n = V.norm(n);
+  const e1 = V.norm(V.perp(dir, n)), e2 = V.cross(n, e1);
+  let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
+  for (const q of sectionPoints(pos, idx, p0, n)) {
+    const r = V.sub(q, p0);
+    if (V.len(r) > rayon) continue;
+    const x = V.dot(r, e1), y = V.dot(r, e2);
+    a0 = Math.min(a0, x); a1 = Math.max(a1, x); b0 = Math.min(b0, y); b1 = Math.max(b1, y);
+  }
+  if (!Number.isFinite(a0) || !Number.isFinite(b0)) return null;
+  return V.add(p0, V.add(V.mul(e1, (a0 + a1) / 2), V.mul(e2, (b0 + b1) / 2)));
 }
 // Milieu de la diaphyse à la hauteur y, comme sur les radiographies : bords médial / latéral de la
 // silhouette crânio-caudale (x min / x max) et bords crânial / caudal de la silhouette de profil (z min / z max).
@@ -5958,8 +5973,13 @@ function planifier(model, cas, opts = {}) {
       }
     }
     if (!cp) { osteo[kind] = null; continue; }
-    const regle = cp.z === 0 ? 1 : 2;
     const { H, plans } = cp, secK = cp.sec2;
+    // Coupe hors du CORA (d1 = |z| > 0) : translation de Barksfield et Monsell 2015, T = 2·d1·tan(θ/2). Si le chirurgien a
+    // fixé une tolérance T_max (opts.tMaxPct, % de la largeur de l'os à la coupe) et que T ≤ T_max : règle 3 (ACA sur la
+    // charnière, rotation seule ; les axes restent parallèles mais décalés). Sinon règle 2 (ACA au CORA, translation).
+    const tBarks = 2 * Math.abs(cp.z) * Math.tan(theta * RAD / 2);
+    const tMax = Number.isFinite(opts.tMaxPct) && opts.tMaxPct > 0 ? opts.tMaxPct / 100 * secK.largeur : 0;
+    const regle = cp.z === 0 ? 1 : tBarks <= tMax ? 3 : 2;
     const nDist = plans[plans.length - 1].n;
     const estDistal = (p) => V.dot(V.sub(p, H), nDist) > 0;
     // règle 1 : rotation autour de la charnière, sur la bissectrice transverse du CORA. Règle 2 : l'ACA reste sur cette
@@ -5980,7 +6000,18 @@ function planifier(model, cas, opts = {}) {
     //   ouverture : autour de l'axe réaligné (axe proximal), APRÈS l'ouverture (l'espace d'ouverture est comblé).
     // L'angle est ajusté (méthode de la sécante) pour que la torsion mesurée après correction égale la cible.
     const surAxe = (A_, p) => V.add(A_.p, V.mul(A_.d, V.dot(V.sub(p, A_.p), A_.d)));
-    const axeDer = kind === 'fermeture' ? { p: surAxe(axeDist, Cc), d: V.neg(v) } : { p: surAxe(axeProx, Cc), d: V.neg(u) };
+    let axeDer = kind === 'fermeture' ? { p: surAxe(axeDist, Cc), d: V.neg(v) } : { p: surAxe(axeProx, Cc), d: V.neg(u) };
+    // radius : l'axe distal construit (depuis la surface carpienne) ne passe pas par l'os à la coupe (5 à 6 mm du milieu
+    // de la section sur le chien A). Tourner autour de lui ferait glisser le fragment distal de côté à l'ostéotomie
+    // (≈ 4,7 mm pour une dérotation de 43°) : les fragments ne seraient plus en face. Le fragment tourne donc autour de
+    // la ligne centrale RÉELLE de l'os à la coupe (milieu de la section dans le plan qui tourne), comme le fait le
+    // chirurgien, fragments en contact ; l'axe construit se décale alors un peu (translation entre les axes, signalée).
+    // Règle 2 : l'axe construit est gardé, car la translation de la règle 2 est calculée pour réaligner les axes.
+    if (bone === 'radius' && regle !== 2) {
+      const plD = kind === 'fermeture' ? plans[plans.length - 1] : plans[0];
+      const m = milieuSection(main.pos, main.idx, plD.p, plD.n, c, 2 * secK.largeur);
+      if (m) axeDer = { p: m, d: axeDer.d };
+    }
     const corrigeAvec = (alpha) => {
       const Rd = RT.aboutAxis(axeDer.p, axeDer.d, alpha * RAD);
       const Ttot = kind === 'fermeture' ? RT.compose(Tang, Rd) : RT.compose(Rd, Tang);
@@ -6075,7 +6106,7 @@ function planifier(model, cas, opts = {}) {
     for (const [nomF, pr_] of [['proximal', pl.pp], ['distal', pl.pd]]) {
       if (pr_.ok && pr_.decalage) alertesK.push(`broche du fragment ${nomF} décalée de ${Math.abs(pr_.decalage)} mm de la ligne centrale de l'os (cartilage ou os voisin évités)`);
     }
-    const charniereConservee = ab.charniere && regle === 1 && Math.abs(alpha) < DEROTATION_MIN && cp.h <= PONT_MAX + 1e-9;
+    const charniereConservee = ab.charniere && regle !== 2 && Math.abs(alpha) < DEROTATION_MIN && cp.h <= PONT_MAX + 1e-9;
     const coinMixte = kind === 'fermeture' && cp.h > PONT_MAX + 1e-9;
     const pourquoi = ab.charniere && !ab.nonUsuel ? null : bloqueePar ? `${bloqueePar} est sur le trajet de la lame` : 'hors des abords chirurgicaux usuels';
     if (ab.nonUsuel) {
@@ -6096,18 +6127,25 @@ function planifier(model, cas, opts = {}) {
       alertesK.push(`coin de fermeture trop fin (base ≈ ${(2 * Dl * Math.tan(theta * RAD / 2)).toFixed(1)} mm) : les deux fentes du guide se touchent presque ; préférer le coin d'ouverture`);
     }
     const trans = V.dist(RT.apply(Tang, H), H);
+    if (regle === 3) alertesK.push(`règle 3 de Paley : coupe à ${Math.abs(cp.z).toFixed(0)} mm du CORA, T = 2·d1·tan(θ/2) = ${tBarks.toFixed(1)} mm ≤ T_max = ${tMax.toFixed(1)} mm : rotation à la charnière, sans translation ; les axes restent parallèles mais décalés`);
     if (regle === 2) alertesK.push(`règle 2 de Paley : coupe à ${Math.abs(cp.z).toFixed(0)} mm ${cp.z < 0 ? 'au-dessus' : 'au-dessous'} du CORA${zImpose === null ? ' (hors du cartilage)' : ' (niveau choisi)'}, translation de ${trans.toFixed(1)} mm à l'ostéotomie`);
+    // radius : l'ulna n'est pas coupée par ce plan (simple obstacle) ; elle a son propre guide (2e os, étape 14)
+    if (bone === 'radius' && pos.ulna) alertesK.push('ulna intacte dans ce plan (obstacle pour la lame, le guide et les broches) : la couper avec son propre guide (2e os, étape 14) avant la correction, sinon elle l\'empêche');
     if (trans > 0.5 * secK.largeur) alertesK.push(`translation à l'ostéotomie de ${trans.toFixed(1)} mm (${Math.round(100 * trans / secK.largeur)} % de la largeur de l'os) : contact osseux insuffisant`);
     if (zImpose !== null && !cp.sur) alertesK.push(`trait de coupe à ${Number.isFinite(cp.dCart) ? cp.dCart.toFixed(1) : '?'} mm du cartilage (minimum ${MARGE_COUPE_CARTILAGE} mm)${cp.dansCoin ? ' ; le coin retiré emporterait du cartilage' : ''}`);
     const contraintes = contraintesCoupe({ bone, L, ax, kind, cp, regle, translation: trans, largeur: secK.largeur, croissance: !!opts.croissance, abord: ab.abord, nonUsuel: ab.nonUsuel });
     osteo[kind] = {
-      kind, regle, decalageCoupe: Math.abs(cp.z), z: cp.z, translationOsteo: trans, aca: Q, centreCoupe: cp.Pc,
+      kind, regle, decalageCoupe: Math.abs(cp.z), z: cp.z, translationOsteo: trans, tBarksfield: tBarks, tMax, aca: Q, centreCoupe: cp.Pc,
       abord: ab.abord, charniereConservee, faceCoin, raisonAbord: pourquoi,
       faisable: ab.faisable, abordNonUsuel: !!ab.nonUsuel, ecartFace: ab.ecart, voisinSurLame: bloqueePar,
       angleFaceCharniere: V.angle(V.norm(V.perp(face, u)), V.norm(V.perp(V.neg(faceCoin), u))),
       h: cp.h, hMax: cp.hMax, coinMixte, ouvertureCharniere: !charniereConservee && kind === 'fermeture' ? 2 * cp.h * Math.sin(theta * RAD / 2) : 0,
       dCart: cp.dCart, contraintes,
       charniere: H, plans, T, Tang, k, corr: theta, face, broches, brochesReduction, brochesApres,
+      // trait de scie (mm) : en fermeture, chaque coupe enlève l'épaisseur de la lame, centrée sur son plan ; une fois
+      // le coin refermé, le fragment distal avance encore de cette épaisseur le long de la normale au 1er plan (même
+      // compensation que transformation_reelle de l'étape 7 : os, broches et guide de réduction coïncident)
+      traitScie: kind === 'fermeture' && plans.length === 2 ? INSTRUMENT.lame : 0,
       placementBroches: { beta: pl.beta, eProx: pl.pp.e, eDist: pl.pd.e,
         decalageProx: pl.pp.decalage, decalageDist: pl.pd.decalage,
         retraitLibre: pl.retrait !== false, gamma: pl.gamma || 0,
@@ -6156,7 +6194,7 @@ function planifier(model, cas, opts = {}) {
     cora: C, coraC: Cc, cc, coraDansOs, theta, Fm, Sm, typeF, typeS, theta2D, phi, psi,
     bis: { b, c, ccv: V.neg(c), n: nACA },
     osteo, osteoPossible, validation, recommandation,
-    optionsStrategie: { decalageCoupe: zImpose, charniere: opts.charniere ?? null, croissance: !!opts.croissance, inegaliteLongueur: opts.inegaliteLongueur ?? null },
+    optionsStrategie: { decalageCoupe: zImpose, tMaxPct: opts.tMaxPct ?? null, charniere: opts.charniere ?? null, croissance: !!opts.croissance, inegaliteLongueur: opts.inegaliteLongueur ?? null },
     voisins: voisinsPos, articulaire: masque, alertesPlanif: alertes,
   };
 }
@@ -6202,7 +6240,7 @@ function prescription(P, kind, extra = {}) {
     reference: P.reference === 'normales' ? { type: 'valeurs normales (méthode de Paley)', valeurs: Object.fromEntries(Object.entries(P.mesures.normal).filter(([k]) => k !== 'longueur').map(([k, x]) => [k, r(x, 2)])) }
       : { type: R ? 'os avant la déformité de test (membre controlatéral idéal)' : 'os sain du modèle (membre controlatéral)' },
     strategie: { type_coin: kind, regle_paley: O.regle, torsion: Math.abs(O.derotation) >= DEROTATION_MIN ? `corrigée : dérotation de ${r(O.derotation, 1)}°` : 'non corrigée',
-      decalage_coupe_mm: O.decalageCoupe, decalage_coupe_signe_mm: r(O.z ?? 0, 2), translation_osteotomie_mm: r(O.translationOsteo, 2),
+      decalage_coupe_mm: O.decalageCoupe, decalage_coupe_signe_mm: r(O.z ?? 0, 2), translation_osteotomie_mm: r(O.translationOsteo, 2), translation_barksfield_mm: r(O.tBarksfield || 0, 2), t_max_mm: r(O.tMax || 0, 2),
       abord: O.abord, face_du_coin: p3(O.faceCoin || O.face),
       abord_non_usuel: !!O.abordNonUsuel, faisable_abord_usuel: O.faisable !== false, ecart_face_coin_deg: r(O.ecartFace || 0, 1),
       // os voisin sur le trajet de la lame par la face du coin (« la fibula »…) : l'étape 7 ne construit alors pas de guide
@@ -6250,6 +6288,176 @@ function prescription(P, kind, extra = {}) {
       frontal_deg: (P.frontal === 'varus' ? 1 : -1) * P.thetaF, sagittal_deg: P.D.sS * P.D.S,
     };
   }
+  if (extra.parametresGuide && Object.keys(extra.parametresGuide).length) out.parametres_guide = { ...extra.parametresGuide };
+  return out;
+}
+
+// ------------------------------------------------------------ 2e os : l'ulna --
+// Choix de Dorian (25/11/2026) : le plan du radius ne coupe pas l'ulna (elle reste intacte, simple obstacle pour la lame,
+// le guide et les broches) ; l'ulna a ensuite son PROPRE guide de coupe. Son niveau de coupe se choisit (z, mm le long de
+// l'ulna depuis le niveau du 1er trait du radius) ; c'est une ostéotomie simple (un trait complet, perpendiculaire à
+// l'ulna) et son bout distal SUIT le fragment distal du radius (même déplacement : correction réelle du radius, trait de
+// scie compris), puisque les deux os sont liés au carpe. L'ulna n'a pas de CORA propre (pas de lignes articulaires) :
+// le 1er os est toujours le radius.
+const ULNA_NIVEAU_MAX = 25;          // mm de part et d'autre du niveau de la coupe du radius
+// opts.niveau : niveau choisi (mm) ; null ou absent : AUTOMATIQUE, le niveau le plus proche de celui du radius (0, ∓ 2,
+// ± 2… mm) où les deux broches trouvent leur place hors des extrémités articulaires et du radius
+function planifierUlna(model, P, kind, opts = {}) {
+  if (opts.niveau !== null && opts.niveau !== undefined) return { ...planifierUlnaA(model, P, kind, opts.niveau), auto: false };
+  let premier = null, erreur = null;
+  for (let k = 0; k <= ULNA_NIVEAU_MAX; k += 2) {
+    for (const z of k ? [-k, k] : [0]) {
+      try {
+        const U = planifierUlnaA(model, P, kind, z);
+        if (U.ok) return { ...U, auto: true };
+        premier = premier || U;
+      } catch (e) { erreur = erreur || e; }
+    }
+  }
+  if (premier) return { ...premier, auto: true };
+  throw erreur || new Error('aucun niveau de coupe de l\'ulna possible');
+}
+function planifierUlnaA(model, P, kind, niveauDemande) {
+  if (P.bone !== 'radius' || !P.pos.ulna || !model.bones.ulna) throw new Error('pas d\'ulna segmentée avec ce radius');
+  const O = P.osteo[kind];
+  if (!O) throw new Error('pas de correction du radius pour ce type de coin');
+  const L = P.L, A0 = L.uln_prox_center, A1 = L.uln_styloid;
+  if (!A0 || !A1) throw new Error('repères de l\'ulna absents (centre proximal, styloïde)');
+  const pos = P.pos.ulna, idx = model.bones.ulna.idx, longueur = V.dist(A0, A1);
+  const niveau = clamp(Number(niveauDemande) || 0, -ULNA_NIVEAU_MAX, ULNA_NIVEAU_MAX);
+  // correction réelle du radius (trait de scie compris, comme l'affichage et l'étape 7) : l'ulna distale la suit
+  const n1 = V.norm(O.plans[0].n);
+  const Treel = { R: O.T.R, t: V.sub(O.T.t, V.mul(n1, O.traitScie || 0)) };
+  // axe de l'ulna au niveau de la coupe : milieux des sections à ± 8 mm (l'ulna est courbe)
+  let d = V.norm(V.sub(A1, A0));
+  const tR = V.dot(V.sub(O.plans[0].p, A0), n1) / V.dot(d, n1);           // le 1er trait du radius coupe l'axe de l'ulna
+  let P0 = V.add(A0, V.mul(d, tR + niveau));
+  const ref = V.norm(V.perp(P.bis.c, d));
+  for (let it = 0; it < 2; it++) {
+    const a = milieuSection(pos, idx, V.sub(P0, V.mul(d, 8)), d, ref, 15), b = milieuSection(pos, idx, V.add(P0, V.mul(d, 8)), d, ref, 15);
+    if (a && b) d = V.norm(V.sub(b, a));
+  }
+  const fraction = (tR + niveau) / longueur;
+  if (fraction < 0.15 || fraction > 0.88) throw new Error(`coupe de l'ulna à ${Math.round(100 * fraction)} % de sa longueur : trop près d'une extrémité (articulation)`);
+  const sec = sectionUlna(pos, idx, P0, d, ref, 15);
+  if (!sec) throw new Error('à ce niveau, le plan de coupe ne traverse pas l\'ulna');
+  const C = sec.centre, largeur = Math.max(sec.l1, sec.l2);
+  // face d'appui (entrée de la lame et des broches) : à l'opposé du radius (abord caudo-latéral de l'ulna), pour laisser
+  // libre l'espace entre les deux os
+  const Cr = milieuSection(P.main.pos, P.main.idx, C, d, ref, 30) || C;
+  const face = V.norm(V.perp(V.sub(C, Cr), d));
+  const plans = [{ p: C, n: d, profondeur: 'complete' }];
+  // obstacles : le radius planifié et ses broches (forées avant la coupe de l'ulna et laissées en place pour le guide de
+  // réduction du radius), en nuages de points
+  const rayon = largeur + 45;
+  const proche = (pts) => {
+    const out = [];
+    for (let i = 0; i < pts.length; i += 3) if (Math.abs(pts[i] - C[0]) < rayon && Math.abs(pts[i + 1] - C[1]) < rayon && Math.abs(pts[i + 2] - C[2]) < rayon) out.push(pts[i], pts[i + 1], pts[i + 2]);
+    return Float32Array.from(out);
+  };
+  const brochesRadius = (O.brochesReduction || O.broches).map((bb) => ({ a: V.sub(bb.point, V.mul(V.norm(bb.dir), 25)), b: V.add(bb.point, V.mul(V.norm(bb.dir), 15)) }));
+  const ptsBroches = [];
+  for (const s of brochesRadius) for (let t = 0; t <= 1.0001; t += 0.5 / V.dist(s.a, s.b)) ptsBroches.push(...V.add(s.a, V.mul(V.sub(s.b, s.a), t)));
+  const nrm = normalesSommets(pos, idx);
+  // extrémités articulaires de l'ulna (pas de carte du cartilage pour elle) : les 10 mm de chaque bout le long de l'axe
+  // (DISTANCE_MIN_ARTICULATION_MM de l'étape 7) sont traités comme du cartilage par le placement des broches
+  let sMin = Infinity, sMax = -Infinity;
+  for (let i = 0; i < pos.length; i += 3) { const s = (pos[i] - C[0]) * d[0] + (pos[i + 1] - C[1]) * d[1] + (pos[i + 2] - C[2]) * d[2]; sMin = Math.min(sMin, s); sMax = Math.max(sMax, s); }
+  const bouts = [];
+  for (let i = 0; i < pos.length; i += 3) {
+    const s = (pos[i] - C[0]) * d[0] + (pos[i + 1] - C[1]) * d[1] + (pos[i + 2] - C[2]) * d[2];
+    if (s < sMin + 10 || s > sMax - 10) bouts.push(pos[i], pos[i + 1], pos[i + 2]);
+  }
+  if (sMax < 10 + 8 || -sMin < 10 + 8) throw new Error(`coupe de l'ulna à ${Math.round(Math.min(sMax, -sMin))} mm d'une extrémité : pas de place pour une broche hors de l'articulation`);
+  const sections = plans.map((pl_) => sectionPoints(pos, idx, pl_.p, pl_.n));
+  const tours = toursFente(plans, face, pos, idx, largeur, sections);
+  const centre = (frag, e) => {
+    const q = V.add(C, V.mul(d, frag === 'proximal' ? -e : e));
+    return milieuSection(pos, idx, q, d, ref, 15) || q;
+  };
+  // broches de l'ulna : parallèles (pas de guide de réduction de l'ulna : elle suit le radius, que son guide de
+  // réduction tient) ; elles ne servent qu'à fixer le guide de coupe de l'ulna
+  const pl = placerBroches({ u: d, v: d, face, Tinv: RT.I(), largeur, centre, tours, plansProx: plans, plansDist: plans, tousPlans: plans,
+    ctx: { osPos: proche(pos), osNrm: proche(nrm), art: Float32Array.from(bouts), voisins: [proche(P.main.pos), Float32Array.from(ptsBroches)], demiLargeur: largeur / 2 } });
+  const broches = [];
+  if (pl?.pp?.pts.length) broches.push({ fragment: 'proximal', point: pl.pp.pts[0], dir: pl.pp.dir, hauteurManchon: 15 });
+  if (pl?.pd?.pts.length) broches.push({ fragment: 'distal', point: pl.pd.pts[0], dir: pl.pd.dir, hauteurManchon: pl.pd.hauteurManchon });
+  const alertes = [];
+  for (const [frag, pr_] of [['proximal', pl?.pp], ['distal', pl?.pd]]) {
+    if (!pr_?.ok) alertes.push(`broche ${frag} de l'ulna : ${pr_?.ev?.[0]?.raison || 'aucune position possible'}`);
+  }
+  if (pl && Math.abs(pl.beta) > 0) alertes.push(`broches de l'ulna tournées de ${pl.beta}° autour de l'os (radius ou ses broches évités)`);
+  // écart entre les deux bouts de l'ulna après la correction (l'ulna distale suit le radius) : attendu, à signaler
+  const CdApres = RT.apply(Treel, V.add(C, V.mul(d, 0)));
+  return { niveau, fraction, d, centre: C, largeur, sec, face, plans, broches, bouts: Float32Array.from(bouts), distanceBouts: [-sMin, sMax], ok: !!(pl?.pp?.ok && pl?.pd?.ok), beta: pl?.beta || 0,
+    eProx: pl?.pp?.e, eDist: pl?.pd?.e, Treel, brochesRadius, ecartApres: V.dist(CdApres, C), alertes };
+}
+// broches du radius (segments { a, b }) en cylindres fermés (rayon de la broche + 0,2 mm), pour l'étape 7 : le guide de
+// l'ulna doit les éviter (elles restent en place jusqu'au guide de réduction du radius)
+function cylindresBroches(segments, r = INSTRUMENT.broche / 2 + 0.2, n = 12) {
+  const pos = [], idx = [];
+  for (const { a, b } of segments) {
+    const d = V.norm(V.sub(b, a)), e1 = V.norm(V.perp(Math.abs(d[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0], d)), e2 = V.cross(d, e1);
+    const o = pos.length / 3;
+    for (const c of [a, b]) for (let k = 0; k < n; k++) {
+      const t = 2 * Math.PI * k / n;
+      pos.push(...V.add(c, V.add(V.mul(e1, r * Math.cos(t)), V.mul(e2, r * Math.sin(t)))));
+    }
+    pos.push(...a, ...b);
+    const ca = o + 2 * n, cb = ca + 1;
+    for (let k = 0; k < n; k++) {
+      const k2 = (k + 1) % n;
+      idx.push(o + k, o + n + k2, o + n + k, o + k, o + k2, o + n + k2);     // flanc (normales vers l'extérieur)
+      idx.push(ca, o + k2, o + k, cb, o + n + k, o + n + k2);                 // couvercles
+    }
+  }
+  return { pos: Float32Array.from(pos), idx: Uint32Array.from(idx) };
+}
+// section de l'ulna par le plan (p0, d) : milieu et étendues (dans l'axe ref et sa perpendiculaire), à moins de rayon mm
+function sectionUlna(pos, idx, p0, d, ref, rayon) {
+  const e1 = V.norm(V.perp(ref, d)), e2 = V.cross(d, e1);
+  let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
+  for (const q of sectionPoints(pos, idx, p0, d)) {
+    const r = V.sub(q, p0);
+    if (V.len(r) > rayon) continue;
+    const x = V.dot(r, e1), y = V.dot(r, e2);
+    a0 = Math.min(a0, x); a1 = Math.max(a1, x); b0 = Math.min(b0, y); b1 = Math.max(b1, y);
+  }
+  if (!Number.isFinite(a0)) return null;
+  return { centre: V.add(p0, V.add(V.mul(e1, (a0 + a1) / 2), V.mul(e2, (b0 + b1) / 2))), l1: a1 - a0, l2: b1 - b0 };
+}
+// Prescription du guide de l'ulna pour l'étape 7 (type « section » : un trait complet, pas de coin)
+function prescriptionUlna(P, kind, U, extra = {}) {
+  const O = P.osteo[kind], R = P.reel;
+  const r = (x, dd = 4) => +x.toFixed(dd), p3 = (p) => p.map((x) => r(x));
+  const hh = V.norm(V.cross(U.d, U.face));                                  // direction de la fente (⊥ face, ⊥ ulna)
+  const out = {
+    schema_version: 'v2.2',
+    generateur: 'CT-CORA3D (PMD2, ECAM), os segmenté sur CT : 2e os (ulna), suit la correction du radius',
+    os: 'ulna', cote: 'droit', unites: 'mm',
+    fichier_maillage: nomFichierOs(P).replace(/radius/, 'ulna'),
+    repere: R && R.miroir ? 'X latéral, Y proximal, Z caudal (repère du maillage ; membre gauche mis en miroir)' : 'X latéral, Y proximal, Z caudal (repère du maillage)',
+    deformite: { theta_deg: r(P.theta), suit: 'radius' },
+    strategie: { type_coin: 'section', regle_paley: null, abord: 'caudo-latéral', abord_non_usuel: false, faisable_abord_usuel: true,
+      voisin_sur_lame: null, charniere_profondeur_mm: 0, coin_mixte: false, configuration_broches: '1+1', osteotomie_complete: true,
+      suit_os: 'radius', type_coin_premier_os: kind, niveau_coupe_mm: r(U.niveau, 1), niveau_coupe_fraction: r(U.fraction, 3) },
+    charniere: { point: p3(U.centre), direction: p3(hh), d_mm: 0, marge_mm: 0, axe_correction_point: p3(U.centre) },
+    plans_coupe: U.plans.map((pl) => ({ point: p3(pl.p), normale: p3(V.norm(pl.n)), profondeur: 'complete' })),
+    // déplacement du bout distal de l'ulna : celui du fragment distal du radius (correction réelle, trait de scie compris)
+    correction: { angle_deg: 0, derotation_deg: 0, T_4x4: RT.toRows4(U.Treel).map((l) => l.map((x) => r(x, 6))), suit: 'fragment distal du radius' },
+    broches: U.broches.map((bb) => ({ fragment: bb.fragment, point_axe: p3(bb.point), direction: p3(V.norm(bb.dir)), diametre_mm: INSTRUMENT.broche })),
+    broches_reduction: U.broches.map((bb) => ({ fragment: bb.fragment, point_axe: p3(bb.point), direction: p3(V.norm(bb.dir)), diametre_mm: INSTRUMENT.broche, hauteur_manchon_mm: bb.hauteurManchon || 15 })),
+    placement_broches: { rotation_deg: U.beta, inclinaison_deg: 0, distance_coupe_mm: [r(U.eProx || 0, 1), r(U.eDist || 0, 1)], contraintes_respectees: U.ok },
+    guide: { face_appui: p3(U.face), axe_os: p3(U.d), axe_distal: p3(U.d), centre_section: p3(U.centre) },
+    // pas de guide de réduction de l'ulna : elle suit le radius, que le guide de réduction du radius tient
+    guide_reduction: false,
+    // 1er os : l'étape 7 le corrige avec SES plans et sa correction (contrôles et aperçu après correction)
+    premier_os: { os: 'radius', type_coin: kind, plans_coupe: O.plans.map((pl) => ({ point: p3(pl.p), normale: p3(V.norm(pl.n)) })),
+      T_4x4: RT.toRows4(U.Treel).map((l) => l.map((x) => r(x, 6))) },
+    prevision: { ecart_bouts_ulna_mm: r(U.ecartApres, 1) },
+    alertes: [...U.alertes],
+  };
+  if (R) out.os_segmente = blocOsSegmente(R);
   if (extra.parametresGuide && Object.keys(extra.parametresGuide).length) out.parametres_guide = { ...extra.parametresGuide };
   return out;
 }
@@ -6828,7 +7036,7 @@ const G = {};                        // groupes de la scène
 const OV = {};                       // calques de tracés : base (immobile) et dist (suit le fragment distal)
 
 function initGroups() {
-  for (const k of ['bone', 'ghost', 'prox', 'dist', 'wedge', 'gap', 'pins', 'torsion', 'guide', 'guideRed']) { G[k] = new THREE.Group(); scene.add(G[k]); }
+  for (const k of ['bone', 'ghost', 'prox', 'dist', 'wedge', 'gap', 'pins', 'torsion', 'guide', 'guideRed', 'guideUlna']) { G[k] = new THREE.Group(); scene.add(G[k]); }
   G.distFrag = new THREE.Group(); G.dist.add(G.distFrag);      // fragments distaux (le calque OV.dist est à côté)
   G.pinsDist = new THREE.Group(); G.dist.add(G.pinsDist);      // broche distale : suit le fragment distal
   G.dist.matrixAutoUpdate = false;
@@ -6864,11 +7072,18 @@ function buildBones(P) {
   clearGroup(G.bone); clearGroup(G.ghost);
   const voisins = Object.entries(P.voisins || {}).filter(([n]) => DATA.bones[n]);
   for (const [n, pos] of [...P.meshes.map((n) => [n, P.pos[n]]), ...voisins]) {
-    G.bone.add(new THREE.Mesh(boneGeometry(n, pos), boneMaterial()));
+    const m = new THREE.Mesh(boneGeometry(n, pos), boneMaterial());
     const gh = new THREE.Mesh(boneGeometry(n, DATA.bones[n].pos), MAT.ghost);
     gh.renderOrder = 4;
+    if (n !== P.bone) m.userData.voisin = gh.userData.voisin = true;     // os voisin : affiché seulement à la demande
+    G.bone.add(m);
     G.ghost.add(gh);
   }
+}
+// Os voisins (ulna, fibula, rotule, fabelles) : la planification CORA ne montre que l'os planifié ; la case « afficher »
+// les fait apparaître. Ils restent pris en compte (lame, guide, broches) qu'ils soient affichés ou non.
+function majVoisins(visible) {
+  for (const g of [G.bone, G.ghost, G.prox, G.distFrag, G.wedge]) g.traverse((o) => { if (o.userData.voisin) o.visible = visible; });
 }
 
 // ------------------------------------------------------------ fragments --
@@ -6905,7 +7120,9 @@ function fragmentObject(M, surfaceMat) {
 }
 
 const FRAG = { key: null, gapLoops: null, raw: null };
-const cleFragments = (P, kind) => `${PLAN_ID}|${kind}`;
+// ULNA : coupe de l'ulna (2e os, planifierUlna) quand elle est planifiée ; sinon l'ulna reste intacte dans le plan du radius
+let ULNA = null;
+const cleFragments = (P, kind) => `${PLAN_ID}|${kind}|${ULNA ? ULNA.niveau : '-'}`;
 // Découpe réelle du maillage déformé par les plans de l'ostéotomie choisie.
 function buildFragments(P, kind) {
   const key = cleFragments(P, kind);
@@ -6914,25 +7131,41 @@ function buildFragments(P, kind) {
   FRAG.key = key;
   const O = P.osteo[kind];
   const [P1, P2b] = O.plans;
+  // fermeture : chaque trait de scie enlève l'épaisseur de la lame, centrée sur son plan (comme os_corrige de l'étape 7)
+  const s2 = (O.traitScie || 0) / 2;
+  const decale = (pl, s) => V.add(pl.p, V.mul(V.norm(pl.n), s));
+  const voisin = (o) => { o.userData.voisin = true; return o; };
   for (const n of P.meshes) {
     const geo = G.bone.children.find((m) => m.geometry.attributes.position.array === P.pos[n])?.geometry || boneGeometry(n, P.pos[n]);
     const b = DATA.bones[n];
     const M = meshFromArrays(P.pos[n], b.idx, geo.attributes.normal.array, { ao: b.ao, cart: b.cart, med: b.med });
     let prox, dist, wedge = null;
+    if (P.bone === 'radius' && n !== P.bone) {
+      // ulna : pas coupée par le plan du radius (obstacle seulement) ; coupée à son propre niveau quand le 2e os est
+      // planifié, son bout distal suivant alors le fragment distal du radius (trait de scie de l'ulna compris)
+      if (!ULNA) { G.prox.add(voisin(fragmentObject(M))); continue; }
+      const pu = ULNA.plans[0], su = (INSTRUMENT.lame || 0) / 2;
+      G.prox.add(voisin(fragmentObject(clipMesh(M, decale(pu, -su), pu.n, -1, 1, triangulate2D))));
+      G.distFrag.add(voisin(fragmentObject(clipMesh(M, decale(pu, su), pu.n, +1, 1, triangulate2D))));
+      continue;
+    }
     if (kind === 'fermeture') {
-      prox = clipMesh(M, P1.p, P1.n, -1, 1, triangulate2D);                  // au-dessus du trait proximal
-      const below = clipMesh(M, P1.p, P1.n, +1, 1, triangulate2D);
-      dist = clipMesh(below, P2b.p, P2b.n, +1, 2, triangulate2D);            // au-dessous du trait distal
-      wedge = clipMesh(below, P2b.p, P2b.n, -1, 2, triangulate2D);           // entre les deux : coin retiré
+      // au-delà de la charnière, les deux plans se croisent : le fragment distal y est sous le 1er trait (un seul trait
+      // y passe, l'os s'y ouvre à la fermeture) ; l'ulna ou la fibula, de ce côté, est donc coupée une seule fois
+      prox = clipMesh(M, decale(P1, -s2), P1.n, -1, 1, triangulate2D);      // au-dessus du trait proximal
+      const below = clipMesh(M, decale(P1, s2), P1.n, +1, 1, triangulate2D);
+      dist = clipMesh(below, decale(P2b, s2), P2b.n, +1, 2, triangulate2D);  // au-dessous du trait distal
+      wedge = clipMesh(below, decale(P2b, -s2), P2b.n, -1, 2, triangulate2D); // entre les deux : coin retiré
     } else {
       prox = clipMesh(M, P1.p, P1.n, -1, 1, triangulate2D);
       dist = clipMesh(M, P1.p, P1.n, +1, 1, triangulate2D);
       if (n === P.bone) FRAG.gapLoops = prox.loops;                          // contour de la coupe (espace d'ouverture)
     }
     if (n === P.bone) FRAG.raw = { prox, dist, kind };                       // pour l'export de l'os corrigé prévu
-    G.prox.add(fragmentObject(prox));
-    G.distFrag.add(fragmentObject(dist));
-    if (wedge && wedge.tri.length) G.wedge.add(fragmentObject(wedge, MAT.wedge));
+    const marque = (o) => (n === P.bone ? o : voisin(o));
+    G.prox.add(marque(fragmentObject(prox)));
+    G.distFrag.add(marque(fragmentObject(dist)));
+    if (wedge && wedge.tri.length) G.wedge.add(marque(fragmentObject(wedge, MAT.wedge)));
   }
   // os voisins entiers : du côté distal de la coupe, ils suivent le fragment distal (rotule, fabelles)
   const Pl = O.plans[O.plans.length - 1];
@@ -6940,7 +7173,7 @@ function buildFragments(P, kind) {
     if (!DATA.bones[n]) continue;
     let s = 0;
     for (let i = 0; i < pos.length; i += 3) s += (pos[i] - Pl.p[0]) * Pl.n[0] + (pos[i + 1] - Pl.p[1]) * Pl.n[1] + (pos[i + 2] - Pl.p[2]) * Pl.n[2];
-    (s > 0 ? G.distFrag : G.prox).add(new THREE.Mesh(boneGeometry(n, pos), boneMaterial()));
+    (s > 0 ? G.distFrag : G.prox).add(voisin(new THREE.Mesh(boneGeometry(n, pos), boneMaterial())));
   }
   if (kind === 'ouverture' && FRAG.gapLoops) buildGap(P, O);
   buildPins(P, O);
@@ -6986,7 +7219,7 @@ function buildGap(P, O) {
   const m = new THREE.Mesh(g, MAT.gap);
   m.renderOrder = 6;
   G.gap.add(m);
-  FRAG.gap = { mesh: m, loops, H: O.charniere, k: O.k };
+  FRAG.gap = { mesh: m, loops, H: O.aca || O.charniere, k: O.k };
 }
 function updateGap(angle) {
   const gp = FRAG.gap;
@@ -7007,12 +7240,22 @@ function updateGap(angle) {
 //   fermeture : 0–0,25 le coin est retiré (glisse vers le côté convexe), 0,25–1 rotation
 //   ouverture : 0–1 rotation, l'espace d'ouverture apparaît
 //   la dérotation éventuelle se fait en même temps : autour de l'axe distal pour un coin de fermeture (avant la
-//   fermeture dans la composition), autour de l'axe réaligné pour un coin d'ouverture (après l'ouverture)
+//   fermeture dans la composition), autour de l'axe réaligné pour un coin d'ouverture (après l'ouverture) ; radius en
+//   règle 1 ou 3 : autour de la ligne centrale réelle de l'os à la coupe (O.axeDerotation, voir planifier)
+//   fermeture : en fin de fermeture, le fragment distal avance encore de l'épaisseur des traits de scie le long de la
+//   normale au 1er plan (fragments coupés avec la lame : buildFragments), comme transformation_reelle de l'étape 7
+//   la rotation angulaire se fait autour de l'ACA (O.aca) : la charnière en règles 1 et 3, le point de la bissectrice qui
+//   réaligne les axes en règle 2 (le fragment glisse alors le long de la coupe : translation de la règle 2), exactement
+//   comme la correction prescrite O.T (sinon, en règle 2, le fragment et sa broche seraient affichés à côté du guide)
 function transformCorrection(O, kind, e) {
-  const Ta = RT.aboutAxis(O.charniere, O.k, O.corr * RAD * e);
-  if (!O.derotation || !O.axeDerotation) return Ta;
-  const Rd = RT.aboutAxis(O.axeDerotation.p, O.axeDerotation.d, O.derotation * RAD * e);
-  return kind === 'fermeture' ? RT.compose(Ta, Rd) : RT.compose(Rd, Ta);
+  const Ta = RT.aboutAxis(O.aca || O.charniere, O.k, O.corr * RAD * e);
+  let T = Ta;
+  if (O.derotation && O.axeDerotation) {
+    const Rd = RT.aboutAxis(O.axeDerotation.p, O.axeDerotation.d, O.derotation * RAD * e);
+    T = kind === 'fermeture' ? RT.compose(Ta, Rd) : RT.compose(Rd, Ta);
+  }
+  if (O.traitScie) T = { R: T.R, t: V.sub(T.t, V.mul(V.norm(O.plans[0].n), O.traitScie * e)) };
+  return T;
 }
 function applyCorrection(P, kind, p) {
   const O = P.osteo[kind];
@@ -7086,6 +7329,18 @@ function construireGuides(meshes) {
   }
 }
 function viderGuides() { clearGroup(G.guide); clearGroup(G.guideRed); }
+// guide de coupe de l'ulna (2e os) et ses broches, sur les os avant correction
+function construireGuideUlna3D(meshes, U) {
+  clearGroup(G.guideUlna);
+  for (const [k, m] of Object.entries(meshes)) if (MAT_GUIDE[k]) G.guideUlna.add(meshGuide(m, MAT_GUIDE[k]));
+  const r = INSTRUMENT.broche / 2, longueur = (U?.largeur || 8) + 26;
+  for (const bb of U?.broches || []) {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, longueur, 16), MAT.pin);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(...bb.dir).normalize());
+    m.position.set(...V.add(bb.point, V.mul(bb.dir, 4 - longueur / 2 + U.largeur / 2)));
+    G.guideUlna.add(m);
+  }
+}
 
 // =============================================================================
 // 40 — les 13 étapes de la planification : tracés 3D, cadrage, légende, explication
@@ -7336,7 +7591,7 @@ function dessinReperes(P, etiquettes = true) {
     }
   }
 }
-// pas d'ostéotomie au CORA : pourquoi (étapes 9 à 12)
+// pas d'ostéotomie au CORA : pourquoi (étapes 11 à 14)
 function boiteSansOsteo(P) {
   const raison = P.theta < THETA_MIN
     ? `les axes proximal et distal sont parallèles (θ = ${deg(P.theta, 2)}) : il n'y a pas de déformité angulaire à corriger.`
@@ -7518,7 +7773,7 @@ function boiteNormales(P) {
 }
 
 // ------------------------------------------------------------ les étapes --
-const ETAPES = [
+const ETAPES_DEF = [
   {
     id: 'cas', court: 'Le cas', titre: (P) => (P.reel ? `${LeOs(P)} segmenté${P.D ? ' + déformité de test' : ''} : le cas à planifier` : `${P.cas.titre} : le cas à planifier`),
     // os segmenté tel quel : vue de face, où les légendes des repères se rangent proprement de part et d'autre de l'os
@@ -7543,13 +7798,12 @@ const ETAPES = [
           ? para('Cette déformité est <b>pure</b> : elle est entièrement dans le plan frontal. C\'est un cas d\'école ; chez un vrai patient, une composante sagittale (et souvent une torsion) est presque toujours associée.')
           : para(`Comme chez la plupart des vrais patients, la déformité n'est <b>pas pure</b> : un ${P.frontal} et un ${P.sagittal} coexistent. Ce ne sont pas deux déformités : c'est <b>une seule</b> angulation de θ = ${deg(v.thetaVrai)} dans un <b>plan oblique</b>, que chaque radiographie ne voit qu'en partie.`),
         para('L\'os sain est affiché en transparence. Le petit octaèdre marque l\'apex imposé (vérité terrain) : la méthode ne s\'en sert pas, on vérifiera qu\'elle le retrouve.'),
-        boiteNormales(P),
-        boite('def', 'Ce que l\'on va faire',
-          h('ol', {}, h('li', {}, 'Vue de face : lignes articulaires, angles, axes, CORA frontal (composante F).'),
-            h('li', {}, 'Vue de profil : la même chose dans le plan sagittal (composante S).'),
-            h('li', {}, 'En 3D : angle vrai θ, plan oblique, bissectrice et ACA.'),
-            h('li', {}, 'Ostéotomie au CORA (règle 1 de Paley) : angle et traits de coupe, correction, contrôle.'),
-            h('li', {}, 'Prescription du guide de coupe (plans, charnière, broches), puis analyse de la torsion.'))),
+        boite('def', 'Ce que l\'on va faire (workflow du projet)',
+          h('ol', {}, h('li', {}, 'Prise de données : lignes articulaires et angles de face, puis de profil ; torsion.'),
+            h('li', {}, 'Comparaison aux valeurs de référence : déformation ou non, type de correction.'),
+            h('li', {}, 'Axes des segments et CORA (face, profil), angle vrai θ en 3D, bissectrice et ACA.'),
+            h('li', {}, 'Type d\'ostéotomie et règle de Paley (règle 1 par défaut ; d1 et T_max au choix du chirurgien), simulation, contrôle.'),
+            h('li', {}, 'Partie 2 : guides de coupe et de réduction.'))),
         sources('paley', 'shihtzu'),
       ];
     },
@@ -7761,7 +8015,7 @@ const ETAPES = [
     },
   },
   {
-    id: 'osteo', court: 'Angle et traits de coupe', titre: () => 'Ostéotomie : angle et traits de coupe', vue: { dir: 'aca', focus: 'cora', r: 30 }, legende: ['prox', 'dist', 'bis', 'hinge', 'cut', 'wedge'],
+    id: 'osteo', court: 'Ostéotomie et règle de Paley', titre: () => 'Ostéotomie : angle et traits de coupe', vue: { dir: 'aca', focus: 'cora', r: 30 }, legende: ['prox', 'dist', 'bis', 'hinge', 'cut', 'wedge'],
     coupe: true,
     dessin(P, ctx) { axe3D(P, 'prox', true, { opacity: 0.8 }); axe3D(P, 'dist', true, { opacity: 0.8 }); OV.base.dot(P.cora, 0.8, COL.cora); if (!P.osteoPossible) return; dessinBissectrice3D(P, false); dessinOsteo3D(P, ctx.kind); },
     texte(P, ctx) {
@@ -7769,7 +8023,7 @@ const ETAPES = [
       const O = P.osteo[ctx.kind], ccv = sens3(P.bis.ccv, true), cvx = sens3(P.bis.c, true);
       if (!O) return [boiteSansOsteo(P)];
       const rec = P.recommandation;
-      const choix = h('div', { class: 'seg', role: 'group', 'aria-label': 'Type de coin' },
+      const choix = h('div', { class: 'seg', role: 'group', 'aria-label': 'Type d\'ostéotomie' },
         ...['fermeture', 'ouverture'].map((k) => h('button', { type: 'button', 'aria-pressed': String(k === ctx.kind), disabled: !P.osteo[k], onclick: () => ctx.setKind(k) },
           k === 'fermeture' ? 'Coin de fermeture' : 'Coin d\'ouverture', rec?.kind === k ? ' ★' : '')));
       const sommet = O.charniereConservee ? '<b>Charnière</b>' : '<b>Sommet du coin</b> (ostéotomie complète : repère de l\'angle, la corticale est coupée aussi)';
@@ -7814,7 +8068,7 @@ const ETAPES = [
     },
   },
   {
-    id: 'corr', court: 'Correction', titre: () => 'Simuler la correction', vue: { dir: 'aca', focus: 'cora', r: 74 }, legende: ['prox', 'dist', 'hinge', 'pin'],
+    id: 'corr', court: 'Simulation de la correction', titre: () => 'Simuler la correction', vue: { dir: 'aca', focus: 'cora', r: 74 }, legende: ['prox', 'dist', 'hinge', 'pin'],
     coupe: true, anime: true, broches: true, transparence: 0.6,
     dessin(P, ctx) {
       const O = P.osteo[ctx.kind];
@@ -7838,7 +8092,7 @@ const ETAPES = [
           ? boite('warn', 'Dérotation', para(`La torsion mesurée (${P.torsion.publiee ? 'définition publiée' : 'définition du modèle'}) passe de ${deg(P.torsion.avant)} avant correction à ${deg(O.torsionApresAngle)} après la seule correction angulaire, pour une cible de ${deg(O.torsionCible)} : le fragment distal tourne en plus de <b>${deg(O.derotation)}</b> autour de son axe long (${ctx.kind === 'fermeture' ? 'avant de refermer le coin' : 'après l\'ouverture'}). Torsion finale : ${deg(O.torsionApres)}.`),
             para(`Une dérotation impose une ostéotomie <b>complète</b> (la charnière corticale ne peut pas tourner) : c'est le <b>guide de réduction</b> qui fixe alors la position des fragments.`))
           : null,
-        para(`Les <b>broches de réduction</b> (${NOM_BROCHES}) ont été forées avec un angle de ${deg(O.angleBroches)} entre les fragments : à la fin de la correction, elles sont toutes <b>parallèles</b>, et le guide de réduction s'y enfile (étape 12).`),
+        para(`Les <b>deux broches de réduction</b> (une par fragment) ont été forées avec un angle de ${deg(O.angleBroches)} entre les fragments : à la fin de la correction, elles sont <b>parallèles</b>, et le guide de réduction s'y enfile (étape 14).`),
         h('table', { class: 't' }, h('tbody', {},
           h('tr', {}, h('td', {}, 'Angle restant entre les axes'), h('td', { class: 'hi', id: 'live-angle' }, deg(P.theta))),
           h('tr', {}, h('td', {}, 'Angle entre les deux broches'), h('td', { class: 'hi', id: 'live-pins' }, deg(O.angleBroches))),
@@ -7873,9 +8127,13 @@ const ETAPES = [
             h('tr', {}, h('td', {}, 'Translation entre les axes'), h('td', {}, 'n.d.'), h('td', { class: 'hi' }, mm(O.decalage, 2)), h('td', {}, mm(0))),
             h('tr', {}, h('td', {}, `Torsion (${P.torsion.publiee ? 'définition publiée' : 'définition du modèle'})`), h('td', {}, deg(P.torsion.avant)), h('td', { class: 'hi' }, deg(O.torsionApres)), h('td', {}, deg(O.torsionCible))),
             h('tr', {}, h('td', {}, 'Longueur (centres articulaires)'), h('td', {}, mm(pre.longueur)), h('td', { class: 'hi' }, mm(O.post.longueur)), h('td', {}, P.reference === 'normales' ? 'n.d.' : mm(N.longueur))))),
-        boite('ok', 'Conclusion', para(`Les axes sont réalignés (${deg(O.residuel, 2)} d'écart) et sans translation (${mm(O.decalage, 2)}) : la <b>règle ${O.regle === 2 ? '2' : '1'}</b> est respectée${O.regle === 2 ? ` (translation de ${mm(O.translationOsteo, 1)} à l'ostéotomie, pas entre les axes)` : ''} et les angles articulaires sont revenus à leur valeur normale dans les deux plans, avec <b>une seule</b> ostéotomie. Seule la longueur change (${O.dLongueur > 0 ? '+' : '−'}${mm(Math.abs(O.dLongueur))}), comme prévu pour un ${kindNom[ctx.kind]}.`)),
+        boite('ok', 'Conclusion', para(`${O.regle === 3
+          ? `Les axes sont parallèles (${deg(O.residuel, 2)} d'écart) mais <b>décalés de ${mm(O.decalage, 2)}</b> : c'est la <b>règle 3</b>, choisie parce que T = ${mm(O.tBarksfield, 1)} ≤ T_max = ${mm(O.tMax, 1)} (décalage accepté)`
+          : P.bone === 'radius' && O.regle === 1 && O.decalage > 0.05
+          ? `Les axes sont parallèles (${deg(O.residuel, 2)} d'écart) et <b>décalés de ${mm(O.decalage, 2)}</b> : la dérotation se fait autour de la ligne centrale réelle du radius à la coupe, pour que les fragments restent en face l'un de l'autre ; l'axe distal construit depuis la surface carpienne ne passe pas par l'os et se décale d'autant (règle 1, sans translation à l'ostéotomie)`
+          : `Les axes sont réalignés (${deg(O.residuel, 2)} d'écart) et sans translation entre eux (${mm(O.decalage, 2)}) : la <b>règle ${O.regle === 2 ? '2' : '1'}</b> est respectée${O.regle === 2 ? ` (translation de ${mm(O.translationOsteo, 1)} à l'ostéotomie, pas entre les axes)` : ''}`} et les angles articulaires sont revenus à leur valeur normale dans les deux plans, avec <b>une seule</b> ostéotomie. Seule la longueur change (${O.dLongueur > 0 ? '+' : '−'}${mm(Math.abs(O.dLongueur))}), comme prévu pour un ${kindNom[ctx.kind]}.`)),
         boite('def', 'Limites', para(P.reel
-          ? 'Os réel mais rigide ; repères automatiques (étape 6 : ± 1 mm sur l\'os du modèle pour les repères robustes, quelques degrés pour les angles sagittaux, dont les lignes articulaires ne font que 20 à 30 mm) ; torsion corrigée par dérotation si elle sort de la normale ; tissus mous non modélisés. Vérifiez les repères à l\'étape 1. Cibles publiées pour toute la chaîne planification + guide + chirurgie : < 2° et < 1 mm (pes varus du teckel), ≤ 5° et ≤ 5 mm acceptables.'
+          ? 'Os réel mais rigide ; repères automatiques (± 1 mm sur l\'os du modèle pour les repères robustes, quelques degrés pour les angles sagittaux, dont les lignes articulaires ne font que 20 à 30 mm) ; torsion corrigée par dérotation si elle sort de la normale ; tissus mous non modélisés. Vérifiez les repères à l\'étape 1. Cibles publiées pour toute la chaîne planification + guide + chirurgie : < 2° et < 1 mm (pes varus du teckel), ≤ 5° et ≤ 5 mm acceptables.'
           : 'Modèle idéal : os rigide, repères anatomiques exacts, torsion corrigée par dérotation si besoin, tissus mous non modélisés. Sur un vrai patient, la précision dépend surtout du pointage des repères. Cibles publiées pour toute la chaîne planification + guide + chirurgie : < 2° et < 1 mm (pes varus du teckel), ≤ 5° et ≤ 5 mm acceptables.')),
       ];
     },
@@ -7918,12 +8176,56 @@ const ETAPES = [
     },
   },
   {
-    id: 'tors', court: 'Et la torsion ?', titre: () => 'La torsion : pourquoi la radiographie ne suffit pas', vue: { dir: 'cc', focus: 'os' }, plan2D: 'F', fantome: true, legende: ['trans', 'width', 'ghost'],
+    id: 'tors', court: 'Torsion', titre: () => 'La torsion : pourquoi la radiographie ne suffit pas', vue: { dir: 'cc', focus: 'os' }, plan2D: 'F', fantome: true, legende: ['trans', 'width', 'ghost'],
     torsion: true,
     dessin(P, ctx) { dessinTorsion(P, ctx); },
     texte(P, ctx) { return texteTorsion(P, ctx); },
   },
+  {
+    // workflow : prise de données → déformation mono-apex ? → comparaison aux valeurs de référence → type de correction
+    id: 'ref', court: 'Comparaison aux références', titre: () => 'Comparaison aux valeurs de référence et type de correction',
+    get vue() { return PLAN && PLAN.reel && !PLAN.D ? { dir: 'cc', focus: 'os' } : { dir: 'iso', focus: 'os' }; },
+    fantome: true, legende: ['ghost', 'truth'],
+    dessin(P) { if (P.reel) dessinReperes(P, !P.D); dessinVerite(P); },
+    texte(P) { return texteReference(P); },
+  },
 ];
+// Ordre des étapes : celui du workflow du projet (Workflow_vetoV3.drawio) : données de l'os (lignes articulaires,
+// angles, torsion), comparaison aux références et type de correction, CORA et angle vrai, bissectrice et ACA, type
+// d'ostéotomie et règle de Paley, simulation, contrôle, puis guides (partie 2).
+const ORDRE_ETAPES = ['cas', 'F-jol', 'F-ang', 'S-ang', 'tors', 'ref', 'F-cora', 'S-cora', 'obl', 'bis', 'osteo', 'corr', 'ctrl', 'guide'];
+const ETAPES = ORDRE_ETAPES.map((id) => ETAPES_DEF.find((e) => e.id === id));
+// étape « comparaison » : chaque angle mesuré face à sa valeur de référence, torsion, mono-apex, type de correction
+function texteReference(P) {
+  const cles = [...CLES[P.bone].F, ...CLES[P.bone].S], T = P.torsion, TN = T.normale;
+  const angul = P.reel ? P.anomalies.length > 0 : P.theta > 1;
+  const tors = T.statut !== 'normale';
+  const type = angul && tors ? 'Angulation + torsion (correction combinée)' : angul ? 'Angulation seule' : tors ? 'Torsion seule' : 'Aucune correction indiquée';
+  return [
+    para('On compare chaque angle mesuré à sa <b>valeur de référence</b> : un écart de plus de 2 écarts-types signale une déformation et en donne l\'importance. La référence se choisit dans le panneau de gauche (Vezzoni, littérature ou race).'),
+    tableMesures(P, P.mesures.pre, 'Angles mesurés et valeurs de référence', cles, 'Cet os'),
+    lignes([
+      [`${TN.nom[0].toUpperCase()}${TN.nom.slice(1)} mesurée`, deg(T.avant)],
+      ['Normale', `${deg(TN.m)}, normale entre ${deg(TN.seuils[0])} et ${deg(TN.seuils[1])}`],
+      ['Statut', tors ? `torsion ${T.statut}` : 'normale'],
+    ]),
+    // référence « race » : un angle sans valeur publiée pour cette race garde la littérature ; on le dit (workflow)
+    P.reel && P.bone !== 'radius' && S.reel.preset === 'race' && cles.some((k) => !RACES[S.reel.race]?.[P.bone]?.[k])
+      ? boite('warn', 'Pas de référence fiable pour cette race', para(`${cles.filter((k) => !RACES[S.reel.race]?.[P.bone]?.[k]).map(court).join(', ')} : aucune valeur publiée pour la race « ${RACES[S.reel.race].nom} » ; la valeur de la littérature est utilisée à la place.`))
+      : null,
+    P.anomalies.length
+      ? boite('warn', 'Angles hors normes', para(`${horsNormes(P, cles)} : écart de plus de 2 écarts-types à la référence (${nomRef(P)}).`))
+      : boite('ok', 'Angles dans les normes', para(`Tous les angles sont à moins de 2 écarts-types de la référence (${nomRef(P)}).`)),
+    boite('def', 'Une seule déformation (mono-apex)',
+      para('La méthode cherche <b>un seul CORA par os</b>. Un os qui dévie à plusieurs endroits (déformation multi-apex) est hors du périmètre du projet : le logiciel le signale par une alerte.')),
+    boite(angul || tors ? 'warn' : 'ok', `Type de correction : ${type}`,
+      para(tors && !angul
+        ? 'Une torsion n\'a pas de CORA : la règle de Paley ne s\'applique pas. La correction est une dérotation seule, autour de l\'axe de l\'os.'
+        : angul ? `L'angulation se corrige au CORA (étapes suivantes)${tors ? ', avec une dérotation du fragment distal dans la même ostéotomie' : ''}.`
+          : 'Aucun angle ni la torsion ne sortent des normes : la suite montre la méthode à titre de démonstration.')),
+    boiteNormales(P),
+  ];
+}
 // Ouverture ou fermeture : les critères du programme (recommanderCoin), le premier qui départage décide
 function boiteRecommandation(P, ctx) {
   const R = P.recommandation;
@@ -7975,27 +8277,27 @@ function boiteDome(P, O) {
     para(`<b>Hypothèse retenue</b> : coupes planes guidées par des fentes, règle 1 par défaut ; si le niveau doit changer, règle 2 avec translation chiffrée et alerte au-delà de 50 % de la largeur de l'os.${O.regle === 2 ? ` Ici, un dôme centré sur le CORA aurait un rayon d'environ ${mm(O.decalageCoupe, 0)}.` : ''}`),
     sources('fox06', 'paley'));
 }
-// À quoi servent les broches ? (étape 10)
+// À quoi servent les broches ? (étape 12)
 function boiteBroches(P, O) {
   return boite('def', 'À quoi servent les broches ?',
     h('ol', {},
       h('li', { html: '<b>Fixer le guide de coupe</b> sur l\'os pendant la coupe : il ne peut ni glisser ni basculer.' }),
-      h('li', { html: '<b>Mémoriser la correction</b> : les broches distales sont forées avec l\'inverse de la correction (angle + dérotation). Quand les fragments sont à la position planifiée, toutes les broches deviennent <b>parallèles</b> : un repère visible immédiatement.' }),
+      h('li', { html: '<b>Mémoriser la correction</b> : la broche distale est forée avec l\'inverse de la correction (angle + dérotation). Quand les fragments sont à la position planifiée, les deux broches deviennent <b>parallèles</b> : un repère visible immédiatement.' }),
       h('li', { html: '<b>Manipuler les fragments</b> : elles servent de poignées pendant la réduction.' }),
       h('li', { html: '<b>Porter le guide de réduction</b> : il s\'enfile sur les broches parallèles jusqu\'au contact de l\'os et tient la position pendant la pose de la plaque.' }),
-      h('li', { html: '<b>Retirer le guide de coupe</b> : après la coupe des ponts, chaque moitié glisse le long de ses broches.' })),
+      h('li', { html: '<b>Retirer le guide de coupe</b> : après la coupe des ponts, chaque moitié glisse le long de sa broche.' })),
     para('<b>Une broche par fragment</b> (une proximale, une distale). Un fragment peut encore tourner autour de sa propre broche sans que le parallélisme change : ce sont les manchons du guide de réduction, au contact de l\'os, qui s\'y opposent.'));
 }
-// Comment fonctionne la dérotation ? (étape 10)
+// Comment fonctionne la dérotation ? (étape 12)
 function boiteDerotation(P, O, kind) {
   const T = P.torsion, der = Math.abs(O.derotation) >= DEROTATION_MIN;
   return boite('def', 'Comment fonctionne la dérotation ?',
     h('ol', {},
       h('li', { html: `<b>Mesure</b> : la torsion est l'angle, autour de l'axe long de l'os, entre un axe transverse proximal et un axe transverse distal (${P.bone === 'femur' ? 'fémur : axe du col contre ligne condylaire caudale, Al Aiyan 2021' : P.bone === 'radius' ? 'radius : axe médio-latéral de la tête radiale (perpendiculaire à la direction radius → ulna) contre grand axe de la surface carpienne, normale de Kroner 2017' : 'tibia : ligne condylaire caudale contre axe antécochléaire, Brühschwein 2023'}). Ici : ${deg(T.avant)} avant correction.` }),
       h('li', { html: `<b>Décision</b> : référence « valeurs normales » : on ne dérote que si la torsion sort des seuils publiés (${fr(T.normale.seuils[0], 0)} à ${fr(T.normale.seuils[1], 0)}°), jusqu'à la valeur moyenne (${fr(T.normale.m, 0)}°) ; référence « os sain » : jusqu'à la torsion de l'os sain. Seuil : ${fr(DEROTATION_MIN, 0)}°.` }),
-      h('li', { html: `<b>Axe</b> : le fragment distal tourne autour de son propre axe long, choisi pour ne pas défaire la correction angulaire : ${kind === 'fermeture' ? 'coin de fermeture : autour de l\'axe distal, avant de refermer (la face distale, perpendiculaire à cet axe, tourne dans son plan et reste en face de la face proximale)' : 'coin d\'ouverture : autour de l\'axe réaligné, après l\'ouverture'}.` }),
+      h('li', { html: `<b>Axe</b> : le fragment distal tourne autour de son propre axe long, choisi pour ne pas défaire la correction angulaire : ${kind === 'fermeture' ? 'coin de fermeture : autour de l\'axe distal, avant de refermer (la face distale, perpendiculaire à cet axe, tourne dans son plan et reste en face de la face proximale)' : 'coin d\'ouverture : autour de l\'axe réaligné, après l\'ouverture'}.${P.bone === 'radius' ? (O.regle === 2 ? ' Radius, règle 2 : l\'axe distal construit est gardé, car la translation de la règle 2 est calculée pour réaligner les axes.' : ' <b>Radius</b> : l\'axe distal est construit depuis la surface carpienne et ne passe pas par l\'os à la coupe ; le fragment tourne donc autour de la <b>ligne centrale réelle</b> de l\'os à la coupe (milieu de la section), comme le chirurgien : les fragments restent en face l\'un de l\'autre. L\'ulna, coupée au même niveau, suit le fragment distal et tourne autour du radius : ses deux bouts ne se font plus face après une grande dérotation, ce qui est attendu.') : ''}` }),
       h('li', { html: '<b>Angle</b> : calculé par itérations (méthode de la sécante) pour que la torsion mesurée <b>après</b> toute la correction égale la cible : l\'angulation elle-même change la torsion mesurée de quelques dixièmes de degré.' }),
-      h('li', { html: '<b>Conséquences</b> : une charnière corticale ne peut pas se tordre, l\'ostéotomie devient complète ; les broches distales sont forées avec l\'inverse de la correction <b>dérotation comprise</b> : le guide de réduction contrôle la torsion sans qu\'on ait à la mesurer pendant la chirurgie.' })),
+      h('li', { html: '<b>Conséquences</b> : une charnière corticale ne peut pas se tordre, l\'ostéotomie devient complète ; la broche distale est forée avec l\'inverse de la correction <b>dérotation comprise</b> : le guide de réduction contrôle la torsion sans qu\'on ait à la mesurer pendant la chirurgie.' })),
     para(der ? `<b>Ici</b> : dérotation de <b>${deg(O.derotation)}</b> ; torsion ${deg(T.avant)} → ${deg(O.torsionApres)} (cible ${deg(O.torsionCible)}).` : `<b>Ici</b> : pas de dérotation (torsion ${deg(T.avant)}, ${T.statut === 'normale' ? 'dans la normale' : 'cible atteinte par la seule correction angulaire'}).`),
     sources('alaiyan', 'bruhT', 'longo'));
 }
@@ -8003,7 +8305,9 @@ function boiteDerotation(P, O, kind) {
 function boiteStrategie(P, O, kind) {
   const li = [];
   const choisi = P.optionsStrategie && P.optionsStrategie.decalageCoupe !== null;
-  li.push(O.regle === 2
+  li.push(O.regle === 3
+    ? `<b>Règle 3 de Paley</b> : coupe placée à ${mm(O.decalageCoupe, 0)} ${O.z < 0 ? 'au-dessus' : 'au-dessous'} du CORA ; T = 2·d1·tan(θ/2) = ${mm(O.tBarksfield, 1)} ≤ T_max = ${mm(O.tMax, 1)} : la rotation se fait autour de la charnière, sur la coupe, <b>sans translation</b> ; les axes restent parallèles mais décalés de ${mm(O.decalage, 1)} (décalage accepté par le chirurgien).`
+    : O.regle === 2
     ? `<b>Règle 2 de Paley</b> : ${choisi ? `coupe placée à ${mm(O.decalageCoupe, 0)} ${O.z < 0 ? 'au-dessus' : 'au-dessous'} du CORA (niveau choisi)` : `le CORA touche le cartilage articulaire ; la coupe est déplacée de ${mm(O.decalageCoupe, 0)} vers la diaphyse`}. La correction tourne toujours autour de l'ACA placé sur la bissectrice du CORA, ce qui réaligne les axes, mais le fragment distal <b>glisse de ${mm(O.translationOsteo, 1)}</b> le long de la coupe (translation à l'ostéotomie, prévue). Alternative classique : ostéotomie en dôme centrée sur le CORA (rayon ≈ ${mm(O.decalageCoupe, 0)}).`
     : '<b>Règle 1 de Paley</b> : coupe au CORA, charnière sur la bissectrice transverse ; pas de translation à l\'ostéotomie.');
   const face = nomDirection(O.face), faceCoin = nomDirection(O.faceCoin || O.face);
@@ -8014,17 +8318,17 @@ function boiteStrategie(P, O, kind) {
       ? `<b>Abord non usuel</b> : la lame doit entrer par la face du coin (${faceCoin}) ; ${O.raisonAbord}. Un guide posé sur cette face occuperait l'espace entre l'os et ${O.voisinSurLame} : <b>aucun guide de coupe n'est construit</b> ; choisir le coin recommandé.`
       : `<b>Abord non usuel</b> : la lame doit entrer par la face du coin (${faceCoin}) ; ${O.raisonAbord || 'hors des abords usuels'}. Le guide y est posé quand même (il n'est jamais du côté de la charnière) ; le coin recommandé est plus simple.`)
     : O.charniereConservee
-      ? `<b>Abord ${O.abord}</b> (face ${face}) : la lame entre du côté ${faceCoin}, la corticale opposée sert de charnière et reste intacte.`
+      ? `<b>Abord ${O.abord}</b> (face ${face}) : la lame entre par la face ${faceCoin}, la corticale opposée sert de charnière et reste intacte.`
       : O.ecartFace > 0
         ? `<b>Abord ${O.abord}</b> : face du coin (${faceCoin}) ${O.raisonAbord || 'hors des abords usuels'} ; le guide se pose sur la face accessible la plus proche (${face}, à ${fr(O.ecartFace, 0)}° de la face du coin, du côté opposé à la charnière) et l'<b>ostéotomie est complète</b>. Le guide de réduction fixe la position des fragments.`
         : `<b>Abord ${O.abord}</b> (face ${face}) : <b>ostéotomie complète</b>${raisons.length ? ` (${raisons.join(', ')} interdit de garder une charnière)` : ''}. Le guide de réduction fixe la position des fragments.`);
   const pb = O.placementBroches || {};
-  li.push(`<b>Broches</b> (${NOM_BROCHES}) : une proximale et une distale${pb.beta ? ` ; tournées de ${fr(pb.beta, 0)}° autour de l'os` : ''}${pb.decalageProx || pb.decalageDist ? ' ; décalées de la ligne centrale' : ''}, hors du cartilage (≥ 3 mm), à ≥ 2 mm des os voisins, manchons hors des tours de fente, entrée sur la corticale à moins de ${ANGLE_ENTREE_MAX}° de la normale.`);
+  li.push(`<b>Broches</b> : une proximale et une distale${pb.beta ? ` ; tournées de ${fr(pb.beta, 0)}° autour de l'os` : ''}${pb.decalageProx || pb.decalageDist ? ' ; décalées de la ligne centrale' : ''}, hors du cartilage (≥ 3 mm), à ≥ 2 mm des os voisins, manchons hors des tours de fente, entrée sur la corticale à moins de ${ANGLE_ENTREE_MAX}° de la normale.`);
   const autres = (O.alertes || []).filter((a) => /trop fin|contact osseux|impossible|dans le cartilage|os voisin|trop près|oblique|manchon|non réalisable|aucune position|du cartilage \(minimum|épais/.test(a));
   return boite(autres.length ? 'warn' : 'def', 'Stratégie chirurgicale', h('ul', {}, ...li.map((x) => h('li', { html: x }))),
     autres.length ? h('ul', {}, ...autres.map((a) => h('li', {}, a))) : null);
 }
-// ------------------------------------------------------------ étape 12 : prescription et guides --
+// ------------------------------------------------------------ étape 14 : prescription et guides --
 function tablePrescription(P, O, kind) {
   const largeurFente = INSTRUMENT.lame + INSTRUMENT.jeuFente, nb = (O.brochesReduction || O.broches).length;
   return h('table', { class: 't enveloppe' }, h('caption', {}, `Prescription (${kindNom[kind]})`),
@@ -8037,19 +8341,20 @@ function tablePrescription(P, O, kind) {
       h('tr', {}, h('td', {}, 'Niveau du trait z (depuis le CORA)'), h('td', { class: 'hi' }, Math.abs(O.z) < 0.5 ? 'au CORA' : `${O.z > 0 ? '+' : '−'}${mm(Math.abs(O.z), 0)} (${O.z > 0 ? 'distal' : 'proximal'})`)),
       h('tr', {}, h('td', {}, 'Face d\'appui du guide (entrée de la lame)'), h('td', { class: 'hi' }, `${nomDirection(O.face)}${O.abordNonUsuel ? ' (abord non usuel)' : ''}`)),
       h('tr', {}, h('td', {}, 'Orientation de la charnière ψ (0° = crânio-caudale)'), h('td', { class: 'hi' }, deg(P.psi))),
-      h('tr', {}, h('td', {}, 'Règle de Paley'), h('td', { class: 'hi' }, O.regle === 2 ? `2 : coupe à ${mm(O.decalageCoupe, 0)} du CORA, translation ${mm(O.translationOsteo, 1)}` : '1 : coupe au CORA')),
+      h('tr', {}, h('td', {}, 'Règle de Paley'), h('td', { class: 'hi' }, O.regle === 2 ? `2 : coupe à ${mm(O.decalageCoupe, 0)} du CORA, translation ${mm(O.translationOsteo, 1)}`
+        : O.regle === 3 ? `3 : coupe à ${mm(O.decalageCoupe, 0)} du CORA, rotation seule (T = ${mm(O.tBarksfield, 1)} ≤ T_max = ${mm(O.tMax, 1)})` : '1 : coupe au CORA')),
       h('tr', {}, h('td', {}, 'Abord / coupe'), h('td', { class: 'hi' }, `${O.abord || 'n.d.'} ; ${O.charniereConservee ? 'charnière conservée' : 'ostéotomie complète'}`)),
       h('tr', {}, h('td', {}, O.charniereConservee ? 'Profondeur de coupe (arrêt avant la charnière)' : 'Profondeur de coupe (charnière → corticale opposée)'), h('td', { class: 'hi' }, mm(O.D))),
       h('tr', {}, h('td', {}, kind === 'fermeture' ? 'Base du coin' : 'Ouverture'), h('td', { class: 'hi' }, mm(O.base))),
       h('tr', {}, h('td', {}, `Broches de réduction (Ø ${fr(INSTRUMENT.broche)} mm)`), h('td', { class: 'hi' }, `${nb} (1 + 1)`)),
-      h('tr', {}, h('td', {}, 'Angle entre broches proximales et distales (avant correction)'), h('td', { class: 'hi' }, deg(O.angleBroches))),
-      h('tr', {}, h('td', {}, 'Translation résiduelle prévue'), h('td', { class: 'hi' }, mm(O.decalage, 2)))));
+      h('tr', {}, h('td', {}, 'Angle entre la broche proximale et la distale (avant correction)'), h('td', { class: 'hi' }, deg(O.angleBroches))),
+      h('tr', {}, h('td', {}, O.regle === 3 ? 'Décalage des axes prévu (règle 3, accepté)' : 'Translation résiduelle prévue'), h('td', { class: 'hi' }, mm(O.decalage, 2)))));
 }
 // construction des guides par le serveur (étape 7), résultats et contrôles
 function boiteGuide3D(P, O, ctx) {
   const Gd = ctx.guide;
   if (!ctx.serveur) {
-    return [boite('warn', 'Guides imprimables (étape 7)', para('La construction des guides 3D se fait dans l\'application CT-CORA3D (serveur local). Ouvert seul, ce fichier prépare seulement la prescription : exportez le ZIP ci-dessous et lancez <code>etape7_guide.py</code>.'))];
+    return [boite('warn', 'Guides imprimables', para('La construction des guides 3D se fait dans l\'application CT-CORA3D (serveur local). Ouvert seul, ce fichier prépare seulement la prescription : exportez le ZIP ci-dessous et lancez <code>etape7_guide.py</code>.'))];
   }
   if (Gd.etat === 'calcul') {
     return [boite('def', 'Construction des guides en cours',
@@ -8062,13 +8367,13 @@ function boiteGuide3D(P, O, ctx) {
     const reco = P.recommandation?.kind;
     return [boite('warn', 'Guide de coupe impossible pour ce coin',
       para(`Pour ce ${kindNom[ctx.kind]}, la lame doit entrer par la face ${nomDirection(O.faceCoin)}, où <b>${O.voisinSurLame}</b> est sur son trajet. Un guide posé sur cette face occuperait <b>l'espace entre l'os et ${O.voisinSurLame}</b> : le chirurgien ne pourrait ni l'y glisser, ni le fixer avec ses broches, ni couper. Le programme ne construit donc pas ce guide.`),
-      para(reco && reco !== ctx.kind ? `Choisissez le <b>${kindNom[reco]}</b> (conseillé) dans « Type de coin », à gauche : sa face d'entrée est accessible et l'espace entre les deux os reste libre.` : 'Changez de type de coin ou de niveau de coupe.'))];
+      para(reco && reco !== ctx.kind ? `Choisissez le <b>${kindNom[reco]}</b> (conseillé) dans « Type d'ostéotomie », à gauche : sa face d'entrée est accessible et l'espace entre les deux os reste libre.` : 'Changez de type de coin ou de niveau de coupe.'))];
   }
   if (!ctx.guidePret) {
     return [boite('ok', 'Construire les guides imprimables',
       para(`Pour <b>cet os</b> et ce ${kindNom[ctx.kind]}, le programme construit :`),
       h('ul', {},
-        h('li', { html: `le <b>guide de coupe</b> : coque moulée sur l'os (jeu ${fr(ctx.guideParams.jeu_mm ?? 0.3, 2)} mm, épaisseur ${fr(ctx.guideParams.epaisseur_coque_mm ?? 3, 1)} mm, sans contre-dépouille), ${O.plans.length === 2 ? 'deux fentes' : 'une fente'} de scie dans les plans prescrits, ${(O.brochesReduction || O.broches).length} manchons de broches ; deux moitiés reliées par <b>2 ponts sécables</b>, pour que chaque moitié sorte le long de ses broches ; la profondeur de lame de chaque fente est donnée dans le mode opératoire ; entrées chanfreinées, arêtes arrondies ;` }),
+        h('li', { html: `le <b>guide de coupe</b> : coque moulée sur l'os (jeu ${fr(ctx.guideParams.jeu_mm ?? 0.3, 2)} mm, épaisseur ${fr(ctx.guideParams.epaisseur_coque_mm ?? 3, 1)} mm, sans contre-dépouille), ${O.plans.length === 2 ? 'deux fentes' : 'une fente'} de scie dans les plans prescrits, ${(O.brochesReduction || O.broches).length} manchons de broches ; deux moitiés reliées par <b>2 ponts sécables</b>, pour que chaque moitié sorte le long de sa broche ; la profondeur de lame de chaque fente est donnée dans le mode opératoire ; entrées chanfreinées, arêtes arrondies ;` }),
         h('li', { html: `le <b>guide de réduction</b> : ${(O.brochesReduction || O.broches).length} manchons parallèles qui s'enfilent sur les broches après la correction et s'appuient sur l'os corrigé ;` }),
         h('li', { html: 'les <b>plans 2D</b> : plan générique (cotes en symboles, tableau des paramètres) et plan coté de ce guide (vues orthogonales, échelle sur A3) ;' }),
         h('li', {}, 'des contrôles indépendants : jeu mesuré, interpénétration, retrait de chaque moitié (lancer de rayons et balayage), étanchéité des STL.')),
@@ -8083,10 +8388,13 @@ function boiteGuide3D(P, O, ctx) {
   const fichier = (n, txt) => (I.disponibles.includes(n) ? h('a', { class: 'btn petit', href: fichierGuide(Gd.dossier, n, true), download: n }, txt) : null);
   const vue = h('div', { class: 'seg', role: 'group', 'aria-label': 'Pièce affichée' },
     h('button', { type: 'button', 'aria-pressed': String(Gd.vue === 'coupe'), onclick: () => ctx.vueGuide('coupe') }, 'Guide de coupe'),
-    h('button', { type: 'button', 'aria-pressed': String(Gd.vue === 'reduction'), onclick: () => ctx.vueGuide('reduction') }, 'Guide de réduction'));
+    h('button', { type: 'button', 'aria-pressed': String(Gd.vue === 'reduction'), onclick: () => ctx.vueGuide('reduction') }, 'Guide de réduction'),
+    ctx.ulnaPret ? h('button', { type: 'button', 'aria-pressed': String(Gd.vue === 'ulna'), onclick: () => ctx.vueGuide('ulna') }, 'Guide de l\'ulna') : null);
   const out = [
     boite('ok', 'Guides imprimables construits', vue,
-      para(Gd.vue === 'coupe'
+      para(Gd.vue === 'ulna' && ctx.ulnaPret
+        ? 'Guide de coupe de l\'ulna (2e os), posé après la coupe du radius : les broches du radius restent en place, le guide de l\'ulna les évite.'
+        : Gd.vue === 'coupe' || Gd.vue === 'ulna'
         ? 'Guide de coupe sur l\'os, avant la coupe : moitié proximale en bleu, moitié distale en vert, ponts sécables en orange.'
         : 'Os corrigé (angle et dérotation) : les broches sont parallèles et le guide de réduction (violet) s\'y enfile jusqu\'au contact de l\'os.'),
       h('table', { class: 't compact enveloppe' }, h('caption', {}, 'Contrôles du guide de coupe'), h('tbody', {},
@@ -8097,7 +8405,7 @@ function boiteGuide3D(P, O, ctx) {
         ligne('Pièces après coupe des ponts', [String(C.moities_apres_coupe_des_ponts), ' ', tag(C.moities_apres_coupe_des_ponts === (C.pieces_attendues ?? 2), 'deux moitiés')]),
         ligne('Retrait sans heurter l\'os ni l\'autre moitié', Object.entries(C.retrait).map(([k, r]) => h('span', {}, `${k} `, tag(r.libre), ' '))),
         ligne('Ordre de retrait', `moitié ${C.ordre_retrait[0]}, puis ${C.ordre_retrait[1]}`),
-        C.appui_moities ? ligne('Appui de chaque moitié (seule sur ses broches)', Object.entries(C.appui_moities).map(([k, a]) => h('span', {}, `${k} ${fr(a.surface_mm2, 0)} mm² sur ${fr(a.couverture_deg, 0)}° `, tag(a.surface_mm2 >= 100), ' '))) : null,
+        C.appui_moities ? ligne('Appui de chaque moitié (seule sur sa broche)', Object.entries(C.appui_moities).map(([k, a]) => h('span', {}, `${k} ${fr(a.surface_mm2, 0)} mm² sur ${fr(a.couverture_deg, 0)}° `, tag(a.surface_mm2 >= 100), ' '))) : null,
         ...Object.entries(I.voisins_et_cartilage?.voisins || {}).map(([n, r]) => ligne(`Jeu entre guide et ${NOMS_VOISINS[n] || n}`, [r.distance_guide_mm === null ? 'loin' : mm(r.distance_guide_mm, 1), ' ', tag(r.distance_guide_mm === null || r.distance_guide_mm >= (I.parametres.jeu_voisin_mm ?? 1) - 0.1, `≥ ${fr(I.parametres.jeu_voisin_mm ?? 1)}`, 'trop proche')])),
         I.voisins_et_cartilage?.cartilage ? ligne('Distance entre guide et cartilage articulaire', I.voisins_et_cartilage.cartilage.distance_guide_mm === null
           ? ['loin (aucun cartilage près du guide) ', tag(true, 'hors du cartilage')]
@@ -8135,7 +8443,57 @@ function boiteGuide3D(P, O, ctx) {
       h('button', { type: 'button', class: 'btn petit', onclick: montrerDossierGuide }, 'Ouvrir le dossier'),
       h('button', { type: 'button', class: 'btn petit', onclick: () => ctx.construireGuide() }, 'Reconstruire')),
     h('p', { class: 'src' }, `Dossier : resultats/${Gd.dossier}. Impression conseillée : PA12 (frittage laser) ou résine stérilisable ; imprimer d'abord des coupons de fente et de manchon pour régler les jeux (0,2 mm). Prototype de recherche, non validé cliniquement.`)));
+  if (P.bone === 'radius' && P.pos.ulna) out.push(boiteUlna(P, O, ctx));
   return out;
+}
+// 2e os : guide de coupe de l'ulna. Le plan du radius ne coupe pas l'ulna ; elle a son propre guide, à son propre niveau,
+// et son bout distal suit le fragment distal du radius (les deux os tiennent au carpe)
+function boiteUlna(P, O, ctx) {
+  const U = ctx.ulna, plan = U.plan;
+  const intro = para('<b>L\'ulna</b> n\'est pas coupée par le plan du radius : elle n\'y sert que d\'obstacle (lame, guide, broches). Intacte, elle empêcherait la correction : elle a donc son <b>propre guide de coupe</b>, à un niveau que vous choisissez (ostéotomie simple, un trait complet). Son bout distal <b>suit le fragment distal du radius</b> : pas de guide de réduction pour l\'ulna, c\'est celui du radius qui tient l\'ensemble. Elle n\'a pas de CORA propre (pas de lignes articulaires) : le radius est toujours le 1er os.');
+  if (!U.actif) {
+    return boite('def', '2e os : guide de coupe de l\'ulna', intro,
+      h('button', { type: 'button', class: 'btn primary', onclick: () => ctx.ulnaActiver(true) }, 'Planifier la coupe de l\'ulna'));
+  }
+  const nv = plan ? plan.niveau : (U.niveau ?? 0);
+  const curseur = h('div', { class: 'case-group' },
+    h('label', { class: 'case-lbl', for: 's-ulna' }, `Niveau de la coupe de l'ulna : ${nv > 0 ? '+' : nv < 0 ? '−' : ''}${fr(Math.abs(nv), 0)} mm ${nv > 0 ? 'plus distal' : nv < 0 ? 'plus proximal' : 'au niveau'} que le 1er trait du radius${plan?.auto ? ' (automatique)' : ''}`),
+    h('input', { type: 'range', id: 's-ulna', min: -ULNA_NIVEAU_MAX, max: ULNA_NIVEAU_MAX, step: 1, value: nv, onchange: (e) => ctx.ulnaNiveau(Number(e.target.value)) }),
+    h('div', { class: 'ligne-btn' },
+      h('button', { type: 'button', class: 'btn petit', 'aria-pressed': String(U.niveau === null), onclick: () => ctx.ulnaNiveau(null) }, 'Automatique'),
+      h('button', { type: 'button', class: 'btn petit', onclick: () => ctx.ulnaActiver(false) }, 'Ulna intacte (annuler)')));
+  const lignes = plan ? h('table', { class: 't compact' }, h('tbody', {},
+    h('tr', {}, h('td', {}, 'Niveau sur l\'ulna'), h('td', { class: 'hi' }, `${fr(100 * plan.fraction, 0)} % de sa longueur (depuis le proximal)`)),
+    h('tr', {}, h('td', {}, 'Section de l\'ulna à la coupe'), h('td', { class: 'hi' }, `${mm(plan.sec.l1, 1)} × ${mm(plan.sec.l2, 1)}`)),
+    h('tr', {}, h('td', {}, 'Broches de l\'ulna (1 + 1, parallèles)'), h('td', { class: 'hi' }, plan.ok ? `placées${plan.beta ? `, tournées de ${deg(plan.beta, 0)} pour éviter le radius et ses broches` : ''}` : 'position impossible')),
+    h('tr', {}, h('td', {}, 'Écart entre les deux bouts de l\'ulna après la correction'), h('td', { class: 'hi' }, `${mm(plan.ecartApres, 0)} (attendu : l'ulna n'est pas fixée)`)))) : null;
+  const erreur = U.erreurPlan ? boite('warn', 'Coupe de l\'ulna impossible à ce niveau', para(U.erreurPlan))
+    : plan && !ctx.radiusAJourUlna ? boite('warn', 'Guides du radius à reconstruire', para('Le guide de réduction du radius a été construit avant ce niveau de coupe de l\'ulna : il supposait l\'ulna coupée au niveau du radius. Cliquez sur « Reconstruire » (fichiers du radius, plus haut) pour qu\'il évite l\'ulna corrigée à ce niveau.')) : null;
+  let etat = null;
+  if (U.etat === 'calcul') {
+    etat = h('pre', { class: 'journal', id: 'guide-ulna-journal', 'aria-live': 'polite' }, U.journal.length ? U.journal.join('\n') : 'Démarrage…');
+  } else if (ctx.ulnaPret) {
+    const I = U.info, C = I.guide_coupe;
+    const fichier = (n, txt) => (I.disponibles.includes(n) ? h('a', { class: 'btn petit', href: fichierGuide(U.dossier, n, true), download: `ulna_${n}` }, txt) : null);
+    etat = [
+      h('table', { class: 't compact enveloppe' }, h('caption', {}, 'Contrôles du guide de l\'ulna'), h('tbody', {},
+        h('tr', {}, h('td', {}, 'Jeu minimal entre guide et ulna'), h('td', { class: 'hi' }, mm(C.jeu_minimal_mesure_mm, 2))),
+        h('tr', {}, h('td', {}, 'Surface d\'appui'), h('td', { class: 'hi' }, `${fr(C.surface_appui_mm2, 0)} mm²`)),
+        h('tr', {}, h('td', {}, 'Pièces après coupe des ponts'), h('td', { class: 'hi' }, String(C.moities_apres_coupe_des_ponts))),
+        h('tr', {}, h('td', {}, 'STL étanche (relu)'), h('td', { class: 'hi' }, C.etanche_stl ? 'oui' : 'non')),
+        ...Object.entries(I.voisins_et_cartilage?.voisins || {}).map(([n, r]) => h('tr', {}, h('td', {}, `Jeu avec ${n === 'broches_radius' ? 'les broches du radius' : n}`),
+          h('td', { class: 'hi' }, r.distance_guide_mm === null ? 'loin' : mm(r.distance_guide_mm, 1)))))),
+      I.alertes.length ? boite('warn', 'Alertes (ulna)', h('ul', {}, I.alertes.map((a) => h('li', {}, a)))) : null,
+      boite('def', 'Mode opératoire (ulna)', h('ol', {}, I.protocole.map((l) => h('li', {}, l)))),
+      h('div', { class: 'ligne-btn' }, fichier('guide_coupe.stl', 'Guide de l\'ulna (STL)'), fichier('guide_coupe_scanner.stl', 'Repère du scanner'),
+        fichier('plan_guide.pdf', 'Plan coté (PDF)'), fichier('guide.png', 'Aperçu (PNG)'),
+        h('button', { type: 'button', class: 'btn petit', onclick: () => ctx.construireGuideUlna() }, 'Reconstruire')),
+      h('p', { class: 'src' }, `Dossier : resultats/${U.dossier}.`)];
+  } else {
+    etat = [U.etat === 'erreur' ? boite('warn', 'Échec', para(U.erreur || 'erreur inconnue')) : null,
+      h('button', { type: 'button', class: 'btn primary', disabled: !plan, onclick: () => ctx.construireGuideUlna() }, 'Construire le guide de l\'ulna')];
+  }
+  return boite('def', '2e os : guide de coupe de l\'ulna', intro, curseur, erreur, lignes, ...[etat].flat());
 }
 // contrôle de la torsion : broches, guide de réduction ou autres moyens
 function boiteBrochesTorsion(P, O) {
@@ -8158,10 +8516,10 @@ function texteCasReel(P) {
     ['Série CT', nomSerie(R.serie)],
     ['Os', `${LeOs(P)} ${R.cote === 'gauche' ? 'gauche' : 'droit'}${R.miroir ? ' (miroir)' : ''}`],
     ['Longueur', mm(R.longueur_mm, 0)],
-    ['Repères automatiques', `${Object.keys(R.reperes).length} (étape 6)`],
+    ['Repères automatiques', `${Object.keys(R.reperes).length} (calcul automatique)`],
   ];
   const out = [
-    para(`Os analysé : ${leOs(P)} <b>segmenté sur le scanner</b> (onglet 1). Ses repères anatomiques ont été placés <b>automatiquement</b> (étape 6) : ce sont eux, et non l'os fictif, que la méthode CORA utilise ici.`),
+    para(`Os analysé : ${leOs(P)} <b>segmenté sur le scanner</b> (onglet 1). Ses repères anatomiques ont été placés <b>automatiquement</b> par le programme (calcul des repères) : ce sont eux, et non l'os fictif, que la méthode CORA utilise ici.`),
     lignes(lignesOs),
     R.miroir ? para('Membre gauche : il est analysé en <b>miroir</b>, comme un membre droit (mêmes conventions que l\'os fictif) ; la prescription exportée garde la matrice pour revenir au scanner.') : null,
   ];
@@ -8171,11 +8529,6 @@ function texteCasReel(P) {
       para(`On a imposé à cet os réel une déformité connue : <b>${deg(P.thetaF, 0)} de ${P.frontal}</b>${P.sagittal === 'aucun' ? '' : ` + <b>${deg(P.thetaS, 0)} de ${P.sagittal}</b>`}, apex à ${fr(P.niveau * 100, 0)} % de la longueur (θ vrai = ${deg(v.thetaVrai)}). L'octaèdre marque l'apex imposé ; l'os avant déformité est en transparence.`),
       para(`Référence : <b>${nomRef(P)}</b>. ${P.reference === 'sain' ? 'La méthode doit retrouver exactement la déformité imposée.' : 'L\'écart à la déformité imposée montrera l\'effet de la variation naturelle de cet os par rapport aux normes.'}`)));
   }
-  out.push(tableMesures(P, P.mesures.pre, 'Dépistage : angles articulaires de cet os', cles, 'Cet os'));
-  out.push(P.anomalies.length
-    ? boite('warn', 'Angles hors normes', para(`${horsNormes(P, cles)} : écart de plus de 2 écarts-types à la référence. La suite cherche la déformité (CORA, angle vrai, plan).`))
-    : boite('ok', 'Angles dans les normes', para(`Tous les angles sont à moins de 2 écarts-types de la référence (${nomRef(P)}) : <b>pas de déformité significative</b>.${P.D ? '' : ' Pour suivre toute la planification sur cet os, activez une déformité de test (panneau de gauche).'}`)));
-  out.push(boiteNormales(P));
   out.push(para(`Les points ${P.D ? 'marquent' : 'montrent'} les repères détectés ; tournez la vue pour les vérifier.`));
   out.push(P.bone === 'radius' ? sources('paley', 'fox06', 'kwon22', 'duncan22', 'kroner17') : sources('paley', 'dismukes', 'dismukes08', 'tomlinson'));
   return out;
@@ -8188,7 +8541,7 @@ function paraAxesRadius(P) {
     : para('<b>Axe proximal</b> : milieux de la diaphyse à 20 et 40 %. <b>Axe distal</b> : milieux à 60 et 80 %, moins la courbure normale du radius (pas de normes articulaires pour ce cas).');
 }
 
-// valeur de l'angle projeté de l'axe construit (vue k, segment) — utilisée dans le texte de l'étape 4
+// valeur de l'angle projeté de l'axe construit (vue k, segment) — utilisée dans le texte de l'étape 7
 function arcValeur(P, k, seg) {
   const sp = SPEC[P.bone][k][seg], to2 = VUE[k].to2, axe = seg === 'prox' ? P.axeProx : P.axeDist;
   return P2.angU(P2.sub(to2(P.L[sp.a[1]]), to2(P.L[sp.a[0]])), P2.mul(P2.norm(to2(axe.d)), sp.s));
@@ -8369,8 +8722,8 @@ function lisezMoiExport(P, kind, presc, voisins = [], cartilage = false) {
     `Charnière  : corticale ${sens3(kind === 'fermeture' ? P.bis.ccv : P.bis.c, true)}, orientation ψ = ${fr(P.psi, 1)}° (0° = crânio-caudale)`,
     `Coupe      : ${O.plans.length} fente(s), profondeur ${fr(O.D, 1)} mm, ${kind === 'fermeture' ? 'base du coin' : 'ouverture'} ${fr(O.base, 2)} mm`,
     `Torsion    : ${Math.abs(O.derotation) >= DEROTATION_MIN ? `dérotation de ${fr(O.derotation, 1)}° (${fr(P.torsion.avant, 1)}° -> ${fr(O.torsionApres, 1)}°)` : `non corrigée (${fr(P.torsion.avant, 1)}°)`}`,
-    `Broches    : ${(O.brochesReduction || O.broches).length} × Ø ${fr(INSTRUMENT.broche)} mm (${NOM_BROCHES}), ${fr(O.angleBroches, 2)}° entre les fragments (toutes parallèles après correction)`,
-    `Stratégie  : face d'appui ${nomDirection(O.face)}${O.abordNonUsuel ? ' (abord non usuel)' : ` (abord ${O.abord})`}, charnière à ${fr(O.h, 1)} mm, trait ${Math.abs(O.z) < 0.5 ? 'au CORA (règle 1)' : `à ${fr(O.z, 0)} mm du CORA (règle 2)`}`,
+    `Broches    : ${(O.brochesReduction || O.broches).length} × Ø ${fr(INSTRUMENT.broche)} mm (une par fragment), ${fr(O.angleBroches, 2)}° entre les fragments (toutes parallèles après correction)`,
+    `Stratégie  : face d'appui ${nomDirection(O.face)}${O.abordNonUsuel ? ' (abord non usuel)' : ` (abord ${O.abord})`}, charnière à ${fr(O.h, 1)} mm, trait ${Math.abs(O.z) < 0.5 ? 'au CORA (règle 1)' : `à ${fr(O.z, 0)} mm du CORA (règle ${O.regle})`}`,
   ];
   if (R && !P.D && !P.anomalies.length) lignes.push('', 'ATTENTION : les angles articulaires de cet os sont dans les normes ; aucune correction n\'est indiquée. Cet export illustre la méthode, sans indication chirurgicale.');
   lignes.push('',
@@ -8381,9 +8734,9 @@ function lisezMoiExport(P, kind, presc, voisins = [], cartilage = false) {
     `  ${P.bone}_corrige_prevu.stl   os après la correction simulée (contrôle visuel)`);
   for (const n of voisins) lignes.push(`  ${('voisin_' + n + '.stl').padEnd(24)} os voisin tel que planifié (${{ fibula: 'fibula', ulna: 'ulna', patella: 'rotule', fabellae: 'fabelles' }[n] || n}) : le guide et les broches l'évitent`);
   if (cartilage) lignes.push(`  ${('cartilage_' + P.bone + '.u8').padEnd(24)} cartilage articulaire : 1 octet par sommet de ${P.bone}_planifie.bin (255 = cartilage)`);
-  if (R) lignes.push(`  cora_${R.nom || P.bone}.json${' '.repeat(Math.max(1, 13 - (R.nom || P.bone).length))}repères automatiques (étape 6), dans le repère de l'os et dans celui du scanner`);
+  if (R) lignes.push(`  cora_${R.nom || P.bone}.json${' '.repeat(Math.max(1, 13 - (R.nom || P.bone).length))}repères automatiques (calcul des repères), dans le repère de l'os et dans celui du scanner`);
   lignes.push('',
-    'Construire les guides imprimables : bouton « Construire les guides 3D » de l\'étape 12 dans CT-CORA3D, ou en ligne de',
+    'Construire les guides imprimables : bouton « Construire les guides 3D » de l\'étape 14 dans CT-CORA3D, ou en ligne de',
     'commande (depuis le dossier PMD2, après avoir dézippé dans <dossier>) :',
     `  macOS   : .venv/bin/python CT-CORA3D/code_source/etape7_guide.py --prescription <dossier>/prescription.json --os <dossier>/${P.bone}_planifie.bin${voisins.map((n) => ` --voisin ${n}=<dossier>/voisin_${n}.stl`).join('')}${cartilage ? ` --cartilage <dossier>/cartilage_${P.bone}.u8` : ''} --sortie <dossier>`,
     `  Windows : .venv\\Scripts\\python CT-CORA3D\\code_source\\etape7_guide.py --prescription <dossier>\\prescription.json --os <dossier>\\${P.bone}_planifie.bin${voisins.map((n) => ` --voisin ${n}=<dossier>\\voisin_${n}.stl`).join('')}${cartilage ? ` --cartilage <dossier>\\cartilage_${P.bone}.u8` : ''} --sortie <dossier>`,
@@ -8412,7 +8765,7 @@ function exporterGuide(P, kind) {
     files.push({ name: fos, data: stlBinary(parts.slice(0, 1), `${P.bone} ${P.reel ? 'CT-CORA3D' : 'CORA3D'}`) });
     buildFragments(P, kind);
     if (FRAG.raw) {
-      const T = P.osteo[kind].T, d = FRAG.raw.dist;
+      const T = transformCorrection(P.osteo[kind], kind, 1), d = FRAG.raw.dist;   // comme l'affichage (trait de scie compris)
       const posD = new Float32Array(d.pos.length);
       for (let i = 0; i < d.pos.length; i += 3) { const q = RT.apply(T, [d.pos[i], d.pos[i + 1], d.pos[i + 2]]); posD[i] = q[0]; posD[i + 1] = q[1]; posD[i + 2] = q[2]; }
       files.push({ name: `${P.bone}_corrige_prevu.stl`, data: stlBinary([{ pos: FRAG.raw.prox.pos, idx: FRAG.raw.prox.tri }, { pos: posD, idx: d.tri }], `${P.bone} corrige`) });
@@ -8469,11 +8822,16 @@ const S = {
   },
   // guides imprimables (étape 7, construits par le serveur)
   guide: { etat: 'aucun', cle: null, dossier: null, info: null, vue: 'coupe', journal: [], erreur: null },
+  // os voisins (ulna, fibula, rotule, fabelles) affichés ? La planification CORA ne montre que l'os planifié par défaut
+  voisins: false,
+  // 2e os (radius) : coupe de l'ulna à son propre niveau (null = automatique), son guide de coupe (étape 7)
+  ulna: { actif: false, niveau: null, plan: null, erreurPlan: null, clePlan: null,
+    etat: 'aucun', cle: null, dossier: null, info: null, journal: [], erreur: null },
   // stratégie chirurgicale (panneau « 2 · Stratégie et guide ») : type de coin (auto = recommandation), niveau du trait
   // (z, mm du CORA le long de l'os, + vers distal ; null = règle 1, ou règle 2 automatique si le CORA touche le cartilage),
   // profondeur de la charnière (y, mm de la corticale de la charnière, par type de coin), broches, chien en croissance,
   // inégalité de longueur (mm, + = membre opéré plus court que le membre opposé)
-  strat: { auto: true, decalage: null, charniere: { fermeture: CHARNIERE_RETRAIT, ouverture: CHARNIERE_RETRAIT }, croissance: false, inegalite: 0 },
+  strat: { auto: true, decalage: null, charniere: { fermeture: CHARNIERE_RETRAIT, ouverture: CHARNIERE_RETRAIT }, tMax: 0, croissance: false, inegalite: 0 },
   guideParams: {},            // dimensions du guide générique changées pour ce cas (clé -> valeur) ; vide = valeurs par défaut
   preset: '',                 // préréglage clinique choisi
 };
@@ -8495,19 +8853,27 @@ const ctx = {
     if (rho !== null) S.tor.rho = rho;
     majTorsion(complet);
   },
-  // guides imprimables (étape 12)
+  // guides imprimables (étape 14)
   get guide() { return S.guide; },
   get guidePret() { return guidePret(); },
   get serveur() { return S.reel.serveur; },
   construireGuide() { construireGuide(); },
   vueGuide(v) { S.guide.vue = v; refresh(); },
+  // 2e os : l'ulna (guide de coupe à son propre niveau ; son bout distal suit le radius)
+  get ulna() { return S.ulna; },
+  get ulnaPret() { return ulnaPret(); },
+  // le guide de réduction du radius a-t-il été construit avec ce niveau de coupe de l'ulna ?
+  get radiusAJourUlna() { return !guidePret() || S.guide.niveauUlna === (S.ulna.plan ? S.ulna.plan.niveau : null); },
+  ulnaActiver(b) { S.ulna.actif = b; if (!b && S.guide.vue === 'ulna') S.guide.vue = 'coupe'; refresh(); },
+  ulnaNiveau(x) { S.ulna.niveau = x; refresh(); },
+  construireGuideUlna() { construireGuideUlna(); },
   get reference() { return { preset: S.reel.preset, race: S.reel.race }; },
 };
 const INTEGRE = window.parent !== window;
 
 // ------------------------------------------------------------ mise à jour --
 // cas et options de planification de la source courante
-const optsStrategie = () => ({ decalageCoupe: S.strat.decalage, charniere: { ...S.strat.charniere },
+const optsStrategie = () => ({ decalageCoupe: S.strat.decalage, tMaxPct: S.strat.tMax, charniere: { ...S.strat.charniere },
   croissance: S.strat.croissance, inegaliteLongueur: S.strat.inegalite, parametresGuide: { ...S.guideParams } });
 function casEtOptions() {
   if (S.source === 'fictif') { const c = casCourant(); return { cas: c, opts: { ...S.reglages[c.bone], ...optsStrategie() } }; }
@@ -8524,7 +8890,7 @@ function replan() {
   if (S.source === 'reel' && !MODEL_R) { PLAN = null; TORS = null; clearFragments(); clearGroup(G.bone); clearGroup(G.ghost); return; }
   const { cas, opts } = casEtOptions();
   PLAN = planifier(MODEL, cas, opts);
-  if (S.strat.auto && PLAN.recommandation) S.kind = PLAN.recommandation.kind;     // coin recommandé (critères : étape 9)
+  if (S.strat.auto && PLAN.recommandation) S.kind = PLAN.recommandation.kind;     // coin recommandé (critères : étape 11)
   if (!PLAN.osteo[S.kind]) { const autre = S.kind === 'fermeture' ? 'ouverture' : 'fermeture'; if (PLAN.osteo[autre]) S.kind = autre; }
   buildBones(PLAN);
   clearFragments();
@@ -8560,6 +8926,7 @@ function refresh() {
     return;
   }
   if (st.torsion) calculTorsion();
+  majUlna();
   const coupe = !!st.coupe && PLAN.osteoPossible && !!PLAN.osteo[S.kind];
   // os intact, fragments ou os tordu
   if (coupe) buildFragments(PLAN, S.kind);
@@ -8569,20 +8936,25 @@ function refresh() {
   G.wedge.visible = coupe && S.kind === 'fermeture';
   G.gap.visible = coupe && S.kind === 'ouverture';
   G.pins.visible = G.pinsDist.visible = coupe && !!st.broches;
-  // guides imprimables (étape 12) : guide de coupe sur l'os intact, ou guide de réduction sur l'os corrigé
+  // guides imprimables (étape 14) : guide de coupe sur l'os intact, ou guide de réduction sur l'os corrigé
   const gp = st.id === 'guide' && coupe && guidePret();
   const reduction = gp && S.guide.vue === 'reduction';
-  G.guide.visible = gp && !reduction;
+  // vue « guide de l'ulna » (2e os) : os avant correction, broches du radius en place, guide de coupe du radius retiré
+  const vueUlna = st.id === 'guide' && coupe && S.guide.vue === 'ulna' && ulnaPret();
+  G.guide.visible = gp && !reduction && !vueUlna;
   G.guideRed.visible = reduction;
+  G.guideUlna.visible = vueUlna;
   if (reduction) { G.wedge.visible = false; G.gap.visible = S.kind === 'ouverture'; }
   opaciteOs(gp ? 1 : st.transparence ?? 1);
-  if (coupe) applyCorrection(PLAN, S.kind, st.fin || reduction ? 1 : st.anime ? S.progress : 0);
+  if (coupe) applyCorrection(PLAN, S.kind, (st.fin || reduction) && !vueUlna ? 1 : st.anime ? S.progress : 0);
   else setMatrix(G.dist, RT.I());
   G.ghost.visible = S.ghost && fantomeDispo();
+  majVoisins(S.voisins || vueUlna);                      // l'ulna est montrée avec son guide
   $('#v-ghost').setAttribute('aria-pressed', String(S.ghost && fantomeDispo()));
   $('#v-ghost').disabled = !fantomeDispo();
   dessiner(st);
   renderSteps(); renderExplain(); renderNav(); renderLegend(); renderContext(); renderTimeline();
+  if (st.anime && coupe) majCorrection(true);           // valeurs « en direct » de la simulation (angle, broches)
   if (!glisseStrat) renderStrategie();
 }
 // os translucide dans les étapes 3D (constructions et broches visibles à travers l'os)
@@ -8697,6 +9069,12 @@ const RACES = {
   golden: { nom: 'Golden retriever', femur: { aLDFA: { m: 97 }, aLPFA: { m: 98 } } },
   berger: { nom: 'Berger allemand', femur: { aLDFA: { m: 94 }, aLPFA: { m: 101 } } },
   rottweiler: { nom: 'Rottweiler', femur: { aLDFA: { m: 98 }, aLPFA: { m: 96 } } },
+  // 3. Table de référence par race du groupe (documents/Imane, d'après Aghapour et al. 2021, tableau 16) : angles du tibia
+  //    de profil (mêmes définitions que Dismukes 2008 ; mCdPTA = mCaPTA), avec leur écart-type.
+  chihuahua: { nom: 'Chihuahua', tibia: { mCaPTA: { m: 65.3, sd: 2.6, src: 'Phetkaew et al. 2018 (Aghapour 2021, tableau 16)' }, mCrDTA: { m: 94.9, sd: 3.1, src: 'Phetkaew et al. 2018 (Aghapour 2021, tableau 16)' } } },
+  caniche_toy: { nom: 'Caniche toy', tibia: { mCrDTA: { m: 98.5, sd: 3.8, src: 'Yasukawa et al. 2016 (Aghapour 2021, tableau 16)' } } },
+  bouledogue_anglais: { nom: 'Bouledogue anglais', tibia: { mCaPTA: { m: 63.2, sd: 6.1, src: 'Lusetti et al. 2017 (Aghapour 2021, tableau 16)' } } },
+  petites_races: { nom: 'Petites races', tibia: { mCaPTA: { m: 65.0, sd: 3.02, src: 'Olimpo et al. 2016 (Aghapour 2021, tableau 16)' }, mCrDTA: { m: 86.3, sd: 1.5, src: 'Olimpo et al. 2016 (Aghapour 2021, tableau 16)' } } },
 };
 const PRESETS = [['vezzoni', 'Vezzoni'], ['litterature', 'Littérature'], ['race', 'Race']];
 const NOM_PRESET = {
@@ -8706,7 +9084,7 @@ const NOM_PRESET = {
 };
 const raceRadiusUtilisee = () => S.reel.raceRadius || S.reel.json?.normales?.MPRA?.race || 'Beagle';
 const nomPreset = () => (S.reel.json?.os === 'radius' ? `${raceRadiusUtilisee().toLowerCase()} (Kwon 2022), courbure de Duncan 2022`
-  : S.reel.preset === 'race' ? `race : ${RACES[S.reel.race].nom.toLowerCase()} (Tomlinson 2007, Wilke 2002)` : NOM_PRESET[S.reel.preset]);
+  : S.reel.preset === 'race' ? `race : ${RACES[S.reel.race].nom.toLowerCase()} (table de référence par race)` : NOM_PRESET[S.reel.preset]);
 // valeur publiée { m, sd, src } de l'angle k pour une référence ; null = pas de valeur publiée (on garde la littérature)
 function valeurReference(preset, bone, k, race = S.reel.race) {
   const lit = LITTERATURE[bone][k];
@@ -8714,7 +9092,7 @@ function valeurReference(preset, bone, k, race = S.reel.race) {
   if (preset === 'vezzoni') return VEZZONI_PUBLIE[bone]?.[k] || null;
   if (preset === 'race') {
     const r = RACES[race]?.[bone]?.[k];
-    return r ? { m: r.m, sd: lit.sd, src: r.src || `Tomlinson et al. 2007, ${RACES[race].nom} (écart-type : ${lit.src})` } : null;
+    return r ? { m: r.m, sd: r.sd ?? lit.sd, src: r.src || `Tomlinson et al. 2007, ${RACES[race].nom} (écart-type : ${lit.src})` } : null;
   }
   return { m: lit.m, sd: lit.sd, src: lit.src };
 }
@@ -8762,7 +9140,11 @@ async function construireGuide() {
   Object.assign(Gd, { etat: 'calcul', cle: cleGuide(), info: null, dossier: null, journal: [], erreur: null, vue: 'coupe' });
   viderGuides(); refresh();
   try {
-    const corps = { action: 'guide', prescription: prescription(PLAN, S.kind, { parametresGuide: S.guideParams }),
+    const presc = prescription(PLAN, S.kind, { parametresGuide: S.guideParams });
+    // ulna déjà planifiée (2e os) : le guide de réduction du radius tient compte de SON niveau de coupe
+    if (ULNA) presc.coupes_voisins = { ulna: { niveau_mm: ULNA.niveau, plans_coupe: ULNA.plans.map((pl) => ({ point: pl.p.map((x) => +x.toFixed(4)), normale: V.norm(pl.n).map((x) => +x.toFixed(5)) })) } };
+    Gd.niveauUlna = ULNA ? ULNA.niveau : null;
+    const corps = { action: 'guide', prescription: presc,
       sommets: enBase64(Float32Array.from(PLAN.pos[PLAN.bone])), triangles: enBase64(Uint32Array.from(DATA.bones[PLAN.bone].idx)) };
     // os voisins tels que planifiés (fibula du tibia ; rotule et fabelles du fémur) et cartilage articulaire de l'os :
     // le guide et les broches doivent les éviter
@@ -8800,6 +9182,66 @@ async function construireGuide() {
   }
   refresh();
   if (guidePret() && ETAPES[S.step].id === 'guide') setView(ETAPES[S.step].vue);
+}
+// 2e os (radius) : coupe de l'ulna à son propre niveau, recalculée quand le plan du radius, le coin ou le niveau change
+const ulnaPossible = () => !!(PLAN && PLAN.bone === 'radius' && PLAN.pos.ulna && PLAN.osteo[S.kind] && MODEL.bones?.ulna);
+function majUlna() {
+  const U = S.ulna;
+  const cle = ulnaPossible() && U.actif ? `${PLAN_ID}|${S.kind}|${U.niveau}` : null;
+  if (cle === U.clePlan) return;
+  U.clePlan = cle; U.plan = null; U.erreurPlan = null;
+  if (cle) {
+    try { U.plan = planifierUlna(MODEL, PLAN, S.kind, { niveau: U.niveau }); } catch (e) { U.erreurPlan = e.message; }
+  }
+  ULNA = U.plan;
+  clearFragments();
+}
+const cleGuideUlna = () => `${S.ulna.clePlan}|${S.ulna.plan?.niveau}`;
+const ulnaPret = () => S.ulna.etat === 'pret' && S.ulna.cle === cleGuideUlna();
+// envoie une construction de guides au serveur (étape 7) et suit le calcul ; renvoie le dossier et guide.json
+async function executerEtape7(corps, Gd, majJournal) {
+  const r = await fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erreur || r.statusText);
+  let t;
+  for (;;) {
+    await new Promise((res) => setTimeout(res, 700));
+    t = (await lireJSON('/api/etat')).travail;
+    Gd.journal = t.journal.filter((l) => l.startsWith('[étape 7]')).map((l) => l.replace('[étape 7] ', ''));
+    majJournal();
+    if (t.etat !== 'en_cours') break;
+  }
+  if (t.etat === 'erreur') throw new Error(t.erreur || 'erreur pendant le calcul');
+  const dossier = t.resultat?.dossier;
+  if (!dossier) throw new Error('le serveur n\'a pas renvoyé de dossier de résultats');
+  return { dossier, info: await lireJSON(`/api/cora/guide?dossier=${encodeURIComponent(dossier)}`) };
+}
+// guide de coupe de l'ulna : ulna planifiée, radius et broches du radius comme obstacles (le guide les évite)
+async function construireGuideUlna() {
+  const Gd = S.ulna, U = Gd.plan;
+  if (!U || Gd.etat === 'calcul') return;
+  Object.assign(Gd, { etat: 'calcul', cle: cleGuideUlna(), info: null, dossier: null, journal: [], erreur: null });
+  clearGroup(G.guideUlna); refresh();
+  try {
+    const cyl = cylindresBroches(U.brochesRadius);
+    const corps = { action: 'guide', prescription: prescriptionUlna(PLAN, S.kind, U, { parametresGuide: S.guideParams }),
+      sommets: enBase64(Float32Array.from(PLAN.pos.ulna)), triangles: enBase64(Uint32Array.from(DATA.bones.ulna.idx)),
+      voisins: [{ nom: 'radius', sommets: enBase64(Float32Array.from(PLAN.pos.radius)), triangles: enBase64(Uint32Array.from(DATA.bones.radius.idx)) },
+        { nom: 'broches_radius', sommets: enBase64(cyl.pos), triangles: enBase64(cyl.idx) }] };
+    if (PLAN.reel && S.reel.choix) { corps.serie = S.reel.choix.serie; corps.nom_os = S.reel.choix.os.replace(/^radius/, 'ulna'); }
+    const { dossier, info } = await executerEtape7(corps, Gd, () => { const el = $('#guide-ulna-journal'); if (el) el.textContent = Gd.journal.join('\n') || 'Démarrage…'; });
+    const meshes = {};
+    for (const [k, n] of [['proximal', 'guide_coupe_proximal.bin'], ['distal', 'guide_coupe_distal.bin'], ['ponts', 'guide_coupe_ponts.bin']]) {
+      if (info.disponibles.includes(n)) meshes[k] = await lireMaillage(fichierGuide(dossier, n));
+    }
+    if (Gd.cle !== cleGuideUlna()) { Gd.etat = 'aucun'; refresh(); return; }
+    construireGuideUlna3D(meshes, U);
+    Object.assign(Gd, { etat: 'pret', dossier, info });
+    S.guide.vue = 'ulna';
+  } catch (e) {
+    console.error(e);
+    Object.assign(Gd, { etat: 'erreur', erreur: e.message });
+  }
+  refresh();
 }
 function montrerDossierGuide() {
   if (S.guide.dossier) fetch('/api/montrer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dossier_guide: S.guide.dossier }) });
@@ -8911,7 +9353,7 @@ function tableNormales() {
   const race = R.preset === 'race'
     ? h('select', { class: 'choix', 'aria-label': 'Race', onchange: (e) => { R.race = e.target.value; appliquerReference(); replanUI(); } },
       Object.entries(RACES).map(([k, r]) => h('option', { value: k, selected: k === R.race },
-        `${r.nom} : ${[r.femur ? 'fémur' : null, r.tibia ? 'pente tibiale' : null].filter(Boolean).join(', ')}`)))
+        `${r.nom} : ${[r.femur ? 'fémur' : null, r.tibia ? 'tibia de profil' : null].filter(Boolean).join(', ')}`)))
     : null;
   const ligne = (k) => h('tr', {}, h('td', {}, court(k)),
     h('td', { class: 'hi' }, deg(R.normales[k])),
@@ -8931,7 +9373,7 @@ function tableNormales() {
 function tableNormalesRadius() {
   const R = S.reel, J = R.json, n6 = J.normales.MPRA || {};
   const choix = h('select', { class: 'choix', 'aria-label': 'Race du chien (Kwon 2022)', onchange: (e) => { R.raceRadius = e.target.value || null; appliquerReference(); replanUI(); } },
-    h('option', { value: '', selected: !R.raceRadius }, `Race de l'étape 6 : ${n6.race || 'Beagle'}${(n6.note || '').includes('proches') ? ' (la plus proche des angles mesurés)' : ''}`),
+    h('option', { value: '', selected: !R.raceRadius }, `Race proposée par le calcul des repères : ${n6.race || 'Beagle'}${(n6.note || '').includes('proches') ? ' (la plus proche des angles mesurés)' : ''}`),
     ...Object.keys(RACES_RADIUS).map((k) => h('option', { value: k, selected: R.raceRadius === k }, k)));
   const ligne = (k) => h('tr', {}, h('td', {}, court(k)), h('td', { class: 'hi' }, deg(R.normales[k])),
     h('td', { class: 'src', title: R.sources[k] || '' }, `± ${fr(R.sd[k], 1)}`));
@@ -9039,13 +9481,21 @@ function renderStrategie() {
   if (!PLAN.osteoPossible) { el.replaceChildren(h('p', { class: 'strat-note' }, 'Pas d\'ostéotomie au CORA pour ce cas.')); return; }
   const O = PLAN.osteo[S.kind], rec = PLAN.recommandation;
   const nomK = { fermeture: 'fermeture', ouverture: 'ouverture' };
-  const btnK = (k) => h('button', { type: 'button', 'aria-pressed': String(!Sg.auto && S.kind === k), disabled: !PLAN.osteo[k],
-    title: PLAN.osteo[k]?.faisable === false ? 'pas réalisable par un abord usuel (voir l\'étape 9)' : '', onclick: () => ctx.setKind(k) },
+  const fe = PLAN.osteo.fermeture, neutreActif = !Sg.auto && S.kind === 'fermeture' && !!fe && fe.h >= fe.hMax - 0.05;
+  const btnK = (k) => h('button', { type: 'button', 'aria-pressed': String(!Sg.auto && S.kind === k && !(k === 'fermeture' && neutreActif)), disabled: !PLAN.osteo[k],
+    title: PLAN.osteo[k]?.faisable === false ? 'pas réalisable par un abord usuel (voir l\'étape 11)' : '', onclick: () => {
+      if (k === 'fermeture' && neutreActif) { Sg.charniere.fermeture = CHARNIERE_RETRAIT; replanStrat(); }
+      ctx.setKind(k);
+    } },
   k === 'fermeture' ? 'Fermeture' : 'Ouverture', rec?.kind === k ? h('span', { class: 'etoile', title: 'recommandé' }, '★') : null);
-  const coin = h('div', { class: 'case-group' }, h('span', { class: 'case-lbl' }, 'Type de coin'),
-    h('div', { class: 'seg coin', role: 'group', 'aria-label': 'Type de coin' },
+  const coin = h('div', { class: 'case-group' }, h('span', { class: 'case-lbl' }, 'Type d\'ostéotomie'),
+    h('div', { class: 'seg coin', role: 'group', 'aria-label': 'Type d\'ostéotomie' },
       h('button', { type: 'button', 'aria-pressed': String(Sg.auto), onclick: () => ctx.setKindAuto() }, `Auto (${rec ? nomK[rec.kind] : '—'})`),
-      btnK('fermeture'), btnK('ouverture')),
+      btnK('fermeture'), btnK('ouverture'),
+      // neutre : coin de fermeture dont la charnière est au centre de l'os (longueur conservée)
+      h('button', { type: 'button', disabled: !PLAN.osteo.fermeture, title: 'coin de fermeture, charnière au centre de l\'os : longueur conservée',
+        'aria-pressed': String(neutreActif),
+        onclick: () => { Sg.charniere.fermeture = PLAN.osteo.fermeture.hMax; replanStrat(); ctx.setKind('fermeture'); renderStrategie(); } }, 'Neutre')),
     rec ? h('p', { class: 'strat-note' }, `★ ${nomK[rec.kind]} recommandée : ${RAISON_RECO[rec.decisif] || rec.decisif}.`) : null,
     O && O.faisable === false ? h('p', { class: 'strat-note', style: { color: 'var(--c-warn)' } }, O.voisinSurLame
       ? `Ce coin n'est pas réalisable par un abord usuel : par la face ${nomDirection(O.faceCoin)}, ${O.voisinSurLame} est sur le trajet de la lame ; un guide y occuperait l'espace entre l'os et ${O.voisinSurLame} : pas de guide de coupe.`
@@ -9053,8 +9503,8 @@ function renderStrategie() {
   if (!O) { el.replaceChildren(coin); return; }
   const Lg = PLAN.validation.longueurOs, zMax = Math.round(0.3 * Lg);
   const zVal = Sg.decalage ?? O.z;
-  const niveau = curseurStrat('s-z', 'Niveau du trait de coupe (z)', -zMax, zMax, 1, zVal,
-    (x) => (Math.abs(x) < 0.5 ? 'au CORA (règle 1)' : `${x > 0 ? '+' : '−'}${fr(Math.abs(x), 0)} mm (règle 2)`),
+  const niveau = curseurStrat('s-z', 'Distance d1 entre le CORA et le plan de coupe', -zMax, zMax, 1, zVal,
+    (x) => (Math.abs(x) < 0.5 ? 'au CORA (règle 1)' : `${x > 0 ? '+' : '−'}${fr(Math.abs(x), 0)} mm`),
     (x) => { Sg.decalage = x; replanStrat(); }, '← proximal', 'distal →');
   const auto = Sg.decalage === null;
   const niveauBtns = h('div', { class: 'ligne-btn' },
@@ -9062,7 +9512,10 @@ function renderStrategie() {
     h('button', { type: 'button', class: 'btn petit', 'aria-pressed': String(auto), onclick: () => { Sg.decalage = null; replanStrat(); renderStrategie(); } }, 'Automatique'));
   const noteZ = h('p', { class: 'strat-note' }, auto
     ? (O.regle === 2 ? `Automatique : le CORA touche le cartilage, la coupe est déplacée de ${fr(O.decalageCoupe, 0)} mm (règle 2).` : 'Automatique : règle 1 de Paley, coupe au CORA.')
-    : 'Coupe déplacée le long de l\'os : l\'ACA reste au CORA (axes réalignés), le fragment glisse le long de la coupe (translation, règle 2). Contraintes au niveau choisi : étape 9.');
+    : O.regle === 3 ? `Règle 3 : T = 2·d1·tan(θ/2) = ${fr(O.tBarksfield, 1)} mm ≤ T_max = ${fr(O.tMax, 1)} mm. L'ACA est sur la charnière : rotation seule, les axes restent parallèles mais décalés (décalage accepté).`
+      : `Règle 2 : T = 2·d1·tan(θ/2) = ${fr(O.tBarksfield, 1)} mm${O.tMax ? ` > T_max = ${fr(O.tMax, 1)} mm` : ' (T_max non fixé)'}. L'ACA reste au CORA (axes réalignés) et le fragment glisse de ${fr(O.translationOsteo, 1)} mm le long de la coupe. Contraintes au niveau choisi : étape « Ostéotomie et règle de Paley ».`);
+  const tmax = curseurStrat('s-tmax', 'Tolérance T_max (% de la largeur de l\'os)', 0, 50, 1, Sg.tMax,
+    (x) => (x === 0 ? 'non fixée (règle 2)' : `${fr(x, 0)} %${O.tMax ? ` = ${fr(O.tMax, 1)} mm` : ''}`), (x) => { Sg.tMax = x; replanStrat(); }, '0 %', '50 %');
   const hMax = Math.max(0.6, O.hMax);
   const prof = curseurStrat('s-h', `Profondeur de la charnière (y) : depuis la corticale ${S.kind === 'fermeture' ? 'concave' : 'convexe'}`, 0.5, Math.round(hMax * 10) / 10, 0.1, O.h,
     (x) => `${fr(x, 1)} mm`, (x) => { Sg.charniere[S.kind] = x; replanStrat(); },
@@ -9071,7 +9524,7 @@ function renderStrategie() {
     ? `≤ ${PONT_MAX} mm : pont d'os qui plie (charnière conservée). Au-delà : coin mixte, ostéotomie complète ; au centre, coin neutre (longueur conservée). Actuellement : ${O.coinMixte ? 'coin mixte' : O.charniereConservee ? 'charnière conservée' : 'ostéotomie complète'}, longueur ${O.deltaOperation >= 0 ? '+' : '−'}${fr(Math.abs(O.deltaOperation), 1)} mm.`
     : `Coin d'ouverture : la charnière reste au plus à ${CHARNIERE_OUVERTURE_MAX} mm de la corticale convexe (au-delà, la partie convexe devrait se chevaucher). Actuellement : ${O.charniereConservee ? 'charnière conservée' : 'ostéotomie complète'}, longueur +${fr(Math.abs(O.deltaOperation), 1)} mm.`);
   const broches = h('div', { class: 'case-group' }, h('span', { class: 'case-lbl' }, 'Broches de réduction'),
-    h('p', { class: 'strat-note' }, `${NOM_BROCHES}${O.placementBroches.ok ? '' : ' — placement incomplet, voir les alertes (étape 12)'}.`));
+    h('p', { class: 'strat-note' }, `${NOM_BROCHES}${O.placementBroches.ok ? '' : ' — placement incomplet, voir les alertes (étape 14)'}.`));
   const ineg = curseurStrat('s-ineg', 'Membre opéré plus court (+) ou plus long (−)', -20, 20, 1, Sg.inegalite,
     (x) => (x === 0 ? 'égal' : `${x > 0 ? '+' : '−'}${fr(Math.abs(x), 0)} mm`), (x) => { Sg.inegalite = x; replanStrat(); }, 'plus long', 'plus court');
   const croissance = h('label', { class: 'bascule' }, h('input', { type: 'checkbox', checked: Sg.croissance, onchange: (e) => { Sg.croissance = e.target.checked; replanStrat(); } }),
@@ -9079,7 +9532,7 @@ function renderStrategie() {
   // inégalité de longueur : ne sert qu'au critère « longueur » du choix du coin (la fermeture raccourcit, l'ouverture allonge)
   const lg = (x) => (x ? `${x.deltaOperation >= 0 ? '+' : '−'}${fr(Math.abs(x.deltaOperation), 1)} mm` : '—');
   const noteL = h('p', { class: 'strat-note' }, `Écart de longueur avec le membre opposé, mesuré à l'examen ou sur une radiographie des deux membres. Il sert seulement à départager les deux coins (critère « longueur », à partir de 3 mm) : ici, fermeture ${lg(PLAN.osteo.fermeture)}, ouverture ${lg(PLAN.osteo.ouverture)}${rec?.decisif === 'longueur' ? ' ; c\'est ce critère qui décide' : ''}.`);
-  el.replaceChildren(...[coin, niveau, niveauBtns, noteZ, prof, noteH, broches, ineg, noteL, croissance].filter(Boolean));
+  el.replaceChildren(...[coin, niveau, niveauBtns, tmax, noteZ, prof, noteH, broches, ineg, noteL, croissance].filter(Boolean));
 }
 
 // ------------------------------------------------------------ guide générique : dimensions --
@@ -9107,7 +9560,7 @@ function renderGuideParams() {
   }
   const n = Object.keys(G_).length;
   el.replaceChildren(
-    h('p', { class: 'strat-note' }, 'Le guide est un modèle paramétrique : ces dimensions de conception sont les mêmes pour tous les cas (sauf si vous les changez ici). Celles qui dépendent de l\'os (longueur des fentes, hauteur des tours, position des broches, longueur de la coque…) en découlent pour chaque scanner : plan 2D coté à l\'étape 12.'),
+    h('p', { class: 'strat-note' }, 'Le guide est un modèle paramétrique : ces dimensions de conception sont les mêmes pour tous les cas (sauf si vous les changez ici). Celles qui dépendent de l\'os (longueur des fentes, hauteur des tours, position des broches, longueur de la coque…) en découlent pour chaque scanner : plan 2D coté à l\'étape 14.'),
     h('table', { class: 't compact gp' }, h('tbody', {}, lignes)),
     h('div', { class: 'ligne-btn' }, h('button', { type: 'button', class: 'btn petit', disabled: !n, onclick: () => { S.guideParams = {}; renderGuideParams(); replanStrat(); } }, `Valeurs par défaut${n ? ` (${n} changée${n > 1 ? 's' : ''})` : ''}`)));
 }
@@ -9196,6 +9649,14 @@ function renderContext() {
         : h('span', { class: 'glass pill' }, `${nomOs} droit · ${comp} · θ vrai ${deg(v.thetaVrai)}`),
       st.torsion ? null : h('span', { class: 'glass pill' }, `apex à ${fr(PLAN.niveau * 100, 0)} % (${mm(v.niveauApex, 0)})`),
     ];
+  }
+  // os voisins (ulna, fibula, rotule, fabelles) : cachés par défaut, une case les affiche (ils restent pris en compte)
+  const noms = [...PLAN.meshes.filter((n) => n !== PLAN.bone), ...Object.keys(PLAN.voisins || {}).filter((n) => DATA.bones[n])];
+  if (noms.length) {
+    const NOMS = { fibula: 'la fibula', ulna: 'l\'ulna', patella: 'la rotule', fabellae: 'les fabelles' };
+    pills.push(h('label', { class: 'glass pill case-voisin', title: 'Os voisin : pris en compte par la planification (lame, guide, broches) même caché' },
+      h('input', { type: 'checkbox', checked: S.voisins, onchange: (e) => { S.voisins = e.target.checked; refresh(); } }),
+      ` Afficher ${noms.map((n) => NOMS[n] || n).join(' et ')}`));
   }
   $('#ctx').replaceChildren(...pills.filter(Boolean));
 }
@@ -9397,7 +9858,7 @@ function renderHelp() {
       li('En 3D : <b>angle vrai θ</b> (tan²θ = tan²F + tan²S), plan de la déformité (φ), plan bissecteur, <b>ACA oblique</b> (orientation ψ).'),
       li('<b>Règle 1</b> : ostéotomie au CORA, coin de fermeture (charnière concave, 2 traits ⊥ aux axes) ou d\'ouverture (charnière convexe, 1 trait bissecteur). Même angle θ dans les deux cas.'),
       li('Correction (avec dérotation si la torsion sort de la normale), contrôle dans les deux plans, puis prescription : fentes, charnière, broches de réduction (2 + 2, 1 + 1 ou 1 + 2), parallèles après correction.'),
-      li('<b>Guides imprimables</b> (étape 12, application CT-CORA3D) : guide de coupe moulé sur l\'os (deux moitiés reliées par des ponts sécables) et guide de réduction, construits et contrôlés par <code>etape7_guide.py</code> ; STL à télécharger.')),
+      li('<b>Guides imprimables</b> (étape 14, application CT-CORA3D) : guide de coupe moulé sur l\'os (deux moitiés reliées par des ponts sécables) et guide de réduction, construits et contrôlés par <code>etape7_guide.py</code> ; STL à télécharger.')),
     h('h3', {}, 'Stratégie chirurgicale (panneau « 2 · Stratégie et guide »)'),
     h('ul', {},
       li('<b>Préréglages cliniques</b> : 17 déformités prêtes à l\'emploi, avec leur contexte et leur référence.'),
@@ -9405,7 +9866,7 @@ function renderHelp() {
       li('<b>Ouverture ou fermeture</b> : « Auto » suit la recommandation (★), décidée par le premier critère qui départage : accès, charnière conservée, règle 1, coin assez épais, ouverture ≤ 40 % de la largeur, longueur, puis stabilité.'),
       li('<b>Niveau du trait (z)</b> : règle 1 de Paley par défaut (coupe au CORA) ; le curseur translate le plan de coupe le long de l\'os (règle 2 : translation chiffrée). <b>Profondeur de la charnière (y)</b> : 2 mm dans la corticale par défaut (pont d\'os qui plie) ; plus profond, ostéotomie complète.'),
       li('<b>Contraintes biologiques</b> au niveau du trait : cartilage, tubérosité tibiale, épicondyles, physes (chien en croissance), place pour la fixation, consolidation, structures de l\'abord.'),
-      li('<b>Guide générique</b> : 21 dimensions de conception modifiables (panneau « Guide générique : dimensions ») ; les autres découlent de l\'os. Étape 12 : guide 3D et <b>plans 2D</b> (générique et coté).')),
+      li('<b>Guide générique</b> : 21 dimensions de conception modifiables (panneau « Guide générique : dimensions ») ; les autres découlent de l\'os. Étape 14 : guide 3D et <b>plans 2D</b> (générique et coté).')),
     h('h3', {}, 'Os segmenté : repères et références'),
     h('ul', {},
       li('L\'onglet CORA prend l\'os complet détecté dans la série de l\'onglet 1 : fémur, tibia ou radius (les os coupés par le champ du scanner sont ignorés). S\'il y en a plusieurs (les deux membres), on choisit l\'os à planifier.'),
@@ -9421,7 +9882,7 @@ function renderHelp() {
       li('« Anormal » = écart à la référence de plus de 2 écarts-types publiés.')),
     h('h3', {}, 'Commandes'),
     h('ul', {},
-      li('<b>← →</b> : étape précédente / suivante · <b>Espace</b> : lecture de la correction (étape 10).'),
+      li('<b>← →</b> : étape précédente / suivante · <b>Espace</b> : lecture de la correction (étape 12).'),
       li('Clic-glisser : tourner · molette : zoomer · clic droit-glisser : déplacer · bouton de cadrage : revenir à la vue de l\'étape.')),
     h('h3', {}, 'Références'),
     h('ul', {}, Object.keys(REFS).map((k) => h('li', {}, srcLink(k)))),

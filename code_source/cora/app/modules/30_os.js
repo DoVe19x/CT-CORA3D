@@ -10,7 +10,7 @@ const G = {};                        // groupes de la scène
 const OV = {};                       // calques de tracés : base (immobile) et dist (suit le fragment distal)
 
 function initGroups() {
-  for (const k of ['bone', 'ghost', 'prox', 'dist', 'wedge', 'gap', 'pins', 'torsion', 'guide', 'guideRed']) { G[k] = new THREE.Group(); scene.add(G[k]); }
+  for (const k of ['bone', 'ghost', 'prox', 'dist', 'wedge', 'gap', 'pins', 'torsion', 'guide', 'guideRed', 'guideUlna']) { G[k] = new THREE.Group(); scene.add(G[k]); }
   G.distFrag = new THREE.Group(); G.dist.add(G.distFrag);      // fragments distaux (le calque OV.dist est à côté)
   G.pinsDist = new THREE.Group(); G.dist.add(G.pinsDist);      // broche distale : suit le fragment distal
   G.dist.matrixAutoUpdate = false;
@@ -46,11 +46,18 @@ function buildBones(P) {
   clearGroup(G.bone); clearGroup(G.ghost);
   const voisins = Object.entries(P.voisins || {}).filter(([n]) => DATA.bones[n]);
   for (const [n, pos] of [...P.meshes.map((n) => [n, P.pos[n]]), ...voisins]) {
-    G.bone.add(new THREE.Mesh(boneGeometry(n, pos), boneMaterial()));
+    const m = new THREE.Mesh(boneGeometry(n, pos), boneMaterial());
     const gh = new THREE.Mesh(boneGeometry(n, DATA.bones[n].pos), MAT.ghost);
     gh.renderOrder = 4;
+    if (n !== P.bone) m.userData.voisin = gh.userData.voisin = true;     // os voisin : affiché seulement à la demande
+    G.bone.add(m);
     G.ghost.add(gh);
   }
+}
+// Os voisins (ulna, fibula, rotule, fabelles) : la planification CORA ne montre que l'os planifié ; la case « afficher »
+// les fait apparaître. Ils restent pris en compte (lame, guide, broches) qu'ils soient affichés ou non.
+function majVoisins(visible) {
+  for (const g of [G.bone, G.ghost, G.prox, G.distFrag, G.wedge]) g.traverse((o) => { if (o.userData.voisin) o.visible = visible; });
 }
 
 // ------------------------------------------------------------ fragments --
@@ -87,7 +94,9 @@ function fragmentObject(M, surfaceMat) {
 }
 
 const FRAG = { key: null, gapLoops: null, raw: null };
-const cleFragments = (P, kind) => `${PLAN_ID}|${kind}`;
+// ULNA : coupe de l'ulna (2e os, planifierUlna) quand elle est planifiée ; sinon l'ulna reste intacte dans le plan du radius
+let ULNA = null;
+const cleFragments = (P, kind) => `${PLAN_ID}|${kind}|${ULNA ? ULNA.niveau : '-'}`;
 // Découpe réelle du maillage déformé par les plans de l'ostéotomie choisie.
 function buildFragments(P, kind) {
   const key = cleFragments(P, kind);
@@ -96,25 +105,41 @@ function buildFragments(P, kind) {
   FRAG.key = key;
   const O = P.osteo[kind];
   const [P1, P2b] = O.plans;
+  // fermeture : chaque trait de scie enlève l'épaisseur de la lame, centrée sur son plan (comme os_corrige de l'étape 7)
+  const s2 = (O.traitScie || 0) / 2;
+  const decale = (pl, s) => V.add(pl.p, V.mul(V.norm(pl.n), s));
+  const voisin = (o) => { o.userData.voisin = true; return o; };
   for (const n of P.meshes) {
     const geo = G.bone.children.find((m) => m.geometry.attributes.position.array === P.pos[n])?.geometry || boneGeometry(n, P.pos[n]);
     const b = DATA.bones[n];
     const M = meshFromArrays(P.pos[n], b.idx, geo.attributes.normal.array, { ao: b.ao, cart: b.cart, med: b.med });
     let prox, dist, wedge = null;
+    if (P.bone === 'radius' && n !== P.bone) {
+      // ulna : pas coupée par le plan du radius (obstacle seulement) ; coupée à son propre niveau quand le 2e os est
+      // planifié, son bout distal suivant alors le fragment distal du radius (trait de scie de l'ulna compris)
+      if (!ULNA) { G.prox.add(voisin(fragmentObject(M))); continue; }
+      const pu = ULNA.plans[0], su = (INSTRUMENT.lame || 0) / 2;
+      G.prox.add(voisin(fragmentObject(clipMesh(M, decale(pu, -su), pu.n, -1, 1, triangulate2D))));
+      G.distFrag.add(voisin(fragmentObject(clipMesh(M, decale(pu, su), pu.n, +1, 1, triangulate2D))));
+      continue;
+    }
     if (kind === 'fermeture') {
-      prox = clipMesh(M, P1.p, P1.n, -1, 1, triangulate2D);                  // au-dessus du trait proximal
-      const below = clipMesh(M, P1.p, P1.n, +1, 1, triangulate2D);
-      dist = clipMesh(below, P2b.p, P2b.n, +1, 2, triangulate2D);            // au-dessous du trait distal
-      wedge = clipMesh(below, P2b.p, P2b.n, -1, 2, triangulate2D);           // entre les deux : coin retiré
+      // au-delà de la charnière, les deux plans se croisent : le fragment distal y est sous le 1er trait (un seul trait
+      // y passe, l'os s'y ouvre à la fermeture) ; l'ulna ou la fibula, de ce côté, est donc coupée une seule fois
+      prox = clipMesh(M, decale(P1, -s2), P1.n, -1, 1, triangulate2D);      // au-dessus du trait proximal
+      const below = clipMesh(M, decale(P1, s2), P1.n, +1, 1, triangulate2D);
+      dist = clipMesh(below, decale(P2b, s2), P2b.n, +1, 2, triangulate2D);  // au-dessous du trait distal
+      wedge = clipMesh(below, decale(P2b, -s2), P2b.n, -1, 2, triangulate2D); // entre les deux : coin retiré
     } else {
       prox = clipMesh(M, P1.p, P1.n, -1, 1, triangulate2D);
       dist = clipMesh(M, P1.p, P1.n, +1, 1, triangulate2D);
       if (n === P.bone) FRAG.gapLoops = prox.loops;                          // contour de la coupe (espace d'ouverture)
     }
     if (n === P.bone) FRAG.raw = { prox, dist, kind };                       // pour l'export de l'os corrigé prévu
-    G.prox.add(fragmentObject(prox));
-    G.distFrag.add(fragmentObject(dist));
-    if (wedge && wedge.tri.length) G.wedge.add(fragmentObject(wedge, MAT.wedge));
+    const marque = (o) => (n === P.bone ? o : voisin(o));
+    G.prox.add(marque(fragmentObject(prox)));
+    G.distFrag.add(marque(fragmentObject(dist)));
+    if (wedge && wedge.tri.length) G.wedge.add(marque(fragmentObject(wedge, MAT.wedge)));
   }
   // os voisins entiers : du côté distal de la coupe, ils suivent le fragment distal (rotule, fabelles)
   const Pl = O.plans[O.plans.length - 1];
@@ -122,7 +147,7 @@ function buildFragments(P, kind) {
     if (!DATA.bones[n]) continue;
     let s = 0;
     for (let i = 0; i < pos.length; i += 3) s += (pos[i] - Pl.p[0]) * Pl.n[0] + (pos[i + 1] - Pl.p[1]) * Pl.n[1] + (pos[i + 2] - Pl.p[2]) * Pl.n[2];
-    (s > 0 ? G.distFrag : G.prox).add(new THREE.Mesh(boneGeometry(n, pos), boneMaterial()));
+    (s > 0 ? G.distFrag : G.prox).add(voisin(new THREE.Mesh(boneGeometry(n, pos), boneMaterial())));
   }
   if (kind === 'ouverture' && FRAG.gapLoops) buildGap(P, O);
   buildPins(P, O);
@@ -168,7 +193,7 @@ function buildGap(P, O) {
   const m = new THREE.Mesh(g, MAT.gap);
   m.renderOrder = 6;
   G.gap.add(m);
-  FRAG.gap = { mesh: m, loops, H: O.charniere, k: O.k };
+  FRAG.gap = { mesh: m, loops, H: O.aca || O.charniere, k: O.k };
 }
 function updateGap(angle) {
   const gp = FRAG.gap;
@@ -189,12 +214,22 @@ function updateGap(angle) {
 //   fermeture : 0–0,25 le coin est retiré (glisse vers le côté convexe), 0,25–1 rotation
 //   ouverture : 0–1 rotation, l'espace d'ouverture apparaît
 //   la dérotation éventuelle se fait en même temps : autour de l'axe distal pour un coin de fermeture (avant la
-//   fermeture dans la composition), autour de l'axe réaligné pour un coin d'ouverture (après l'ouverture)
+//   fermeture dans la composition), autour de l'axe réaligné pour un coin d'ouverture (après l'ouverture) ; radius en
+//   règle 1 ou 3 : autour de la ligne centrale réelle de l'os à la coupe (O.axeDerotation, voir planifier)
+//   fermeture : en fin de fermeture, le fragment distal avance encore de l'épaisseur des traits de scie le long de la
+//   normale au 1er plan (fragments coupés avec la lame : buildFragments), comme transformation_reelle de l'étape 7
+//   la rotation angulaire se fait autour de l'ACA (O.aca) : la charnière en règles 1 et 3, le point de la bissectrice qui
+//   réaligne les axes en règle 2 (le fragment glisse alors le long de la coupe : translation de la règle 2), exactement
+//   comme la correction prescrite O.T (sinon, en règle 2, le fragment et sa broche seraient affichés à côté du guide)
 function transformCorrection(O, kind, e) {
-  const Ta = RT.aboutAxis(O.charniere, O.k, O.corr * RAD * e);
-  if (!O.derotation || !O.axeDerotation) return Ta;
-  const Rd = RT.aboutAxis(O.axeDerotation.p, O.axeDerotation.d, O.derotation * RAD * e);
-  return kind === 'fermeture' ? RT.compose(Ta, Rd) : RT.compose(Rd, Ta);
+  const Ta = RT.aboutAxis(O.aca || O.charniere, O.k, O.corr * RAD * e);
+  let T = Ta;
+  if (O.derotation && O.axeDerotation) {
+    const Rd = RT.aboutAxis(O.axeDerotation.p, O.axeDerotation.d, O.derotation * RAD * e);
+    T = kind === 'fermeture' ? RT.compose(Ta, Rd) : RT.compose(Rd, Ta);
+  }
+  if (O.traitScie) T = { R: T.R, t: V.sub(T.t, V.mul(V.norm(O.plans[0].n), O.traitScie * e)) };
+  return T;
 }
 function applyCorrection(P, kind, p) {
   const O = P.osteo[kind];
@@ -268,3 +303,15 @@ function construireGuides(meshes) {
   }
 }
 function viderGuides() { clearGroup(G.guide); clearGroup(G.guideRed); }
+// guide de coupe de l'ulna (2e os) et ses broches, sur les os avant correction
+function construireGuideUlna3D(meshes, U) {
+  clearGroup(G.guideUlna);
+  for (const [k, m] of Object.entries(meshes)) if (MAT_GUIDE[k]) G.guideUlna.add(meshGuide(m, MAT_GUIDE[k]));
+  const r = INSTRUMENT.broche / 2, longueur = (U?.largeur || 8) + 26;
+  for (const bb of U?.broches || []) {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, longueur, 16), MAT.pin);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(...bb.dir).normalize());
+    m.position.set(...V.add(bb.point, V.mul(bb.dir, 4 - longueur / 2 + U.largeur / 2)));
+    G.guideUlna.add(m);
+  }
+}

@@ -1,4 +1,4 @@
-# Campagne de simulation de la stratégie (planification) — 11/11/2026 16:23:34
+# Campagne de simulation de la stratégie (planification) — 15/11/2026 14:07:02
 
 222 cas (120 aléatoire, 102 préréglages), en 3 s : **221 sans erreur** (99.5 %).
 

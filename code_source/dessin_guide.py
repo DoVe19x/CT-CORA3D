@@ -654,7 +654,7 @@ def _controle_echelle(fond, ech, x0=CADRE[0] + 5, y0=CADRE[1] + 3.2):
 
 def _numero_plan(pr, suffixe):
     os_ = {"tibia": "TIB", "femur": "FEM", "radius": "RAD"}.get(pr.get("os", ""), "OS")
-    coin = {"fermeture": "FER", "ouverture": "OUV"}.get((pr.get("strategie") or {}).get("type_coin", ""), "COIN")
+    coin = {"fermeture": "FER", "ouverture": "OUV", "section": "SEC"}.get((pr.get("strategie") or {}).get("type_coin", ""), "COIN")
     return f"CTC3D-{os_}-{coin}-{time.strftime('%y%m%d')}-{suffixe}"
 
 
@@ -1197,10 +1197,14 @@ def plan_cote(base, pr, info, v_os, f_os, moities, ponts, red, geo, broches_c, v
     y_n = _nomenclature(fond, nomen, CADRE[1] + 52)
     serie = (pr.get("os_segmente") or {}).get("serie")
     derot = float((pr.get("correction") or {}).get("derotation_deg") or 0)
-    os_nom = {"tibia": "Tibia", "femur": "Fémur", "radius": "Radius"}.get(pr.get("os"), pr.get("os", ""))
-    designation = (f"{os_nom} {pr.get('cote', '')} · {'coin de fermeture' if kind == 'fermeture' else 'coin d’ouverture'}"
-                   f" θ = {_fr(theta, 1)}°" + (f", dérotation {_fr(derot, 1)}°" if abs(derot) >= 1 else "")
-                   + f" · {serie or 'os fictif (modèle)'}")
+    os_nom = {"tibia": "Tibia", "femur": "Fémur", "radius": "Radius", "ulna": "Ulna"}.get(pr.get("os"), pr.get("os", ""))
+    if kind == "section":                # 2e os (ulna) : ostéotomie simple, son bout distal suit le 1er os
+        designation = (f"{os_nom} {pr.get('cote', '')} · ostéotomie simple, suit la correction du "
+                       f"{(pr.get('premier_os') or {}).get('os', 'radius')} · {serie or 'os fictif (modèle)'}")
+    else:
+        designation = (f"{os_nom} {pr.get('cote', '')} · {'coin de fermeture' if kind == 'fermeture' else 'coin d’ouverture'}"
+                       f" θ = {_fr(theta, 1)}°" + (f", dérotation {_fr(derot, 1)}°" if abs(derot) >= 1 else "")
+                       + f" · {serie or 'os fictif (modèle)'}")
     _controle_echelle(fond, k_ech)
     _cartouche(fond, "GUIDE DE COUPE ET DE RÉDUCTION", designation, _numero_plan(pr, "01"), _echelle_txt(k_ech),
                "PA12 (frittage laser) ou résine stérilisable", "± 0,1 ; jeux réglés sur coupons")
